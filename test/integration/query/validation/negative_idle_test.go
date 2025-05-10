@@ -1,4 +1,3 @@
-// test/integration/query/validation/negative_idle_test.go
 package validation
 
 import (
@@ -6,23 +5,17 @@ import (
 	"testing"
 )
 
-// TestNegativeIdleCosts checks for negative values in cost-related fields
 func TestNegativeIdleCosts(t *testing.T) {
-	// Fetch allocation data with idle included
 	allocResp, err := FetchAllocationData(true)
 	if err != nil {
 		t.Fatalf("Failed to fetch allocation data: %v", err)
 	}
 
-	// Check for negative values in the response
 	var foundNegativeValues bool
 	var negativeFields []string
 
-	// Iterate through each allocation set in the data array
 	for _, allocSet := range allocResp.Data {
-		// Check each allocation entry
 		for namespaceName, alloc := range allocSet {
-			// Check for negative cost values
 			if alloc.CPUCost < 0 {
 				negativeFields = append(negativeFields, fmt.Sprintf("%s.cpuCost = %.5f", namespaceName, alloc.CPUCost))
 				foundNegativeValues = true
@@ -42,7 +35,6 @@ func TestNegativeIdleCosts(t *testing.T) {
 		}
 	}
 
-	// Fail the test if negative values were found
 	if foundNegativeValues {
 		t.Errorf("Found negative cost values in the API response: %v", negativeFields)
 	}

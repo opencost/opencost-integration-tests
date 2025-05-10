@@ -1,4 +1,3 @@
-// test/integration/query/validation/types.go
 package validation
 
 import (
@@ -9,14 +8,12 @@ import (
 	"os"
 )
 
-// AllocationResponse represents the structure of the API response
 type AllocationResponse struct {
 	Code   int                     `json:"code"`
 	Status string                  `json:"status"`
 	Data   []map[string]Allocation `json:"data"`
 }
 
-// Allocation represents the structure of each allocation entry
 type Allocation struct {
 	Name                       string                 `json:"name"`
 	Properties                 map[string]interface{} `json:"properties"`
@@ -63,20 +60,16 @@ type Allocation struct {
 	TotalEfficiency            float64                `json:"totalEfficiency"`
 }
 
-// Helper function to fetch allocation data from the API
 func FetchAllocationData(includeIdle bool) (AllocationResponse, error) {
 	var allocResp AllocationResponse
 
-	// Get the OpenCost URL from the environment
 	opencostURL := os.Getenv("OPENCOST_URL")
 	if opencostURL == "" {
 		return allocResp, fmt.Errorf("OPENCOST_URL environment variable is not set")
 	}
 
-	// Format the API endpoint for allocation data
 	endpoint := fmt.Sprintf("%s/allocation/compute", opencostURL)
 
-	// Add query parameters
 	window := "1d"
 	aggregate := "namespace"
 	includeIdleStr := "false"
@@ -89,25 +82,21 @@ func FetchAllocationData(includeIdle bool) (AllocationResponse, error) {
 	url := fmt.Sprintf("%s?window=%s&aggregate=%s&includeIdle=%s&step=%s&accumulate=%s",
 		endpoint, window, aggregate, includeIdleStr, step, accumulate)
 
-	// Make the request
 	resp, err := http.Get(url)
 	if err != nil {
 		return allocResp, fmt.Errorf("failed to make request: %v", err)
 	}
 	defer resp.Body.Close()
 
-	// Check for successful response
 	if resp.StatusCode != http.StatusOK {
 		return allocResp, fmt.Errorf("request failed with status code: %d", resp.StatusCode)
 	}
 
-	// Read the response body
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return allocResp, fmt.Errorf("failed to read response body: %v", err)
 	}
 
-	// Parse the JSON response
 	if err := json.Unmarshal(body, &allocResp); err != nil {
 		return allocResp, fmt.Errorf("failed to parse JSON response: %v", err)
 	}

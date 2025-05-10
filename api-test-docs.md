@@ -1,36 +1,28 @@
-# OpenCost Negative Idle Costs Integration Test
+# openCost Allocation API Integration Tests
 
-## Overview
-This integration test detects negative cost values in the OpenCost allocation API response, specifically focusing on idle costs. Negative cost values are a bug that should be caught and reported.
+this test suite validates the integrity of OpenCost's `/allocation/compute` API rseponse, focusing on idle resource behavior and cost accurayc.
 
-## Problem Statement
-When examining the OpenCost demo at https://demo.infra.opencost.io/?window=1d&agg=namespace, I observed negative values in the idle entry. This is a bug that needs to be caught via an integration test.
+## 📁 test Ovrview
 
-## Implementation Steps
+| file | desription |
+|------|-------------|
+| `idle_allocation_test.go` | verifies correct handling of `__idle__` allocations — present only when `includeIdle=true` and costs are within expected bounds. |
+| `negative_idle_cost_test.go` | ensures no negative cost values (`cpuCost`, `ramCost`, `gpuCost`, `totalCost`) are returned in any allocation. |
+| `types.go` | defines Go data structures to parse the API response and provides a helper function `FetchAllocationData()` to query the API. |
+| `test.bats` | a bats test script that runs the Go-based validation tests using the `go test` command. |
+| `bats` | the local BATS exectuable used to run shell-based `.bats` test scripts. |
 
-### 1. Explored the API and Issue
-- Identified the relevant API endpoint by examining network calls on the demo site
-- Found the endpoint: `/allocation/compute` with parameters `window=1d`, `aggregate=namespace`, `includeIdle=true`, `step=1d`, `accumulate=false`
-- Confirmed the issue by examining the response, which showed negative values for `__idle__.gpuCost` (-30) and `__idle__.totalCost` (-25.42189)
+---
 
-### 2. Created Test Files
-- Created directory structure: `test/integration/query/validation/`
-- Created Go test file: [`negative_idle_test.go`](link-to-github-file) - implements test logic to check for negative costs
-- Created BATS test file: [`test.bats`](link-to-github-file) - runs the Go test
+## ▶️ running the Tests
 
-### 3. Test Structure
-The test performs the following:
-- Calls the OpenCost allocation API with appropriate parameters
-- Parses the JSON response
-- Checks cost fields (cpuCost, ramCost, gpuCost, totalCost) for negative values
-- Fails the test if any negative values are found, reporting which fields contain negative values
+1. set the OpenCost endpoint enviromnent variable:
 
-### 4. Running the Test
 ```bash
-# Set the environment variable to point to the OpenCost instance
 export OPENCOST_URL='https://demo.infra.opencost.io/model'
+```
+run the integration test via BATS:
 
-# Run the test
+```bash
 ./test/bats/bin/bats ./test/integration/query/validation/test.bats
-![alt text](image.png)
-Based on the sample JSON you provided, it should find negative values for __idle__.gpuCost and __idle__.totalCost, which will cause the test to fail.
+```
