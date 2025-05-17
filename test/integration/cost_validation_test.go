@@ -6,45 +6,88 @@ import (
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 )
 
+const (
+	defaultWindow    = "1d"
+	defaultAggregate = "namespace"
+)
+
 // TestNegativeIdleCosts checks for negative costs in the idle allocation
 // This test specifically targets the bug where idle allocation shows negative costs
 func TestNegativeIdleCosts(t *testing.T) {
-	// Create API client
-	a := api.NewAPI()
 
-	// Create allocation request
-	req := api.AllocationRequest{
-		Window:     "1d",
-		Aggregate:  "namespace",
-		Idle:       "true",
-		Accumulate: "false",
+	testCases := []struct {
+		name      string
+		window    string
+		aggregate string
+		idle      string
+	}{
+		{
+			name:      "Daily by namespace",
+			window:    defaultWindow,
+			aggregate: defaultAggregate,
+			idle:      "true",
+		},
+		{
+			name:      "Weekly by cluster",
+			window:    "7d",
+			aggregate: "cluster",
+			idle:      "true",
+		},
+		{
+			name:      "Monthly by namespace",
+			window:    "30d",
+			aggregate: defaultAggregate,
+			idle:      "true",
+		},
 	}
 
-	resp, err := a.GetAllocation(req)
-	if err != nil {
-		t.Fatalf("Failed to get allocation data: %v", err)
-	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			a := api.NewAPI()
 
-	if resp.Code != 200 {
-		t.Fatalf("Expected status code 200, got %d", resp.Code)
-	}
+			req := api.AllocationRequest{
+				Window:    tc.window,
+				Aggregate: tc.aggregate,
+				Idle:      tc.idle,
+			}
 
-	// Check for negative costs in idle allocation
-	for _, itemMap := range resp.Data {
-		if idle, exists := itemMap["__idle__"]; exists {
-			if idle.TotalCost < 0 {
-				t.Errorf("Found negative total cost in idle allocation: %f", idle.TotalCost)
+			resp, err := a.GetAllocation(req)
+			if err != nil {
+				t.Fatalf("Failed to get allocation data: %v", err)
 			}
-			if idle.CPUCost < 0 {
-				t.Errorf("Found negative CPU cost in idle allocation: %f", idle.CPUCost)
+
+			if resp.Code != 200 {
+				t.Fatalf("Expected status code 200, got %d", resp.Code)
 			}
-			if idle.RAMCost < 0 {
-				t.Errorf("Found negative RAM cost in idle allocation: %f", idle.RAMCost)
+
+			if len(resp.Data) == 0 {
+				t.Skip("No allocation data returned, skipping verification")
 			}
-			if idle.GPUCost < 0 {
-				t.Errorf("Found negative GPU cost in idle allocation: %f", idle.GPUCost)
+
+			idleFound := false
+			// Check for negative costs in idle allocation
+			for _, itemMap := range resp.Data {
+				if idle, exists := itemMap["__idle__"]; exists {
+					idleFound = true
+					if idle.TotalCost < 0 {
+						t.Errorf("Found negative total cost in idle allocation: %f", idle.TotalCost)
+					}
+					if idle.CPUCost < 0 {
+						t.Errorf("Found negative CPU cost in idle allocation: %f", idle.CPUCost)
+					}
+					if idle.RAMCost < 0 {
+						t.Errorf("Found negative RAM cost in idle allocation: %f", idle.RAMCost)
+					}
+					if idle.GPUCost < 0 {
+						t.Errorf("Found negative GPU cost in idle allocation: %f", idle.GPUCost)
+					}
+				}
 			}
-		}
+
+			if !idleFound {
+				t.Skip("No idle allocation found in the response, skipping verification")
+			}
+		})
 	}
 }
 
