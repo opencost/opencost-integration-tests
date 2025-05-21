@@ -35,9 +35,14 @@ jobs:
         id: run-tests
         env:
           PROMETHEUS_URL: "https://demo-prometheus.infra.opencost.io"
-          OPENCOST_URL: "https://demo-opencost.infra.opencost.io/model"
+          OPENCOST_URL: "https://demo.infra.opencost.io/model"
         run: |
+          # Run bats and capture its exit code
           ./test/bats/bin/bats -T --no-parallelize-within-files --jobs 4 -r test/integration | tee results.txt
+          exit_code=${PIPESTATUS[0]}
+          
+          # Exit with the bats exit code
+          exit $exit_code
 
       - name: Check test results
         id: check-results
