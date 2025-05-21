@@ -6,6 +6,6 @@ teardown() {
     : # nothing to tear down
 }
 
-@test "prometheus: start and end time of a resource" {
+@test "allocation: controller kind consistency" {
     go test ./test/integration/allocation/allocation_controller_consistency_test.go
 }
