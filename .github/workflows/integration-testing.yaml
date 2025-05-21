@@ -56,7 +56,7 @@ jobs:
 
   set-labels:
     needs: run-tests
-    if: ${{ github.event_name == 'pull_request' }}
+    if: ${{ always() && github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     steps:
       - name: Label integration tests failing
