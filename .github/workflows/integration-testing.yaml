@@ -1,0 +1,86 @@
+name: Run OpenCost Integration Tests
+
+on:
+  schedule:
+    - cron: '0 14 * * *'
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.event.pull_request.head.sha || github.ref }}-intg-tests
+  cancel-in-progress: false
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-latest
+    outputs:
+      passed: ${{ steps.check-results.outputs.passed }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Install Bats
+        run: |
+          git clone https://github.com/bats-core/bats-core.git
+          cd bats-core
+          ./install.sh /usr/local
+          cd ..
+
+      - name: Run integration tests
+        id: run-tests
+        env:
+          PROMETHEUS_URL: "https://demo-prometheus.infra.opencost.io"
+        run: |
+          bats -T --no-parallelize-within-files --jobs 4 -r test/integration | tee results.txt
+
+      - name: Check test results
+        id: check-results
+        if: ${{ always() }}
+        run: |
+          if [[ "${{ job.status }}" == "success" ]]; then
+            echo "passed=true" >> $GITHUB_OUTPUT
+          else
+            echo "passed=false" >> $GITHUB_OUTPUT
+          fi
+
+  set-labels:
+    needs: run-tests
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Label integration tests failing
+        if: ${{ needs.run-tests.outputs.passed == 'false' }}
+        uses: andymckay/labeler@1.0.4
+        with:
+          add-labels: "integration tests failed"
+
+      - name: Remove passing label if failing
+        if: ${{ needs.run-tests.outputs.passed == 'false' }}
+        uses: mondeja/remove-labels-gh-action@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          labels: |
+            integration tests passed
+
+      - name: Label integration tests passing
+        if: ${{ needs.run-tests.outputs.passed == 'true' }}
+        uses: andymckay/labeler@1.0.4
+        with:
+          add-labels: "integration tests passed"
+
+      - name: Remove failing label if passing
+        if: ${{ needs.run-tests.outputs.passed == 'true' }}
+        uses: mondeja/remove-labels-gh-action@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          labels: |
+            integration tests failed 
