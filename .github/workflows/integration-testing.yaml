@@ -22,25 +22,21 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+            fetch-depth: 0
+            submodules: recursive
 
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
           go-version: '1.21'
 
-      - name: Install Bats
-        run: |
-          git clone https://github.com/bats-core/bats-core.git
-          cd bats-core
-          ./install.sh /usr/local
-          cd ..
-
       - name: Run integration tests
         id: run-tests
         env:
           PROMETHEUS_URL: "https://demo-prometheus.infra.opencost.io"
         run: |
-          bats -T --no-parallelize-within-files --jobs 4 -r test/integration | tee results.txt
+          ./test/bats/bin/bats -T --no-parallelize-within-files --jobs 4 -r test/integration | tee results.txt
 
       - name: Check test results
         id: check-results
