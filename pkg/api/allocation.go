@@ -23,6 +23,7 @@ type AllocationRequest struct {
 	Accumulate                 string
 	Aggregate                  string
 	CostUnit                   string
+	Filter                     string
 	Idle                       string
 	IdleByNode                 string
 	IncludeSharedCostBreakdown string
@@ -38,20 +39,52 @@ type AllocationRequest struct {
 func (ar AllocationRequest) QueryString() string {
 	params := []string{}
 
-	params = append(params, fmt.Sprintf("accumulate=%s", ar.Accumulate))
-	params = append(params, fmt.Sprintf("aggregate=%s", ar.Aggregate))
-	params = append(params, fmt.Sprintf("costUnit=%s", ar.CostUnit))
-	params = append(params, fmt.Sprintf("idle=%s", ar.Idle))
-	params = append(params, fmt.Sprintf("idleByNode=%s", ar.IdleByNode))
-	params = append(params, fmt.Sprintf("includeSharedCostBreakdown=%s", ar.IncludeSharedCostBreakdown))
-	params = append(params, fmt.Sprintf("shareCost=%s", ar.ShareCost))
-	params = append(params, fmt.Sprintf("shareIdle=%s", ar.ShareIdle))
-	params = append(params, fmt.Sprintf("shareLabels=%s", ar.ShareLabels))
-	params = append(params, fmt.Sprintf("shareNamespaces=%s", ar.ShareNamespaces))
-	params = append(params, fmt.Sprintf("shareSplit=%s", ar.ShareSplit))
-	params = append(params, fmt.Sprintf("shareTenancyCosts=%s", ar.ShareTenancyCosts))
-	params = append(params, fmt.Sprintf("window=%s", ar.Window))
+	if ar.Accumulate != "" {
+		params = append(params, fmt.Sprintf("accumulate=%s", ar.Accumulate))
+	}
+	if ar.Aggregate != "" {
+		params = append(params, fmt.Sprintf("aggregate=%s", ar.Aggregate))
+	}
+	if ar.CostUnit != "" {
+		params = append(params, fmt.Sprintf("costUnit=%s", ar.CostUnit))
+	}
+	if ar.Filter != "" {
+		params = append(params, fmt.Sprintf("filter=%s", ar.Filter))
+	}
+	if ar.Idle != "" {
+		params = append(params, fmt.Sprintf("idle=%s", ar.Idle))
+	}
+	if ar.IdleByNode != "" {
+		params = append(params, fmt.Sprintf("idleByNode=%s", ar.IdleByNode))
+	}
+	if ar.IncludeSharedCostBreakdown != "" {
+		params = append(params, fmt.Sprintf("includeSharedCostBreakdown=%s", ar.IncludeSharedCostBreakdown))
+	}
+	if ar.ShareCost != "" {
+		params = append(params, fmt.Sprintf("shareCost=%s", ar.ShareCost))
+	}
+	if ar.ShareIdle != "" {
+		params = append(params, fmt.Sprintf("shareIdle=%s", ar.ShareIdle))
+	}
+	if ar.ShareLabels != "" {
+		params = append(params, fmt.Sprintf("shareLabels=%s", ar.ShareLabels))
+	}
+	if ar.ShareNamespaces != "" {
+		params = append(params, fmt.Sprintf("shareNamespaces=%s", ar.ShareNamespaces))
+	}
+	if ar.ShareSplit != "" {
+		params = append(params, fmt.Sprintf("shareSplit=%s", ar.ShareSplit))
+	}
+	if ar.ShareTenancyCosts != "" {
+		params = append(params, fmt.Sprintf("shareTenancyCosts=%s", ar.ShareTenancyCosts))
+	}
+	if ar.Window != "" {
+		params = append(params, fmt.Sprintf("window=%s", ar.Window))
+	}
 
+	if len(params) == 0 {
+		return ""
+	}
 	return fmt.Sprintf("?%s", strings.Join(params, "&"))
 }
 
