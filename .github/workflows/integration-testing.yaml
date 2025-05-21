@@ -35,6 +35,7 @@ jobs:
         id: run-tests
         env:
           PROMETHEUS_URL: "https://demo-prometheus.infra.opencost.io"
+          OPENCOST_URL: "https://demo-opencost.infra.opencost.io/model"
         run: |
           ./test/bats/bin/bats -T --no-parallelize-within-files --jobs 4 -r test/integration | tee results.txt
 
