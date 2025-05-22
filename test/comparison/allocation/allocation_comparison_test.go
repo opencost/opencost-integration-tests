@@ -19,7 +19,7 @@ func compareValues(t *testing.T, fieldName string, value1, value2 float64, toler
 	percentDiff := math.Abs(diff) * 100
 
 	if percentDiff > tolerancePercent {
-		t.Errorf("%s values differ by %.2f%% (value1: %.2f, promless: %.2f)",
+		t.Errorf("%s values differ by %.2f%% (value1: %.2f, value2: %.2f)",
 			fieldName, percentDiff, value1, value2)
 		return false
 	}
@@ -27,8 +27,8 @@ func compareValues(t *testing.T, fieldName string, value1, value2 float64, toler
 }
 
 // compareAllocationResponses compares two allocation responses with percentage tolerance
-func compareAllocationResponses(t *testing.T, resp1, promlessResp *api.AllocationResponse, tolerancePercent float64) {
-	if resp1 == nil || promlessResp == nil {
+func compareAllocationResponses(t *testing.T, resp1, resp2 *api.AllocationResponse, tolerancePercent float64) {
+	if resp1 == nil || resp2 == nil {
 		t.Fatalf("One or both responses are nil")
 	}
 
@@ -36,17 +36,17 @@ func compareAllocationResponses(t *testing.T, resp1, promlessResp *api.Allocatio
 	if len(resp1.Data) == 0 {
 		t.Fatalf("First response has no data")
 	}
-	if len(promlessResp.Data) == 0 {
-		t.Fatalf("promless response has no data")
+	if len(resp2.Data) == 0 {
+		t.Fatalf("Second response has no data")
 	}
 
 	// Log the number of entries in each response
 	t.Logf("First response has %d entries", len(resp1.Data))
-	t.Logf("promless response has %d entries", len(promlessResp.Data))
+	t.Logf("Second response has %d entries", len(resp2.Data))
 
-	if len(resp1.Data) != len(promlessResp.Data) {
-		t.Errorf("Different number of entries in responses: resp1=%d, promlessResp=%d",
-			len(resp1.Data), len(promlessResp.Data))
+	if len(resp1.Data) != len(resp2.Data) {
+		t.Errorf("Different number of entries in responses: resp1=%d, resp2=%d",
+			len(resp1.Data), len(resp2.Data))
 		return
 	}
 
@@ -59,7 +59,7 @@ func compareAllocationResponses(t *testing.T, resp1, promlessResp *api.Allocatio
 			// Find matching allocation in second response
 			var alloc2 api.AllocationResponseItem
 			found := false
-			for _, allocMap2 := range promlessResp.Data {
+			for _, allocMap2 := range resp2.Data {
 				if a2, exists := allocMap2[podName]; exists {
 					alloc2 = a2
 					found = true
@@ -68,7 +68,7 @@ func compareAllocationResponses(t *testing.T, resp1, promlessResp *api.Allocatio
 			}
 
 			if !found {
-				t.Errorf("Pod %s exists in first response but not in promless", podName)
+				t.Errorf("Pod %s exists in first response but not in second", podName)
 				continue
 			}
 
@@ -130,7 +130,7 @@ func compareAllocationResponses(t *testing.T, resp1, promlessResp *api.Allocatio
 func TestAllocationAPIComparison(t *testing.T) {
 	// Initialize both API clients
 	api1 := api.NewAPI()
-	promless := api.NewAPI()
+	api2 := api.NewAPI()
 
 	// Set up the allocation request with 10-minute window
 	req := api.AllocationRequest{
@@ -145,11 +145,11 @@ func TestAllocationAPIComparison(t *testing.T) {
 		t.Fatalf("Failed to get allocation from first API: %v", err)
 	}
 
-	promlessResp, err := promless.GetAllocation(req)
+	resp2, err := api2.GetAllocation(req)
 	if err != nil {
-		t.Fatalf("Failed to get allocation from promless API: %v", err)
+		t.Fatalf("Failed to get allocation from second API: %v", err)
 	}
 
 	// Compare responses with 5% tolerance
-	compareAllocationResponses(t, resp1, promlessResp, 5.0)
+	compareAllocationResponses(t, resp1, resp2, 5.0)
 }
