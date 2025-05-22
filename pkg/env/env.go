@@ -21,6 +21,16 @@ func GetDefaultURL() string {
 	return strings.TrimRight(url, "/")
 }
 
+func GetComparisonURL() string {
+	url := defaultURL
+
+	if os.Getenv("COMPARISON_OPENCOST_URL") != "" {
+		url = os.Getenv("COMPARISON_OPENCOST_URL")
+	}
+
+	return strings.TrimRight(url, "/")
+}
+
 func GetApproxThreshold() float64 {
 	approxThreshold := defaultApproxThreshold
 

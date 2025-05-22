@@ -23,6 +23,12 @@ func NewAPI() *API {
 	}
 }
 
+func NewComparisonAPI() *API {
+	return &API{
+		url: strings.TrimRight(env.GetComparisonURL(), "/"),
+	}
+}
+
 // URL constructs a full URL from the API's base URL, the given relative URL,
 // and optionally the included query string.
 func (api *API) URL(relativeURL string, queryString string) string {
