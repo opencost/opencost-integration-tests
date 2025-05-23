@@ -26,6 +26,7 @@ type AllocationRequest struct {
 	Filter                     string
 	Idle                       string
 	IdleByNode                 string
+	IncludeIdle				   string
 	IncludeSharedCostBreakdown string
 	ShareCost                  string
 	ShareIdle                  string
@@ -56,6 +57,9 @@ func (ar AllocationRequest) QueryString() string {
 	}
 	if ar.IdleByNode != "" {
 		params = append(params, fmt.Sprintf("idleByNode=%s", ar.IdleByNode))
+	}
+	if ar.IncludeIdle != "" {
+		params = append(params, fmt.Sprintf("includeIdle=%s", ar.IncludeIdle))
 	}
 	if ar.IncludeSharedCostBreakdown != "" {
 		params = append(params, fmt.Sprintf("includeSharedCostBreakdown=%s", ar.IncludeSharedCostBreakdown))
