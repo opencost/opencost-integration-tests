@@ -126,7 +126,7 @@ func TestNegativeIdleCosts(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
-			if tc.name == "custom" {
+			if tc.name == "Custom" {
 				// Dynamically generate the "Custom" window
 				now := time.Now()
 				tc.window = fmt.Sprintf(tc.window,
