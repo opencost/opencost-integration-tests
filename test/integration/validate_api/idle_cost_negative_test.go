@@ -1,8 +1,16 @@
-package negative_idle
+package validate_api
 
 // Tests AllocationAPI return for negative values in idle costs
 // This test primarily focuses on the __idle__ namespace (when the breakdown is grouped by namespace)
-// __idle__ costs cannot be negative
+// idle costs - https://opencost.io/docs/specification#idle-costs by definition shouldn't be negative
+
+// Test Cases
+// Check all Resouce Usage Costs such as RAM, GPU, PersisitentVolume, LoadBalancer, etc
+// Check for different time windows and breakdown
+// Only __idle__ is tested here and not the resources (like ingress-nginx or folding-at-home)
+
+// Pass Criteria
+// No idle cost for any resource type is negative
 
 import (
 	"fmt"
@@ -91,24 +99,30 @@ func TestNegativeIdleCosts(t *testing.T) {
 			accumulate: "false",
 			includeidle: "true",
 		},
+		{ // This test is meant to fail because there is no includeidle field, i.e no __idle__
+			name: "Missing includeIdle",
+			window: "today",
+			aggregate: "namespace",
+			accumulate: "false",
+		},
 		{
 			name: "Yesterday",
 			window: "yesterday",
-			aggregate: "namespace",
+			aggregate: "node",
 			accumulate: "false",
 			includeidle: "true",
 		},
 		{
 			name: "Last week",
 			window: "week",
-			aggregate: "namespace",
+			aggregate: "service",
 			accumulate: "false",
 			includeidle: "true",
 		},
 		{
 			name: "Last 14 days",
 			window: "14d",
-			aggregate: "namespace",
+			aggregate: "pod",
 			accumulate: "false",
 			includeidle: "true",
 		},
@@ -148,14 +162,15 @@ func TestNegativeIdleCosts(t *testing.T) {
 			if response.Code != 200 {
 				t.Errorf("API returned non-200 code")
 			}
+			t.Logf("Breakdown %v", tc.aggregate)
 			for i, allocationRequestObjMap := range response.Data {
-				t.Logf("Response Data Slice Index %d:\n", i+1)
+				t.Logf("Response Data Slice Index %d:\n", i+1) // This may be unnecessary
 				// Check for any negative values in responseObj
 				idleItem, idlepresent := allocationRequestObjMap["__idle__"]
 				if !idlepresent {
 					t.Errorf("__idle__ key is missing")
+					continue
 				}
-
 				isNegative, negativeFields := checkNegativeCosts(idleItem)
 
 				if isNegative == true {
