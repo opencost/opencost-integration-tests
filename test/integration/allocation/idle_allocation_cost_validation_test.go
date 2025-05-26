@@ -1,41 +1,70 @@
 package allocation
 
 import (
+	"encoding/json"
 	"fmt"
-	"testing"
+	"io"
 
-	"github.com/opencost/opencost-integration-tests/pkg/api"
+	"net/http"
+	"net/url"
+	"testing"
 )
+
+type AllocationResponse struct {
+	Code   int                    `json:"code"`
+	Status string                 `json:"status"`
+	Data   []map[string]CostEntry `json:"data"`
+}
+
+type CostEntry struct {
+	Name      string  `json:"name"`
+	CPUCost   float64 `json:"cpuCost"`
+	RAMCost   float64 `json:"ramCost"`
+	GPUCost   float64 `json:gpuCost`
+	TotalCost float64 `json:TotalCost`
+}
 
 func validateNonNegativeIdleCosts(t *testing.T, aggregate string, window string) {
 
-	client := api.NewAPI()
-	req := api.AllocationRequest{
-		Window:     window,
-		Aggregate:  aggregate,
-		Idle:       "true",
-		Accumulate: "false",
-	}
+	baseURL := "https://demo.infra.opencost.io/model/allocation/compute"
 
-	resp, err := client.GetAllocation(req)
+	params := url.Values{}
+	params.Set("window", window)
+	params.Set("aggregate", aggregate)
+	params.Set("includeIdle", "true")
+	params.Set("step", "1d")
+	params.Set("accumulate", "false")
+
+	fullurl := fmt.Sprintf("%s?%s", baseURL, params.Encode())
+
+	resp, err := http.Get(fullurl)
 	if err != nil {
 		t.Fatalf("Failed to query OpenCost allocation API with window %s: %v", window, err)
 	}
-	if resp.Code != 200 {
-		t.Fatalf("OpenCost allocation API returned error for window %s: code=%d", window, resp.Code)
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("OpenCost allocation API returned error for window %s: code=%d", window, resp.StatusCode)
 	}
-	if len(resp.Data) == 0 {
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("failed to read response body: %s", err)
+	}
+	if len(body) == 0 {
 		t.Fatalf("No allocation data returned for window %s", window)
 	}
 
+	var parsed AllocationResponse
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		t.Fatalf("failed to parse JSON: %s", err)
+	}
+
+	data := &parsed
+
 	foundIdle := false
-	fmt.Println(resp.Data)
-
-	for _, allocations := range resp.Data {
-		if idle, exists := allocations["__idle__"]; exists {
+	for _, entry := range data.Data {
+		if idle, ok := entry["__idle__"]; ok {
 			foundIdle = true
-
-			// instead for putting which values to check inside code, seeing them in one place might be better
 			costChecks := []struct {
 				name  string
 				value float64
@@ -53,8 +82,9 @@ func validateNonNegativeIdleCosts(t *testing.T, aggregate string, window string)
 			}
 		}
 	}
+
 	if !foundIdle {
-		t.Skipf("Idle Allocation not found for window %s, Verification skipped", window)
+		t.Skipf("No __idle__ entries found for window :%s aggregate: %s.", window, aggregate)
 	}
 }
 
