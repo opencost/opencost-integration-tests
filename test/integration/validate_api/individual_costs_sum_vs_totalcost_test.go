@@ -10,6 +10,7 @@ package validate_api
 // Resources considered include RAM, GPU, CPU, PersistentVolume (tricky because this is a map of slices)
 
 // Formula: Total Cluster Costs	= Workload Costs + Cluster Idle Costs +	Cluster Overhead Costs
+// https://github.com/opencost/opencost/blob/develop/core/pkg/opencost/allocation.go#L897
 // Cluster Overhead costs are not available to us, so we skip it.
 // Based on my understanding of the documentation we are actually testing for sum of the "Workload costs" only
 
@@ -103,7 +104,7 @@ func TestSumofCostsnTotalCosts(t *testing.T) {
 			}
 			t.Logf("Breakdown %v", tc.aggregate)
 			for i, allocationRequestObjMap := range response.Data {
-				t.Logf("Response Data Slice Index %d:\n", i+1)
+				t.Logf("Response Data Step Index %d:\n", i+1)
 				// Check for any negative values in responseObj
 				for mapkey, allocationRequestObj := range allocationRequestObjMap {
 					t.Logf("Name: %v\n", mapkey)

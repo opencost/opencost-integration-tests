@@ -96,7 +96,7 @@ func TestTotalEfficiencyValue(t *testing.T) {
 			}
 			t.Logf("Breakdown %v", tc.aggregate)
 			for i, allocationRequestObjMap := range response.Data {
-				t.Logf("Response Data Slice Index %d:\n", i+1) // There is only one index in the slice all the time for my observation
+				t.Logf("Response Data Step Index %d:\n", i+1) // There is only one index as step = window by default
 				for mapkey, allocationRequestObj := range allocationRequestObjMap {
 					t.Logf("Name: %v\n", mapkey)
 					// Really not sure about the upper limit as some values cross 100% in the demo dashboard

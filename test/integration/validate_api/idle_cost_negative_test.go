@@ -164,7 +164,7 @@ func TestNegativeIdleCosts(t *testing.T) {
 			}
 			t.Logf("Breakdown %v", tc.aggregate)
 			for i, allocationRequestObjMap := range response.Data {
-				t.Logf("Response Data Slice Index %d:\n", i+1) // This may be unnecessary
+				t.Logf("Response Data Step Index %d:\n", i+1)
 				// Check for any negative values in responseObj
 				idleItem, idlepresent := allocationRequestObjMap["__idle__"]
 				if !idlepresent {
