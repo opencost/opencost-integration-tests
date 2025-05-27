@@ -22,6 +22,11 @@ teardown() {
     go test ./test/integration/validate_api/correct_window_values_test.go
 }
 
+@test "validate_api: validate if all of idle costs are spread" {
+    go test ./test/integration/validate_api/share_idle_shares_test.go
+}
+
+
 # Test to validate if all the keys are returned in the API for /allocation
 
 # Test to validate if all the keys are returned in the API for /assets
