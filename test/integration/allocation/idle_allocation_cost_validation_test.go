@@ -8,21 +8,9 @@ import (
 	"net/http"
 	"net/url"
 	"testing"
+
+	"github.com/opencost/opencost-integration-tests/pkg/api"
 )
-
-type AllocationResponse struct {
-	Code   int                    `json:"code"`
-	Status string                 `json:"status"`
-	Data   []map[string]CostEntry `json:"data"`
-}
-
-type CostEntry struct {
-	Name      string  `json:"name"`
-	CPUCost   float64 `json:"cpuCost"`
-	RAMCost   float64 `json:"ramCost"`
-	GPUCost   float64 `json:gpuCost`
-	TotalCost float64 `json:TotalCost`
-}
 
 func validateNonNegativeIdleCosts(t *testing.T, aggregate string, window string) {
 
@@ -54,7 +42,7 @@ func validateNonNegativeIdleCosts(t *testing.T, aggregate string, window string)
 		t.Fatalf("No allocation data returned for window %s", window)
 	}
 
-	var parsed AllocationResponse
+	var parsed api.AllocationResponse
 	if err := json.Unmarshal(body, &parsed); err != nil {
 		t.Fatalf("failed to parse JSON: %s", err)
 	}
@@ -88,14 +76,15 @@ func validateNonNegativeIdleCosts(t *testing.T, aggregate string, window string)
 	}
 }
 
-func TestIdleResourceCostValidation(t *testing.T) {
+func TestIdleCostValidation(t *testing.T) {
 
 	windows := []string{"10m", "1h", "12h", "1d", "2d", "7d", "30d"}
-	aggregates := []string{"namespace", "cluster"}
+	aggregates := []string{"namespace", "cluster", "service", "pod", "node"}
 
 	for _, window := range windows {
 		for _, aggregate := range aggregates {
-			t.Run(window, func(t *testing.T) {
+			name := "Window: " + window + " Aggregate: " + aggregate
+			t.Run(name, func(t *testing.T) {
 				validateNonNegativeIdleCosts(t, aggregate, window)
 			})
 		}
