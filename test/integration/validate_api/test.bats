@@ -18,6 +18,10 @@ teardown() {
     go test ./test/integration/validate_api/individual_costs_sum_vs_totalcost_test.go
 }
 
+@test "validate_api: validate Window Start and End" {
+    go test ./test/integration/validate_api/correct_window_values_test.go
+}
+
 # Test to validate if all the keys are returned in the API for /allocation
 
 # Test to validate if all the keys are returned in the API for /assets
