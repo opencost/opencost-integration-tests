@@ -57,6 +57,7 @@ func validateNonNegativeIdleCosts(t *testing.T, aggregate string, window string)
 				name  string
 				value float64
 			}{
+				// list the cost values to be checked here
 				{"total cost", idle.TotalCost},
 				{"CPU cost", idle.CPUCost},
 				{"RAM cost", idle.RAMCost},
