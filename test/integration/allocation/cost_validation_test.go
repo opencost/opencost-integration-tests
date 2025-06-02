@@ -16,28 +16,32 @@ const (
 func TestNegativeIdleCosts(t *testing.T) {
 
 	testCases := []struct {
-		name      string
-		window    string
-		aggregate string
-		idle      string
+		name        string
+		window      string
+		aggregate   string
+		idle        string
+		includeIdle string
 	}{
 		{
-			name:      "Daily by namespace",
-			window:    defaultWindow,
-			aggregate: defaultAggregate,
-			idle:      "true",
+			name:        "Daily by namespace",
+			window:      defaultWindow,
+			aggregate:   defaultAggregate,
+			idle:        "true",
+			includeIdle: "true",
 		},
 		{
-			name:      "Weekly by cluster",
-			window:    "7d",
-			aggregate: "cluster",
-			idle:      "true",
+			name:        "Weekly by cluster",
+			window:      "7d",
+			aggregate:   "cluster",
+			idle:        "true",
+			includeIdle: "true",
 		},
 		{
-			name:      "Monthly by namespace",
-			window:    "30d",
-			aggregate: defaultAggregate,
-			idle:      "true",
+			name:        "Monthly by namespace",
+			window:      "30d",
+			aggregate:   defaultAggregate,
+			idle:        "true",
+			includeIdle: "true",
 		},
 	}
 
@@ -46,12 +50,13 @@ func TestNegativeIdleCosts(t *testing.T) {
 			a := api.NewAPI()
 
 			req := api.AllocationRequest{
-				Window:    tc.window,
-				Aggregate: tc.aggregate,
-				Idle:      tc.idle,
+				Window:      tc.window,
+				Aggregate:   tc.aggregate,
+				Idle:        tc.idle,
+				IncludeIdle: tc.includeIdle,
 			}
 
-			resp, err := a.GetAllocation(req)
+			resp, err := a.GetAllocationCompute(req)
 			if err != nil {
 				t.Fatalf("Failed to get allocation data: %v", err)
 			}
