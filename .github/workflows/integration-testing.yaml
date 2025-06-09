@@ -27,6 +27,7 @@ jobs:
         with:
             fetch-depth: 0
             submodules: recursive
+            ref: ${{ github.event.pull_request.head.sha || github.ref }}
 
       - name: Set up Go
         uses: actions/setup-go@v4
