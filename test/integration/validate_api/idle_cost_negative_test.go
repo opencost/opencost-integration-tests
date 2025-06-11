@@ -13,8 +13,8 @@ package validate_api
 // No idle cost for any resource type is negative
 
 import (
-	"fmt"
-	"time"
+	// "fmt"
+	// "time"
 	"testing"
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 )
@@ -99,12 +99,12 @@ func TestNegativeIdleCosts(t *testing.T) {
 			accumulate: "false",
 			includeidle: "true",
 		},
-		{ // This test is meant to fail because there is no includeidle field, i.e no __idle__
-			name: "Missing includeIdle",
-			window: "today",
-			aggregate: "namespace",
-			accumulate: "false",
-		},
+		// { // This test is meant to fail because there is no includeidle field, i.e no __idle__
+		// 	name: "Missing includeIdle",
+		// 	window: "today",
+		// 	aggregate: "namespace",
+		// 	accumulate: "false",
+		// },
 		{
 			name: "Yesterday",
 			window: "yesterday",

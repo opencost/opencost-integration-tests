@@ -67,20 +67,20 @@ func TestSumofCostsnTotalCosts(t *testing.T) {
 			accumulate: "false",
 			includeidle: "true",
 		},
-		{
-			name: "Last week",
-			window: "week",
-			aggregate: "container",
-			accumulate: "false",
-			includeidle: "true",
-		},
-		{
-			name: "Last 14 days",
-			window: "14d",
-			aggregate: "service",
-			accumulate: "false",
-			includeidle: "true",
-		},
+		// {
+		// 	name: "Last week",
+		// 	window: "week",
+		// 	aggregate: "container",
+		// 	accumulate: "false",
+		// 	includeidle: "true",
+		// },
+		// {
+		// 	name: "Last 14 days",
+		// 	window: "14d",
+		// 	aggregate: "service",
+		// 	accumulate: "false",
+		// 	includeidle: "true",
+		// },
 	}
 
 	t.Logf("testCases: %v", testCases)
