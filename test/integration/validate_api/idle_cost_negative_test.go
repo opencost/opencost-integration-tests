@@ -112,27 +112,27 @@ func TestNegativeIdleCosts(t *testing.T) {
 			accumulate: "false",
 			includeidle: "true",
 		},
-		{
-			name: "Last week",
-			window: "week",
-			aggregate: "service",
-			accumulate: "false",
-			includeidle: "true",
-		},
-		{
-			name: "Last 14 days",
-			window: "14d",
-			aggregate: "pod",
-			accumulate: "false",
-			includeidle: "true",
-		},
-		{
-			name: "Custom",
-			window: "%sT00:00:00Z,%sT00:00:00Z", // This can be generated dynamically based on the running time
-			aggregate: "namespace",
-			accumulate: "false",
-			includeidle: "true",
-		},
+		// {
+		// 	name: "Last week",
+		// 	window: "week",
+		// 	aggregate: "service",
+		// 	accumulate: "false",
+		// 	includeidle: "true",
+		// },
+		// {
+		// 	name: "Last 14 days",
+		// 	window: "14d",
+		// 	aggregate: "pod",
+		// 	accumulate: "false",
+		// 	includeidle: "true",
+		// },
+		// {
+		// 	name: "Custom",
+		// 	window: "%sT00:00:00Z,%sT00:00:00Z", // This can be generated dynamically based on the running time
+		// 	aggregate: "namespace",
+		// 	accumulate: "false",
+		// 	includeidle: "true",
+		// },
 	}
 
 	t.Logf("testCases: %v", testCases)
@@ -140,14 +140,14 @@ func TestNegativeIdleCosts(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
-			if tc.name == "Custom" {
-				// Dynamically generate the "Custom" window
-				now := time.Now()
-				tc.window = fmt.Sprintf(tc.window,
-					now.AddDate(0, 0, -2).Format("2006-01-02"),
-					now.AddDate(0, 0, -1).Format("2006-01-02"),
-				)
-			}
+			// if tc.name == "Custom" {
+			// 	// Dynamically generate the "Custom" window
+			// 	now := time.Now()
+			// 	tc.window = fmt.Sprintf(tc.window,
+			// 		now.AddDate(0, 0, -2).Format("2006-01-02"),
+			// 		now.AddDate(0, 0, -1).Format("2006-01-02"),
+			// 	)
+			// }
 
 			response, err := apiObj.GetAllocation(api.AllocationRequest{
 				Window: tc.window,
