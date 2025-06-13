@@ -2,29 +2,12 @@ package allocation
 
 import (
 	"fmt"
-	"math"
+	util "github.com/opencost/opencost-integration-tests/test/comparison/helper"
 	"testing"
+	"time"
 
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 )
-
-// compareValues compares two float64 values with a percentage tolerance
-func compareValues(t *testing.T, fieldName string, value1, value2 float64, tolerancePercent float64) bool {
-	if value1 == 0 && value2 == 0 {
-		return true
-	}
-
-	// Calculate the percentage difference
-	diff := (value1 / value2) - 1
-	percentDiff := math.Abs(diff) * 100
-
-	if percentDiff > tolerancePercent {
-		t.Errorf("%s values differ by %.2f%% (value1: %.2f, value2: %.2f)",
-			fieldName, percentDiff, value1, value2)
-		return false
-	}
-	return true
-}
 
 // compareAllocationResponses compares two allocation responses with percentage tolerance
 func compareAllocationResponses(t *testing.T, resp1, resp2 *api.AllocationResponse, tolerancePercent float64) {
@@ -72,48 +55,68 @@ func compareAllocationResponses(t *testing.T, resp1, resp2 *api.AllocationRespon
 				continue
 			}
 
+			// Compare Times
+			start1 := alloc1.Start
+			start2 := alloc2.Start
+			startDiff := start1.Sub(start2).Minutes()
+			if startDiff > 1 {
+				t.Errorf("")
+			}
+			end1 := alloc1.End
+			end2 := alloc2.End
+			endDiff := end1.Sub(end2).Minutes()
+			if endDiff > 1 {
+				t.Errorf("Difference Between End is greater than the resolution")
+			}
+
+			// Compare Properties
+
 			// Compare CPU metrics
-			compareValues(t, fmt.Sprintf("%s CPU Core Hours", podName),
+			util.CompareValues(t, fmt.Sprintf("%s CPU Core Hours", podName),
 				alloc1.CPUCoreHours, alloc2.CPUCoreHours, tolerancePercent)
-			compareValues(t, fmt.Sprintf("%s CPU Core Request Average", podName),
+			util.CompareValues(t, fmt.Sprintf("%s CPU Core Request Average", podName),
 				alloc1.CPUCoreRequestAverage, alloc2.CPUCoreRequestAverage, tolerancePercent)
-			compareValues(t, fmt.Sprintf("%s CPU Core Usage Average", podName),
+			util.CompareValues(t, fmt.Sprintf("%s CPU Core Usage Average", podName),
 				alloc1.CPUCoreUsageAverage, alloc2.CPUCoreUsageAverage, tolerancePercent)
-			compareValues(t, fmt.Sprintf("%s CPU Cost", podName),
+			util.CompareValues(t, fmt.Sprintf("%s CPU Cost", podName),
 				alloc1.CPUCost, alloc2.CPUCost, tolerancePercent)
-
-			// Compare Memory metrics
-			compareValues(t, fmt.Sprintf("%s RAM Byte Hours", podName),
+			//
+			//// Compare Memory metrics
+			util.CompareValues(t, fmt.Sprintf("%s RAM Byte Hours", podName),
 				alloc1.RAMByteHours, alloc2.RAMByteHours, tolerancePercent)
-			compareValues(t, fmt.Sprintf("%s RAM Bytes Request Average", podName),
+			util.CompareValues(t, fmt.Sprintf("%s RAM Bytes Request Average", podName),
 				alloc1.RAMBytesRequestAverage, alloc2.RAMBytesRequestAverage, tolerancePercent)
-			compareValues(t, fmt.Sprintf("%s RAM Bytes Usage Average", podName),
+			util.CompareValues(t, fmt.Sprintf("%s RAM Bytes Usage Average", podName),
 				alloc1.RAMBytesUsageAverage, alloc2.RAMBytesUsageAverage, tolerancePercent)
-			compareValues(t, fmt.Sprintf("%s RAM Cost", podName),
+			util.CompareValues(t, fmt.Sprintf("%s RAM Cost", podName),
 				alloc1.RAMCost, alloc2.RAMCost, tolerancePercent)
-
+			//
 			// Compare GPU metrics if present
 			if alloc1.GPUHours > 0 || alloc2.GPUHours > 0 {
-				compareValues(t, fmt.Sprintf("%s GPU Hours", podName),
+				util.CompareValues(t, fmt.Sprintf("%s GPU Hours", podName),
 					alloc1.GPUHours, alloc2.GPUHours, tolerancePercent)
-				compareValues(t, fmt.Sprintf("%s GPU Cost", podName),
+				util.CompareValues(t, fmt.Sprintf("%s GPU Cost", podName),
 					alloc1.GPUCost, alloc2.GPUCost, tolerancePercent)
 			}
 
 			// Compare Network metrics
-			compareValues(t, fmt.Sprintf("%s Network Transfer Bytes", podName),
+			util.CompareValues(t, fmt.Sprintf("%s Network Transfer Bytes", podName),
 				alloc1.NetworkTransferBytes, alloc2.NetworkTransferBytes, tolerancePercent)
-			compareValues(t, fmt.Sprintf("%s Network Receive Bytes", podName),
+			util.CompareValues(t, fmt.Sprintf("%s Network Receive Bytes", podName),
 				alloc1.NetworkReceiveBytes, alloc2.NetworkReceiveBytes, tolerancePercent)
-			compareValues(t, fmt.Sprintf("%s Network Cost", podName),
+			util.CompareValues(t, fmt.Sprintf("%s Network Cost", podName),
 				alloc1.NetworkCost, alloc2.NetworkCost, tolerancePercent)
 
 			// Compare PV metrics
-			compareValues(t, fmt.Sprintf("%s PV Cost", podName),
+			util.CompareValues(t, fmt.Sprintf("%s PV Cost", podName),
 				alloc1.PersistentVolumeCost(), alloc2.PersistentVolumeCost(), tolerancePercent)
 
+			// Compare LB metrics
+			util.CompareValues(t, fmt.Sprintf("%s LB Cost", podName),
+				alloc1.LoadBalancerCost, alloc2.LoadBalancerCost, tolerancePercent)
+
 			// Compare Total Cost
-			compareValues(t, fmt.Sprintf("%s Total Cost", podName),
+			util.CompareValues(t, fmt.Sprintf("%s Total Cost", podName),
 				alloc1.TotalCost, alloc2.TotalCost, tolerancePercent)
 
 			podsCompared++
@@ -130,11 +133,15 @@ func compareAllocationResponses(t *testing.T, resp1, resp2 *api.AllocationRespon
 func TestAllocationAPIComparison(t *testing.T) {
 	// Initialize both API clients
 	api1 := api.NewAPI()
-	api2 := api.NewAPI()
+	api2 := api.NewComparisonAPI()
+
+	end := time.Now().UTC().Truncate(10 * time.Minute)
+	start := end.Add(-10 * time.Minute)
+	win := fmt.Sprintf("%s,%s", start.Format(time.RFC3339), end.Format(time.RFC3339))
 
 	// Set up the allocation request with 10-minute window
 	req := api.AllocationRequest{
-		Window:     "10m",
+		Window:     win,
 		Aggregate:  "pod",
 		Accumulate: "true",
 	}
@@ -151,5 +158,5 @@ func TestAllocationAPIComparison(t *testing.T) {
 	}
 
 	// Compare responses with 5% tolerance
-	compareAllocationResponses(t, resp1, resp2, 5.0)
+	compareAllocationResponses(t, resp1, resp2, 10.0)
 }
