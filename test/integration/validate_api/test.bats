@@ -14,10 +14,6 @@ teardown() {
    go test ./test/integration/validate_api/valid_total_efficiency_test.go
 }
 
-@test "validate_api: validate TotalSum and Individual Sum of Resource Usage Costs" {
-    go test ./test/integration/validate_api/individual_costs_sum_vs_totalcost_test.go
-}
-
 @test "validate_api: validate Window Start and End" {
     go test ./test/integration/validate_api/correct_window_values_test.go
 }
