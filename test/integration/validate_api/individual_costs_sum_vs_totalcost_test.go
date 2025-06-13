@@ -36,7 +36,7 @@ func addIndividualCosts(m api.AllocationResponseItem) (float64, float64){
 
 	calculated_totalCost := 0.0
 	// Add Resource Usage Costs for item
-	calculated_totalCost += m.CPUCost + m.GPUCost + m.RAMCost
+	calculated_totalCost += m.CPUCost + m.GPUCost + m.RAMCost + m.NetworkCost + m.LoadBalancerCost
 	for _, persistentVolume := range m.PersistentVolumes {
 		calculated_totalCost += persistentVolume.Cost
 	}
