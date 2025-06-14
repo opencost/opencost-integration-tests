@@ -11,7 +11,7 @@ import (
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 )
 
-func TestNegativeIdleCosts(t *testing.T) {
+func TestQueryAllocation(t *testing.T) {
 	apiObj := api.NewAPI()
 
 	testCases := []struct {
