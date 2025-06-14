@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"time"
+	"strings"
 )
 
 const (
@@ -81,4 +82,50 @@ func (c *Client) GetPodsByController(controllerKind string, window string) (map[
 	}
 
 	return promPods, nil
+}
+
+
+func (c *Client) constructPromQLQueryURL(metric string, filters map[string]string, window string) string {
+
+	filterParts := make([]string, 0, len(filters))
+	for key, value := range filters {
+		// PromQL label values should be double-quoted.
+		// Using a raw string literal (backticks) for the format string is clean.
+		filterPart := fmt.Sprintf(`%s="%s"`, key, value)
+		filterParts = append(filterParts, filterPart)
+	}
+
+	filtersString := strings.Join(filterParts, ", ")
+
+	var finalPromQLSelector string
+	if filtersString == "" {
+		finalPromQLSelector = "{}" // Selects all metrics
+	} else {
+		finalPromQLSelector = "{" + filtersString + "}"
+	}
+
+	promQLQuery := fmt.Sprintf("%s%s offset %s", metric, finalPromQLSelector, window)
+
+	promURL := fmt.Sprintf("%s/api/v1/query?query=%s", c.baseURL, url.QueryEscape(promQLQuery))
+
+	return promURL
+}
+
+func (c *Client) RunPromQLQuery(metric string, filters map[string]string, window string) (PrometheusResponse, error) {
+
+	promURL := c.constructPromQLQueryURL(metric, filters, window)
+	promResp, err := c.httpClient.Get(promURL)
+
+	var promData PrometheusResponse
+
+	if err != nil {
+		return promData, fmt.Errorf("failed to query Prometheus: %v", err)
+	}
+	defer promResp.Body.Close()
+
+	if err := json.NewDecoder(promResp.Body).Decode(&promData); err != nil {
+		return promData, fmt.Errorf("failed to query Prometheus: %v", err)
+	}
+	
+	return promData, nil
 }
