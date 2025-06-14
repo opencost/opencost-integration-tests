@@ -1,21 +1,15 @@
 package validate_api
 
-// Description
-// Validate TotalCost is equal to sum of individual resource costs
-// In the demo, ingress-nginx resource costs do not add up to totalcost (0.04 + 0.0 + 0.0 + 0.0 != 0.22)
+// Description - Assert AllocationResponseItem.TotalCost is equal to the sum of Resource Costs like CPUCost, GPUCost, etc.
+// Specification - https://opencost.io/docs/specification#foundational-definitions
+// Formula - Total Cluster Costs = Workload Costs + Cluster Idle Costs + Cluster Overhead Costs
 
-// Testing Strategy
-// Testing opencost specification - https://opencost.io/docs/specification#foundational-definitions
-// This test assumes based on the dasboard that 4 resources contribute to the totalcost, although they could be more
-// Resources considered include RAM, GPU, CPU, PersistentVolume (tricky because this is a map of slices)
+// Implementation Details
+// - Cluster Overhead costs are not available to us, so we skip it.
+// - Only Testing the sum of the "Workload costs"
 
-// Formula: Total Cluster Costs	= Workload Costs + Cluster Idle Costs +	Cluster Overhead Costs
-// https://github.com/opencost/opencost/blob/develop/core/pkg/opencost/allocation.go#L897
-// Cluster Overhead costs are not available to us, so we skip it.
-// Based on my understanding of the documentation we are actually testing for sum of the "Workload costs" only
-
-// Pass Criteria
-// If the rounded value upto 2 decimal values of TotolCost and CalculatedCost match. (We may also consider an accepted error percentage = +- 1%)
+// Passing Criteria
+// AllocationResponseItem.TotalCost and "CalculatedCost", when rounded to first two decimal places, must exhibit a variance not exceeding 0.5.
 
 
 import (
@@ -42,7 +36,6 @@ func addIndividualCosts(m api.AllocationResponseItem) (float64, float64){
 	}
 	return RoundUpToTwoDecimals(calculated_totalCost), RoundUpToTwoDecimals(m.TotalCost)
 }
-
 func TestSumofCostsnTotalCosts(t *testing.T) {
 	apiObj := api.NewAPI()
 
@@ -110,8 +103,11 @@ func TestSumofCostsnTotalCosts(t *testing.T) {
 					t.Logf("Name: %v\n", mapkey)
 					calculated_totalCost, totalCost := addIndividualCosts(allocationRequestObj)
 
-					// Compare and check
-					if calculated_totalCost != totalCost { // Consider an accepted_error parameter that allows a difference = +- 1%
+					// Compute Error Margin
+					acceptableErrorMargin := 0.5
+					errorMargin := math.Abs(totalCost - calculated_totalCost) / totalCost
+					if errorMargin > acceptableErrorMargin {
+						t.Errorf("Resource Costs: %v", allocationRequestObj)
 						t.Errorf("Total Cost: %v did not match computed cost: %v", totalCost, calculated_totalCost)
 					} else {
 						t.Logf("%v passed", mapkey)
