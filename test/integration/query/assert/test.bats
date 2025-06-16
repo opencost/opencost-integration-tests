@@ -7,7 +7,7 @@ teardown() {
 }
 
 @test "Assert: /allocation and /allocation/summary" {
-    go test ./test/integration/query/count/allocation_allocationsummary_test.go
+    go test ./test/integration/query/assert/allocation_allocationsummary_test.go
 }
 
 

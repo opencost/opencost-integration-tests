@@ -11,6 +11,6 @@ teardown() {
 }
 
 @test "Query: Number of Allocations Summary" {
-    go test ./test/integration/query/count/allocations_per_aggregate_test.go
+    go test .test\integration\query\count\allocations_summary_test.go
 }
 
