@@ -98,7 +98,7 @@ func TestQueryAllocation(t *testing.T) {
 				promNamespaceCount, promNamespacePresent := promAggregateCount[key]
 				if apiNamespacePresent && promNamespacePresent {
 					if apiNamespaceCount != promNamespaceCount {
-						t.Errorf("Aggregate count mismatch for Namespace %s", key)
+						t.Errorf("Aggregate count %d != %d mismatch for Namespace %s", key, apiNamespaceCount, promNamespaceCount)
 					} else {
 						t.Logf("Aggregate count matches for Namespace %s", key)
 					}
