@@ -133,6 +133,13 @@ type AllocationResponseItem struct {
 	SharedCost                     float64                                 `json:"sharedCost"`
 	TotalCost                      float64                                 `json:"totalCost"`
 	TotalEfficiency                float64                                 `json:"totalEfficiency"`
+	GPUAllocation                  GPUAllocationItemProperties             `json:"gpuAllocation"`
+}
+
+type GPUAllocationItemProperties struct {
+	ISGPUShared			bool		`json:"isGPUShared"`
+	GPUUsageAverage		float64		`json:"gpuUsageAverage"`
+	GPURequestAverage	float64		`json:"gpuRequestAverage"`
 }
 
 func (ari AllocationResponseItem) PersistentVolumeCost() float64 {
