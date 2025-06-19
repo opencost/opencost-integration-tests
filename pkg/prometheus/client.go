@@ -33,7 +33,7 @@ type PrometheusResponse struct {
 				Pod       string `json:"pod"`
 				Namespace string `json:"namespace"`
 			} `json:"metric"`
-			Values []interface{}
+			Values []interface{} `json:"value"`
 		} `json:"result"`
 	} `json:"data"`
 }

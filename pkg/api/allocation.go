@@ -124,6 +124,7 @@ type AllocationResponseItem struct {
 	LoadBalancerCostAdjustment     float64                                 `json:"loadBalancerCostAdjustment"`
 	PersistentVolumes              AllocationResponseItemPersistentVolumes `json:"pvs"`
 	PersistentVolumeCostAdjustment float64                                 `json:"pvCostAdjustment"`
+	RAMBytes                       float64								   `json:"ramBytes"`
 	RAMByteHours                   float64                                 `json:"ramByteHours"`
 	RAMBytesRequestAverage         float64                                 `json:"ramByteRequestAverage"`
 	RAMBytesUsageAverage           float64                                 `json:"ramByteUsageAverage"`
