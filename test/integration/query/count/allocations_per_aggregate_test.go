@@ -46,7 +46,6 @@ func TestQueryAllocation(t *testing.T) {
 			if apiResponse.Code != 200 {
 				t.Errorf("API returned non-200 code")
 			}
-
 			// Prometheus Client
 			client := prometheus.NewClient()
 			metric := "kube_pod_container_status_running"
@@ -61,44 +60,51 @@ func TestQueryAllocation(t *testing.T) {
 			}
 			
 			// Calculate Number of Pods per Aggregate for API Object
-			var apiAggregateCount = make(map[string]int)
+			type podAggregation struct  {
+				Pods []string
+				NumberOfPods int
+			}
+			var apiAggregateCount = make(map[string]podAggregation)
 			apiAllocations := apiResponse.Data[0]
-
 			for _, allocationResponeItem := range apiAllocations {
 				podNamespace := allocationResponeItem.Properties.Namespace
-				_, namespacePresent := apiAggregateCount[podNamespace]
+				apiAggregateItem, namespacePresent := apiAggregateCount[podNamespace]
 				if !namespacePresent {
-					apiAggregateCount[podNamespace] = 1
+					apiAggregateItem.NumberOfPods = 1
 				} else {
-					apiAggregateCount[podNamespace] += 1
+					apiAggregateItem.NumberOfPods += 1
 				}
+				apiAggregateItem.Pods = append(apiAggregateItem.Pods, allocationResponeItem.Name)
+				apiAggregateCount[podNamespace] = apiAggregateItem
 			}
             
 			// Calculate Number of Pods per Aggregate for Prom Object
-			var promAggregateCount = make(map[string]int)
+			var promAggregateCount = make(map[string]podAggregation)
 			for _, metric := range promResponse.Data.Result {
 				podNamespace := metric.Metric.Namespace
-				_, namespacePresent := promAggregateCount[podNamespace]
+				promAggregateItem, namespacePresent := promAggregateCount[podNamespace]
 				if !namespacePresent {
-					promAggregateCount[podNamespace] = 1
+					promAggregateItem.NumberOfPods = 1
 				} else {
-					promAggregateCount[podNamespace] += 1
+					promAggregateItem.NumberOfPods += 1
 				}
+				promAggregateItem.Pods = append(promAggregateItem.Pods, metric.Metric.Pod)
+				promAggregateCount[podNamespace] = promAggregateItem
 			}
 
-			var largerMapCount map[string]int
+			var largerMapCount map[string]podAggregation
 			if len(promAggregateCount) > len(apiAggregateCount) {
 				largerMapCount = promAggregateCount
 			} else {
 				largerMapCount = apiAggregateCount
 			}
-
 			for key, _ := range largerMapCount {
 				apiNamespaceCount, apiNamespacePresent := apiAggregateCount[key]
 				promNamespaceCount, promNamespacePresent := promAggregateCount[key]
 				if apiNamespacePresent && promNamespacePresent {
-					if apiNamespaceCount != promNamespaceCount {
-						t.Errorf("Aggregate count %d != %d mismatch for Namespace %s", key, apiNamespaceCount, promNamespaceCount)
+					if apiNamespaceCount.NumberOfPods != promNamespaceCount.NumberOfPods {
+						t.Errorf("Aggregate count from API != Prometheus mismatch for Namespace %s\n%v (%d)\n%v (%d)", key, apiNamespaceCount.Pods, apiNamespaceCount.NumberOfPods, promNamespaceCount.Pods, promNamespaceCount.NumberOfPods)
+
 					} else {
 						t.Logf("Aggregate count matches for Namespace %s", key)
 					}
