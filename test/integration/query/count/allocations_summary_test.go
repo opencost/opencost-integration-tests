@@ -9,6 +9,9 @@ import (
         "github.com/opencost/opencost-integration-tests/pkg/api"
         "github.com/opencost/opencost-integration-tests/pkg/prometheus"
         "testing"
+        "sort"
+
+        "github.com/pmezard/go-difflib/difflib"
 )
 
 func TestQueryAllocationSummary(t *testing.T) {
@@ -63,8 +66,30 @@ func TestQueryAllocationSummary(t *testing.T) {
                         apiAllocationsSummaryCount := len(apiResponse.Data.Sets[0].Allocations)
                         promAllocationsSummaryCount := len(promResponse.Data.Result)
 
+                        var apiAllocationPodNames []string
+                        for podName, _ := range apiResponse.Data.Sets[0].Allocations {
+                                apiAllocationPodNames = append(apiAllocationPodNames, podName)
+                        }
+
+                        var promPodNames []string
+                        for _, promItem := range promResponse.Data.Result {
+                                promPodNames = append(promPodNames, promItem.Metric.Pod)
+                        }
+                        // sort the strings
+                        sort.Strings(promPodNames)
+                        sort.Strings(apiAllocationPodNames)
+
+                        // How to Tackle: Count might be equal the pods might not be the same
                         if apiAllocationsSummaryCount != promAllocationsSummaryCount {
-                                t.Errorf("Number of Allocations Responses from Prometheus %d and /allocation/summary %d did not match.", promAllocationsSummaryCount, apiAllocationsSummaryCount)
+                                diff := difflib.UnifiedDiff{
+                                        A:        promPodNames,
+                                        B:        apiAllocationPodNames,
+                                        FromFile: "Prometheus",
+                                        ToFile:   "AllocationSummary",
+                                        Context:  3,
+                                }
+                                podNamesDiff, _ := difflib.GetUnifiedDiffString(diff)
+                                t.Errorf("Number of Allocations Responses from Prometheus %d and /allocation/summary %d did not match\n Unified Diff:\n %s", promAllocationsSummaryCount, apiAllocationsSummaryCount, podNamesDiff)
                         } else {
                                 t.Logf("Number of Allocations from Promtheus and /allocation/summary match")
                         }
