@@ -1,6 +1,6 @@
 package count
 
-// Description - Checks if the allocation summary of pods for each namespace is the same for a prometheus request
+// Description - Checks for the allocation summary of pods for each namespace is the same for a prometheus request
 // and allocation/summary API request
 
 import (

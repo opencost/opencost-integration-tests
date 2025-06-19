@@ -1,7 +1,7 @@
 package count
 
-// Description - Checks if the aggregate of pods for each namespace is the same for a prometheus request
-// and allocation API request
+// Description - Checks for the aggregate count of pods for each namespace from prometheus request
+// and allocation API request are the same
 
 import (
 	// "fmt"
