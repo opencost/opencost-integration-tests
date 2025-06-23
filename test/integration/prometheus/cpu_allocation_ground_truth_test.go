@@ -48,7 +48,9 @@ func TestCpuAllocation(t *testing.T) {
 			}
 			// Prometheus Client
 			client := prometheus.NewClient()
-			metric := "container_cpu_allocation"
+			promInput := prometheus.PrometheusInput{
+				Metric: "container_cpu_allocation",
+			}
 
 			//Get CPU Core hours from each namespace
 			for namespace, allocationResponseItem := range apiResponse.Data[0] {
@@ -59,22 +61,28 @@ func TestCpuAllocation(t *testing.T) {
 					"job": "opencost",
 					"namespace": namespace,
 				}
-				promResponse, err := client.RunPromQLQuery(metric, filters, tc.window)
+				promInput.Filters = filters
+				// promInput.Function = "avg_over_time"
+				promInput.Window = tc.window
+				promResponse, err := client.RunPromQLQuery(promInput)
 
 				if err != nil {
 					t.Fatalf("Error while calling Prometheus API %v", err)
 				}
 				// Add all post CPUHours
 				for _, promResponseItem := range promResponse.Data.Result {
-					valueStr, _ := promResponseItem.Values[1].(string)
-					// Convert the string value to float64
-					floatVal, err := strconv.ParseFloat(valueStr, 64)
-					if err != nil {
-						t.Errorf("Error parsing metric value '%s' to float64 for pod %s, namespace %s: %v",
-							valueStr, promResponseItem.Metric.Pod, namespace, err)
-						// Decide how to handle this error (e.g., continue, log, set to 0)
-					} else {
-						promNamespaceCPUSum += floatVal
+					for _, promCPUNodeValue := range promResponseItem.Values {
+						valueArray, _ := promCPUNodeValue.([]interface{})
+						valueStr, _ := valueArray[1].(string)
+						// Convert the string value to float64
+						floatVal, err := strconv.ParseFloat(valueStr, 64)
+						if err != nil {
+							t.Errorf("Error parsing metric value '%s' to float64 for pod %s, namespace %s: %v",
+								valueStr, promResponseItem.Metric.Pod, namespace, err)
+							// Decide how to handle this error (e.g., continue, log, set to 0)
+						} else {
+							promNamespaceCPUSum += floatVal
+						}
 					}
 				}
 				if promNamespaceCPUSum != allocationResponseItem.CPUCoreHours {
