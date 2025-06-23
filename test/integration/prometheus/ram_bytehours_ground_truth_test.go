@@ -35,7 +35,7 @@ func TestRAMByteHours(t *testing.T) {
 
 			// API Client
 			apiResponse, err := apiObj.GetAllocation(api.AllocationRequest{
-				Window: tc.window,
+				Window: "1d",
 				Aggregate: tc.aggregate,
 				Accumulate: tc.accumulate,
 			})
@@ -48,8 +48,9 @@ func TestRAMByteHours(t *testing.T) {
 			}
 			// Prometheus Client
 			client := prometheus.NewClient()
-			metric := "kube_pod_container_resource_requests"
-
+			promInput := prometheus.PrometheusInput{
+				Metric: "kube_pod_container_resource_requests",
+			}
 			//Get CPU Core hours from each namespace
 			for namespace, allocationResponseItem := range apiResponse.Data[0] {
 				// Namespace Sum Count
@@ -60,7 +61,10 @@ func TestRAMByteHours(t *testing.T) {
 					"resource": "memory",
 					"namespace": namespace,
 				}
-				promResponse, err := client.RunPromQLQuery(metric, filters, tc.window)
+				promInput.Filters = filters
+				promInput.Function = "avg_over_time"
+				promInput.Window = tc.window
+				promResponse, err := client.RunPromQLQuery(promInput)
 
 				if err != nil {
 					t.Fatalf("Error while calling Prometheus API %v", err)
@@ -78,10 +82,11 @@ func TestRAMByteHours(t *testing.T) {
 						promNamespaceRAMByte += floatVal
 					}
 				}
-				if promNamespaceRAMByte != allocationResponseItem.RAMBytes {
-					t.Errorf("RAM Byte Hours Sum does not match for prometheus %f and /allocation %f for namespace %s", promNamespaceRAMByte, allocationResponseItem.RAMBytes, namespace)	
+				// RamByte is the average value
+				if promNamespaceRAMByte != allocationResponseItem.RAMByteHours {
+					t.Errorf("RAM Byte Hours Sum does not match for prometheus %f and /allocation %f for namespace %s", promNamespaceRAMByte, allocationResponseItem.RAMBytehours, namespace)	
 				} else {
-					t.Logf("CPU Core Hours Match for namespace %s", namespace)	
+					t.Logf("RAM Byte Hours Match for namespace %s", namespace)	
 				}
 			}
 		})

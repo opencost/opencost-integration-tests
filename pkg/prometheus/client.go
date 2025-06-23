@@ -22,6 +22,13 @@ type Client struct {
 	baseURL    string
 	httpClient *http.Client
 }
+type PrometheusInput struct {
+	Function string
+	Metric string
+	Filters map[string]string
+	Window string
+	Offset string
+}
 
 // PrometheusResponse represents the response from Prometheus API
 type PrometheusResponse struct {
@@ -86,10 +93,10 @@ func (c *Client) GetPodsByController(controllerKind string, window string) (map[
 }
 
 
-func (c *Client) constructPromQLQueryURL(metric string, filters map[string]string, window string) string {
+func (c *Client) constructPromQLQueryURL(promQLArgs PrometheusInput) string {
 
-	filterParts := make([]string, 0, len(filters))
-	for key, value := range filters {
+	filterParts := make([]string, 0, len(promQLArgs.Filters))
+	for key, value := range promQLArgs.Filters {
 		// PromQL label values should be double-quoted.
 		// Using a raw string literal (backticks) for the format string is clean.
 		filterPart := fmt.Sprintf(`%s="%s"`, key, value)
@@ -105,16 +112,19 @@ func (c *Client) constructPromQLQueryURL(metric string, filters map[string]strin
 		finalPromQLSelector = "{" + filtersString + "}"
 	}
 
-	promQLQuery := fmt.Sprintf("%s%s offset %s", metric, finalPromQLSelector, window)
-
+	//promQLQuery := fmt.Sprintf("%s%s offset %s", metric, finalPromQLSelector, window)
+	promQLQuery := fmt.Sprintf("%s%s[%s]", promQLArgs.Metric, finalPromQLSelector, promQLArgs.Window)
+	if promQLArgs.Function != "" {
+		promQLQuery = fmt.Sprintf("%s(%s)", promQLArgs.Function, promQLQuery)
+	}
 	promURL := fmt.Sprintf("%s/api/v1/query?query=%s", c.baseURL, url.QueryEscape(promQLQuery))
-
+	
 	return promURL
 }
 
-func (c *Client) RunPromQLQuery(metric string, filters map[string]string, window string) (PrometheusResponse, error) {
+func (c *Client) RunPromQLQuery(promQLArgs PrometheusInput) (PrometheusResponse, error) {
 
-	promURL := c.constructPromQLQueryURL(metric, filters, window)
+	promURL := c.constructPromQLQueryURL(promQLArgs)
 	promResp, err := c.httpClient.Get(promURL)
 
 	var promData PrometheusResponse
