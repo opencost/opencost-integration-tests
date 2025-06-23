@@ -35,7 +35,7 @@ func TestRAMByteHours(t *testing.T) {
 
 			// API Client
 			apiResponse, err := apiObj.GetAllocation(api.AllocationRequest{
-				Window: "1d",
+				Window: tc.Window,
 				Aggregate: tc.aggregate,
 				Accumulate: tc.accumulate,
 			})
@@ -62,7 +62,8 @@ func TestRAMByteHours(t *testing.T) {
 					"namespace": namespace,
 				}
 				promInput.Filters = filters
-				promInput.Function = "avg_over_time"
+				// RAMByte Comparison did not work with "avg_over_time(kube_pod_container_resource_requests[24h])"
+				// promInput.Function = "avg_over_time"
 				promInput.Window = tc.window
 				promResponse, err := client.RunPromQLQuery(promInput)
 
@@ -71,20 +72,24 @@ func TestRAMByteHours(t *testing.T) {
 				}
 				// Add all post CPUHours
 				for _, promResponseItem := range promResponse.Data.Result {
-					valueStr, _ := promResponseItem.Values[1].(string)
-					// Convert the string value to float64
-					floatVal, err := strconv.ParseFloat(valueStr, 64)
-					if err != nil {
-						t.Errorf("Error parsing metric value '%s' to float64 for pod %s, namespace %s: %v",
-							valueStr, promResponseItem.Metric.Pod, namespace, err)
-						// Decide how to handle this error (e.g., continue, log, set to 0)
-					} else {
-						promNamespaceRAMByte += floatVal
+					// t.Logf("%v", promResponseItem.Values[0])
+					for _, promRAMNodeValue := range promResponseItem.Values {
+						// Convert the string value to float64
+						valueArray, _ := promRAMNodeValue.([]interface{})
+						valueStr, _ := valueArray[1].(string)
+						floatVal, err := strconv.ParseFloat(valueStr, 64)
+						if err != nil {
+							t.Errorf("Error parsing metric value '%s' to float64 for pod %s, namespace %s: %v",
+								valueStr, promResponseItem.Metric.Pod, namespace, err)
+							// Decide how to handle this error (e.g., continue, log, set to 0)
+						} else {
+							promNamespaceRAMByte += floatVal
+						}
 					}
 				}
 				// RamByte is the average value
 				if promNamespaceRAMByte != allocationResponseItem.RAMByteHours {
-					t.Errorf("RAM Byte Hours Sum does not match for prometheus %f and /allocation %f for namespace %s", promNamespaceRAMByte, allocationResponseItem.RAMBytehours, namespace)	
+					t.Errorf("RAM Byte Hours Sum does not match for prometheus %f and /allocation %f for namespace %s", promNamespaceRAMByte, allocationResponseItem.RAMByteHours, namespace)	
 				} else {
 					t.Logf("RAM Byte Hours Match for namespace %s", namespace)	
 				}
