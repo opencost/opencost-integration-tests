@@ -26,6 +26,7 @@ type PrometheusInput struct {
 	Function string
 	Metric string
 	Filters map[string]string
+	IgnoreFilters map[string][]string
 	Window string
 	Offset string
 }
@@ -103,14 +104,25 @@ func (c *Client) constructPromQLQueryURL(promQLArgs PrometheusInput) string {
 		filterPart := fmt.Sprintf(`%s="%s"`, key, value)
 		filterParts = append(filterParts, filterPart)
 	}
-
 	filtersString := strings.Join(filterParts, ", ")
 
+	ignoreFilterParts := []string{}
+	for key, values := range promQLArgs.IgnoreFilters {
+		// not equal to conditions
+		for _, value := range values {
+			ignoreFilterPart := fmt.Sprintf(`%s!="%s"`, key, value)
+			ignoreFilterParts = append(ignoreFilterParts, ignoreFilterPart)	
+		}
+	}
+	ignoreFiltersString := strings.Join(ignoreFilterParts, ", ")
+	
+	allFilters := filtersString + ", " + ignoreFiltersString
+
 	var finalPromQLSelector string
-	if filtersString == "" {
+	if allFilters == "" {
 		finalPromQLSelector = "{}" // Selects all metrics
 	} else {
-		finalPromQLSelector = "{" + filtersString + "}"
+		finalPromQLSelector = "{" + allFilters + "}"
 	}
 
 	//promQLQuery := fmt.Sprintf("%s%s offset %s", metric, finalPromQLSelector, window)

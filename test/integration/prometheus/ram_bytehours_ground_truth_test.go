@@ -59,12 +59,18 @@ func TestRAMByteHours(t *testing.T) {
 				filters := map[string]string{
 					"job": "opencost",
 					"resource": "memory",
+					"unit": "byte",
 					"namespace": namespace,
+				}
+				ignoreFilters := map[string][]string{
+					"container": {"", "POD"},
+					"node": {""},
 				}
 				promInput.Filters = filters
 				// RAMByte Comparison did not work with "avg_over_time(kube_pod_container_resource_requests[24h])"
 				// promInput.Function = "avg_over_time"
 				promInput.Window = tc.window
+				promInput.IgnoreFilters = ignoreFilters
 				promResponse, err := client.RunPromQLQuery(promInput)
 
 				if err != nil {
