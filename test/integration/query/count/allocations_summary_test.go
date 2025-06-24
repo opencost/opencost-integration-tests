@@ -57,7 +57,12 @@ func TestQueryAllocationSummary(t *testing.T) {
                         filters := map[string]string{
                                 "job": "opencost",
                         }
-                        promResponse, err := client.RunPromQLQuery(metric, filters, tc.window)
+                        promInput = prometheus.PrometheusInput{
+                                Metric: metric
+                                Filters: filters
+                                Window: tc.window
+                        }
+                        promResponse, err := client.RunPromQLQuery(promInput)
 
                         if err != nil {
                                 t.Fatalf("Error while calling Prometheus API %v", err)

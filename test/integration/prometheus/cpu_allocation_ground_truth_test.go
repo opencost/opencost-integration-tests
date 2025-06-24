@@ -59,7 +59,7 @@ func TestCpuAllocation(t *testing.T) {
 				// Collect Namespace results from Prometheus
 				filters := map[string]string{
 					"job": "opencost",
-					"namespace": namespace,
+					"namespace": namespace, 
 				}
 				promInput.Filters = filters
 				// promInput.Function = "avg_over_time"

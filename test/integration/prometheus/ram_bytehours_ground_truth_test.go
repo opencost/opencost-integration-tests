@@ -35,7 +35,7 @@ func TestRAMByteHours(t *testing.T) {
 
 			// API Client
 			apiResponse, err := apiObj.GetAllocation(api.AllocationRequest{
-				Window: tc.Window,
+				Window: tc.window,
 				Aggregate: tc.aggregate,
 				Accumulate: tc.accumulate,
 			})
