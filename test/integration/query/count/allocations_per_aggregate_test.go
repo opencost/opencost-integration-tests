@@ -53,10 +53,10 @@ func TestQueryAllocation(t *testing.T) {
 			filters := map[string]string{
 				"job": "opencost",
 			}
-			promInput = prometheus.PrometheusInput{
-				Metric: metric
-				Filters: filters
-				Window: tc.window
+			promInput := prometheus.PrometheusInput{
+				Metric: metric,
+				Filters: filters,
+				Window: tc.window,
 			}
 			promResponse, err := client.RunPromQLQuery(promInput)
 
