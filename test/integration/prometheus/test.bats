@@ -9,8 +9,12 @@ teardown() {
 @test "prometheus: start and end time of a resource" {
     go test ./test/integration/prometheus/prometheus_test.go
 }
-@test "prometheus: RAM Bytes" {
+@test "prometheus: RAM Bytes Request Average" {
     go test ./test/integration/prometheus/ram_bytehours_ground_truth_test.go
+}
+
+@test "prometheus: RAM Bytes Hours" {
+    go test ./test/integration/prometheus/ramallocated_ground_truth_test.go
 }
 
 @test "prometheus: CPU Core Hours" {
