@@ -61,7 +61,6 @@ func TestRAMByteHours(t *testing.T) {
 				filters := map[string]string{
 					"job": "opencost",
 					"namespace": namespace,
-					"unit": "byte",
 				}
 				ignoreFilters := map[string][]string{
 					"container": {"", "POD"},
@@ -94,6 +93,7 @@ func TestRAMByteHours(t *testing.T) {
 					"resource": "memory",
 					"job": "opencost",
 					"namespace": namespace,
+					"unit": "byte",
 				}
 				promInput.Metric = "kube_pod_container_resource_requests"
 				promInput.Filters = filters
@@ -126,9 +126,7 @@ func TestRAMByteHours(t *testing.T) {
 					promNamespaceRAMByteHours = promNamespaceRAMByteRequested * float64(podRuntime)
 				} else {
 					promNamespaceRAMByteHours = promNamespaceRAMByteAllocated * float64(podRuntime)
-				}
-				t.Logf("%v %v", promNamespaceRAMByteAllocated, promNamespaceRAMByteRequested)
-				
+				}			
 				if promNamespaceRAMByteHours != allocationResponseItem.RAMByteHours {
 					t.Errorf("RAM Byte Hours Sum does not match for prometheus %f and /allocation %f for namespace %s", promNamespaceRAMByteHours, allocationResponseItem.RAMByteHours, namespace)	
 				} else {
