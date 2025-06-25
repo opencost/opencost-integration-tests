@@ -135,8 +135,14 @@ type AllocationResponseItem struct {
 	TotalCost                      float64                                 `json:"totalCost"`
 	TotalEfficiency                float64                                 `json:"totalEfficiency"`
 	GPUAllocation                  GPUAllocationItemProperties             `json:"gpuAllocation"`
+	RawAllocationsOnly			   RawAllocationsProperties				   `json:"rawAllocationOnly"`
 }
 
+type RawAllocationsProperties struct {
+	CPUCoreUsageMax float64		    `json:"cpuCoreUsageMax"`
+	RAMByteUsageMax float64		    `json:"ramByteUsageMax"`
+	GPUUsageMax float64				`json:"gpuUsageMax"`
+}
 type GPUAllocationItemProperties struct {
 	ISGPUShared			bool		`json:"isGPUShared"`
 	GPUUsageAverage		float64		`json:"gpuUsageAverage"`
