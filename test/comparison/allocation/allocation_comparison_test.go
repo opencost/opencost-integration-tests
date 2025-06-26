@@ -157,6 +157,6 @@ func TestAllocationAPIComparison(t *testing.T) {
 		t.Fatalf("Failed to get allocation from second API: %v", err)
 	}
 
-	// Compare responses with 5% tolerance
+	// Compare responses with 10% tolerance
 	compareAllocationResponses(t, resp1, resp2, 10.0)
 }
