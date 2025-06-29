@@ -23,12 +23,14 @@ type Client struct {
 	httpClient *http.Client
 }
 type PrometheusInput struct {
-	Function string
+	Function []string
 	Metric string
 	Filters map[string]string
 	IgnoreFilters map[string][]string
 	Window string
+	Resolution string
 	Offset string
+	AggregateBy []string
 }
 
 // PrometheusResponse represents the response from Prometheus API
@@ -95,7 +97,7 @@ func (c *Client) GetPodsByController(controllerKind string, window string) (map[
 }
 
 
-func (c *Client) constructPromQLQueryURL(promQLArgs PrometheusInput) string {
+func (c *Client) ConstructPromQLQueryURL(promQLArgs PrometheusInput) string {
 
 	filterParts := make([]string, 0, len(promQLArgs.Filters))
 	for key, value := range promQLArgs.Filters {
@@ -127,9 +129,16 @@ func (c *Client) constructPromQLQueryURL(promQLArgs PrometheusInput) string {
 
 	//promQLQuery := fmt.Sprintf("%s%s offset %s", metric, finalPromQLSelector, window)
 	promQLQuery := fmt.Sprintf("%s%s[%s]", promQLArgs.Metric, finalPromQLSelector, promQLArgs.Window)
-	if promQLArgs.Function != "" {
-		promQLQuery = fmt.Sprintf("%s(%s)", promQLArgs.Function, promQLQuery)
+
+	for _, fun := range promQLArgs.Function {
+		promQLQuery = fmt.Sprintf("%s(%s)", fun, promQLQuery)
 	}
+
+	if len(promQLArgs.AggregateBy) != 0 {
+		aggregateBy := strings.Join(promQLArgs.AggregateBy, ", ")
+		promQLQuery = fmt.Sprintf(`%s by (%s)`, promQLQuery, aggregateBy)
+	}
+
 	promURL := fmt.Sprintf("%s/api/v1/query?query=%s", c.baseURL, url.QueryEscape(promQLQuery))
 	
 	return promURL
@@ -137,7 +146,7 @@ func (c *Client) constructPromQLQueryURL(promQLArgs PrometheusInput) string {
 
 func (c *Client) RunPromQLQuery(promQLArgs PrometheusInput) (PrometheusResponse, error) {
 
-	promURL := c.constructPromQLQueryURL(promQLArgs)
+	promURL := c.ConstructPromQLQueryURL(promQLArgs)
 	promResp, err := c.httpClient.Get(promURL)
 
 	var promData PrometheusResponse
