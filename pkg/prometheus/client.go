@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"time"
+	"strings"
 )
 
 const (
@@ -21,6 +22,16 @@ type Client struct {
 	baseURL    string
 	httpClient *http.Client
 }
+type PrometheusInput struct {
+	Function []string
+	Metric string
+	Filters map[string]string
+	IgnoreFilters map[string][]string
+	Window string
+	Resolution string
+	Offset string
+	AggregateBy []string
+}
 
 // PrometheusResponse represents the response from Prometheus API
 type PrometheusResponse struct {
@@ -32,6 +43,8 @@ type PrometheusResponse struct {
 				Pod       string `json:"pod"`
 				Namespace string `json:"namespace"`
 			} `json:"metric"`
+			Value []interface{} `json:"value"`
+			Values []interface{} `json:"values"`
 		} `json:"result"`
 	} `json:"data"`
 }
@@ -81,4 +94,71 @@ func (c *Client) GetPodsByController(controllerKind string, window string) (map[
 	}
 
 	return promPods, nil
+}
+
+
+func (c *Client) ConstructPromQLQueryURL(promQLArgs PrometheusInput) string {
+
+	filterParts := make([]string, 0, len(promQLArgs.Filters))
+	for key, value := range promQLArgs.Filters {
+		// PromQL label values should be double-quoted.
+		// Using a raw string literal (backticks) for the format string is clean.
+		filterPart := fmt.Sprintf(`%s="%s"`, key, value)
+		filterParts = append(filterParts, filterPart)
+	}
+	filtersString := strings.Join(filterParts, ", ")
+
+	ignoreFilterParts := []string{}
+	for key, values := range promQLArgs.IgnoreFilters {
+		// not equal to conditions
+		for _, value := range values {
+			ignoreFilterPart := fmt.Sprintf(`%s!="%s"`, key, value)
+			ignoreFilterParts = append(ignoreFilterParts, ignoreFilterPart)	
+		}
+	}
+	ignoreFiltersString := strings.Join(ignoreFilterParts, ", ")
+	
+	allFilters := filtersString + ", " + ignoreFiltersString
+
+	var finalPromQLSelector string
+	if allFilters == "" {
+		finalPromQLSelector = "{}" // Selects all metrics
+	} else {
+		finalPromQLSelector = "{" + allFilters + "}"
+	}
+
+	//promQLQuery := fmt.Sprintf("%s%s offset %s", metric, finalPromQLSelector, window)
+	promQLQuery := fmt.Sprintf("%s%s[%s]", promQLArgs.Metric, finalPromQLSelector, promQLArgs.Window)
+
+	for _, fun := range promQLArgs.Function {
+		promQLQuery = fmt.Sprintf("%s(%s)", fun, promQLQuery)
+	}
+
+	if len(promQLArgs.AggregateBy) != 0 {
+		aggregateBy := strings.Join(promQLArgs.AggregateBy, ", ")
+		promQLQuery = fmt.Sprintf(`%s by (%s)`, promQLQuery, aggregateBy)
+	}
+
+	promURL := fmt.Sprintf("%s/api/v1/query?query=%s", c.baseURL, url.QueryEscape(promQLQuery))
+	
+	return promURL
+}
+
+func (c *Client) RunPromQLQuery(promQLArgs PrometheusInput) (PrometheusResponse, error) {
+
+	promURL := c.ConstructPromQLQueryURL(promQLArgs)
+	promResp, err := c.httpClient.Get(promURL)
+
+	var promData PrometheusResponse
+
+	if err != nil {
+		return promData, fmt.Errorf("failed to query Prometheus: %v", err)
+	}
+	defer promResp.Body.Close()
+
+	if err := json.NewDecoder(promResp.Body).Decode(&promData); err != nil {
+		return promData, fmt.Errorf("failed to query Prometheus: %v", err)
+	}
+	
+	return promData, nil
 }
