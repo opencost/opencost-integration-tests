@@ -27,12 +27,21 @@ type PrometheusInput struct {
 	Metric string
 	Filters map[string]string
 	IgnoreFilters map[string][]string
-	Window string
-	Resolution string
+	MetricNotEqualTo string
+	MetricEqualTo string
+	QueryWindow string
+	QueryResolution string
 	Offset string
 	AggregateBy []string
+	AggregateWindow string
+	AggregateResolution string
+	Time  time.Time
 }
 
+type DataPoint struct {
+	TimeStamp int64
+	Value float64
+}
 // PrometheusResponse represents the response from Prometheus API
 type PrometheusResponse struct {
 	Status string `json:"status"`
@@ -42,6 +51,7 @@ type PrometheusResponse struct {
 			Metric struct {
 				Pod       string `json:"pod"`
 				Namespace string `json:"namespace"`
+				Container string `json:"container"`
 			} `json:"metric"`
 			Value []interface{} `json:"value"`
 			Values []interface{} `json:"values"`
@@ -118,7 +128,14 @@ func (c *Client) ConstructPromQLQueryURL(promQLArgs PrometheusInput) string {
 	}
 	ignoreFiltersString := strings.Join(ignoreFilterParts, ", ")
 	
-	allFilters := filtersString + ", " + ignoreFiltersString
+	allFilters := ""
+	if filtersString != "" {
+		allFilters = filtersString
+		if ignoreFiltersString != "" {
+			allFilters = allFilters + ", " + ignoreFiltersString
+		}
+	}
+	
 
 	var finalPromQLSelector string
 	if allFilters == "" {
@@ -128,19 +145,39 @@ func (c *Client) ConstructPromQLQueryURL(promQLArgs PrometheusInput) string {
 	}
 
 	//promQLQuery := fmt.Sprintf("%s%s offset %s", metric, finalPromQLSelector, window)
-	promQLQuery := fmt.Sprintf("%s%s[%s]", promQLArgs.Metric, finalPromQLSelector, promQLArgs.Window)
+	queryWindow := promQLArgs.QueryWindow
+	if promQLArgs.QueryResolution != "" {
+		queryWindow = fmt.Sprintf("[%s:%s]", promQLArgs.QueryWindow, promQLArgs.QueryResolution)
+	}
+
+	promQLQuery := fmt.Sprintf("%s%s%s", promQLArgs.Metric, finalPromQLSelector, queryWindow)
+
+	if promQLArgs.MetricNotEqualTo != "" {
+		promQLQuery = fmt.Sprintf("%s != %s", promQLQuery, promQLArgs.MetricNotEqualTo)
+	}
 
 	for _, fun := range promQLArgs.Function {
 		promQLQuery = fmt.Sprintf("%s(%s)", fun, promQLQuery)
 	}
 
 	if len(promQLArgs.AggregateBy) != 0 {
+		aggregateWindow := ""
+		if promQLArgs.AggregateWindow != "" {
+			aggregateWindow = promQLArgs.AggregateWindow
+			if promQLArgs.AggregateResolution != "" {
+				aggregateWindow = fmt.Sprintf("[%s:%s]", promQLArgs.AggregateWindow, promQLArgs.AggregateResolution)
+			}
+		}
 		aggregateBy := strings.Join(promQLArgs.AggregateBy, ", ")
-		promQLQuery = fmt.Sprintf(`%s by (%s)`, promQLQuery, aggregateBy)
+		promQLQuery = fmt.Sprintf(`%s by (%s)%s`, promQLQuery, aggregateBy, aggregateWindow)
+	}
+
+	if !promQLArgs.Time.IsZero() {
+		promQLQuery = fmt.Sprintf("%s&%s", promQLQuery, promQLArgs.Time)
 	}
 
 	promURL := fmt.Sprintf("%s/api/v1/query?query=%s", c.baseURL, url.QueryEscape(promQLQuery))
-	
+
 	return promURL
 }
 
