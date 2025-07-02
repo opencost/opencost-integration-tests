@@ -55,7 +55,7 @@ func TestConstructPromQLQueryURL(t *testing.T) {
 				AggregateBy:     []string{"container", "pod", "namespace", "node"},
 				Time:            &fixedQueryTime,
 			},
-			expectedURL: fmt.Sprintf("%s/api/v1/query?query=%s&time=%d", prometheus.DefaultPrometheusURL, url.QueryEscape(`avg(avg_over_time(kube_pod_container_resource_requests{resource="memory", container!="", container!="POD", node!=""}[24h:5m])) by (container, pod, namespace, node)&time=1751475600`), 1751475600),
+			expectedURL: fmt.Sprintf("%s/api/v1/query?query=%s&time=%d", prometheus.DefaultPrometheusURL, url.QueryEscape(`avg(avg_over_time(kube_pod_container_resource_requests{resource="memory", container!="", container!="POD", node!=""}[24h:5m])) by (container, pod, namespace, node)`), 1751475600),
 		},
 		{
 			name: "RAM Requested Costs",
@@ -89,7 +89,7 @@ func TestConstructPromQLQueryURL(t *testing.T) {
 			}
 
 			if actualQueryUnescaped != expectedQueryUnescaped {
-				t.Errorf("URL Construction is incorrect.\nExpected: %s\nGot:      %s", tc.expectedURL, actualURL)
+				t.Errorf("URL Construction is incorrect.\nExpected: %s\nGot: %s", tc.expectedURL, actualURL)
 			} else {
 				t.Logf("Test Case Passed: %s", tc.name)
 			}
