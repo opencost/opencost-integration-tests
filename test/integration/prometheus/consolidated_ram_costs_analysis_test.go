@@ -199,7 +199,7 @@ func TestRAMByteCosts(t *testing.T) {
 					Container string
 					RAMBytesRequestAverage float64
 					RAMBytes float64
-					RAMByteHours float64
+					RAMBytesHours float64
 				}
 
 				type PodData struct {
@@ -259,7 +259,7 @@ func TestRAMByteCosts(t *testing.T) {
 					runHours := ConvertToHours(runMinutes)
 					podData.Containers[container] = &ContainerRAMData{
 						Container: container,
-						RAMByteHours: ramBytes * runHours,
+						RAMBytesHours: ramBytes * runHours,
 						RAMBytes: ramBytes,
 						RAMBytesRequestAverage: 0.0,
 					}
@@ -295,12 +295,12 @@ func TestRAMByteCosts(t *testing.T) {
 					if containerData, ok := podData.Containers[container]; ok {
 						if containerData.RAMBytes < ramBytesRequestedAverage {
 							containerData.RAMBytes = ramBytesRequestedAverage
-							containerData.RAMByteHours = ramBytesRequestedAverage * runHours
+							containerData.RAMBytesHours = ramBytesRequestedAverage * runHours
 						}
 					} else {
 						podData.Containers[container] = &ContainerRAMData{
 							Container:     container,
-							RAMByteHours: ramBytesRequestedAverage * runHours,
+							RAMBytesHours: ramBytesRequestedAverage * runHours,
 						}
 					}
 
@@ -310,8 +310,8 @@ func TestRAMByteCosts(t *testing.T) {
 				// ----------------------------------------------
 				// Aggregate Container results to get Pod Output and Aggregate Pod Output to get Namespace results
 				// ----------------------------------------------
-				nsRAMByteRequest := 0.0
-				nsRAMByteHours := 0.0
+				nsRAMBytesRequest := 0.0
+				nsRAMBytesHours := 0.0
 				nsRAMBytes := 0.0
 				nsMinutes := 0.0
 				var nsStart, nsEnd time.Time
@@ -326,18 +326,19 @@ func TestRAMByteCosts(t *testing.T) {
 					ramByteHours := 0.0
 
 					for _, containerData := range podData.Containers {
-						ramByteHours += containerData.RAMByteHours
+						ramByteHours += containerData.RAMBytesHours
 						ramByteRequest += containerData.RAMBytesRequestAverage
 					}
 					// t.Logf("Pod %s, ramByteHours %v", podData.Pod, ramByteHours)
 					// Sum up Pod Values
-					nsRAMByteRequest += (ramByteRequest * minutes + nsRAMByteRequest * nsMinutes)
-					nsRAMByteHours += ramByteHours
+					nsRAMBytesRequest += (ramByteRequest * minutes + nsRAMBytesRequest * nsMinutes)
+					nsRAMBytesHours += ramByteHours
 				
 					// only the first time
 					if nsStart.IsZero() && nsEnd.IsZero() {
 						nsStart = start
-						nsEnd = end		
+						nsEnd = end	
+						nsMinutes = nsEnd.Sub(nsStart).Minutes()	
 						continue		
 					} else {
 						if start.Before(nsStart) {
@@ -348,8 +349,8 @@ func TestRAMByteCosts(t *testing.T) {
 						}
 						nsMinutes = nsEnd.Sub(nsStart).Minutes()
 						nsHours := ConvertToHours(nsMinutes)
-						nsRAMBytes = nsRAMByteHours / nsHours
-						nsRAMByteRequest = nsRAMByteRequest / nsMinutes
+						nsRAMBytes = nsRAMBytesHours / nsHours
+						nsRAMBytesRequest = nsRAMBytesRequest / nsMinutes
 					}
 				}
 
@@ -362,17 +363,17 @@ func TestRAMByteCosts(t *testing.T) {
 				if AreWithinPercentage(nsRAMBytes, allocationResponseItem.RAMBytes, tolerance) {
 					t.Logf("    - RAMBytes[Pass]: %.2f", nsRAMBytes)
 				} else {
-					t.Errorf("    - RAMBytes[Fail]: Prom Results: %.2f, API Results %.2f", nsRAMBytes, allocationResponseItem.RAMBytes)
+					t.Errorf("    - RAMBytes[Fail]: Prom Results: %.2f, API Results: %.2f", nsRAMBytes, allocationResponseItem.RAMBytes)
 				}
-				if AreWithinPercentage(nsRAMByteHours, allocationResponseItem.RAMByteHours, tolerance) {
-					t.Logf("    - RAMByteHours[Pass]: %.2f", nsRAMByteHours)
+				if AreWithinPercentage(nsRAMBytesHours, allocationResponseItem.RAMByteHours, tolerance) {
+					t.Logf("    - RAMByteHours[Pass]: %.2f", nsRAMBytesHours)
 				} else {
-					t.Errorf("    - RAMByteHours[Fail]: Prom Results: %.2f, API Results %.2f", nsRAMByteHours, allocationResponseItem.RAMByteHours)
+					t.Errorf("    - RAMByteHours[Fail]: Prom Results: %.2f, API Results: %.2f", nsRAMBytesHours, allocationResponseItem.RAMByteHours)
 				}
-				if AreWithinPercentage(nsRAMByteRequest, allocationResponseItem.RAMBytesRequestAverage, tolerance) {
-					t.Logf("    - RAMByteRequestAverage[Pass]: %.2f", nsRAMByteRequest)
+				if AreWithinPercentage(nsRAMBytesRequest, allocationResponseItem.RAMBytesRequestAverage, tolerance) {
+					t.Logf("    - RAMByteRequestAverage[Pass]: %.2f", nsRAMBytesRequest)
 				} else {
-					t.Errorf("    - RAMByteRequestAverage[Fail]: Prom Results: %.2f, API Results %.2f", nsRAMByteRequest, allocationResponseItem.RAMBytesRequestAverage)
+					t.Errorf("    - RAMByteRequestAverage[Fail]: Prom Results: %.2f, API Results: %.2f", nsRAMBytesRequest, allocationResponseItem.RAMBytesRequestAverage)
 				}
 			}
 		})
