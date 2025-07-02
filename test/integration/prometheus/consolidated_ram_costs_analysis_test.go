@@ -223,7 +223,7 @@ func TestRAMByteCosts(t *testing.T) {
 					s, e := prometheus.CalculateStartAndEnd(podInfoResponseItem.Values, resolution, window24h)
 
 					// Add a key in the podMap for current Pod
-					podMap[podInfoResponseItem.Metric.Container] = &PodData{
+					podMap[podInfoResponseItem.Metric.Pod] = &PodData{
 						Pod: podInfoResponseItem.Metric.Pod,
 						Namespace: namespace,
 						Start: s,
@@ -240,13 +240,14 @@ func TestRAMByteCosts(t *testing.T) {
 
 				for _, ramAllocatedItem := range allocatedRAM.Data.Result {
 					container := ramAllocatedItem.Metric.Container
+					pod := ramAllocatedItem.Metric.Pod
 					if container == "" {
-						t.Logf("Skipping RAM allocation for empty container in pod %s in namespace: %s", ramAllocatedItem.Metric.Pod, ramAllocatedItem.Metric.Namespace)
+						t.Logf("Skipping RAM allocation for empty container in pod %s in namespace: %s", pod, ramAllocatedItem.Metric.Namespace)
 						continue
 					}
-					podData, ok := podMap[container]
+					podData, ok := podMap[pod]
 					if !ok {
-						t.Logf("Failed to find namespace: %s and pod: %s in RAM allocated results", ramAllocatedItem.Metric.Namespace, ramAllocatedItem.Metric.Pod)
+						t.Logf("Failed to find namespace: %s and pod: %s in RAM allocated results", ramAllocatedItem.Metric.Namespace, pod)
 						continue
 					}
 					ramBytes := ramAllocatedItem.Value.Value
@@ -271,13 +272,14 @@ func TestRAMByteCosts(t *testing.T) {
 				// ----------------------------------------------
 				for _, ramRequestedItem := range requestedRAM.Data.Result {
 					container := ramRequestedItem.Metric.Container
+					pod := ramRequestedItem.Metric.Pod
 					if container == "" {
-						t.Logf("Skipping RAM allocation for empty container in pod %s in namespace: %s", ramRequestedItem.Metric.Pod, ramRequestedItem.Metric.Namespace)
+						t.Logf("Skipping RAM allocation for empty container in pod %s in namespace: %s", pod, ramRequestedItem.Metric.Namespace)
 						continue
 					}
-					podData, ok := podMap[container]
+					podData, ok := podMap[pod]
 					if !ok {
-						t.Logf("Failed to find namespace: %s and pod: %s in RAM allocated results", ramRequestedItem.Metric.Namespace, ramRequestedItem.Metric.Pod)
+						t.Logf("Failed to find namespace: %s and pod: %s in RAM allocated results", ramRequestedItem.Metric.Namespace, pod)
 						continue
 					}
 
