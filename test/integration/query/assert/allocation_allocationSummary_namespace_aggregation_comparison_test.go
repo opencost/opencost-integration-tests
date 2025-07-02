@@ -4,28 +4,29 @@ package assert
 
 import (
 	"fmt"
-	"testing"
-	"reflect"
 	"math"
+	"reflect"
+	"testing"
 
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 )
 
 func areCostsWithinTolerance(cost1, cost2 float64) bool {
 	tolerance := .05
+	ignoreDifference := 0.00001
 
 	if cost1 == cost2 { //handles null case
 		return true
 	}
 
-	
-
 	// variancePercentage := math.Min(cost1, cost2) / math.Max(cost1, cost2)
 	diff := math.Abs(cost1 - cost2)
+	if diff < ignoreDifference {
+		return true
+	}
 	variancePercentage := diff / math.Max(cost1, cost2)
 	return variancePercentage < tolerance
 }
-
 
 func assertNamespaceInformation(apiSummary api.AllocationResponseItem, apiCompute api.AllocationResponseItem) (bool, []string) {
 	status := true
@@ -80,15 +81,15 @@ func TestAllocationAndAllocationSummary(t *testing.T) {
 	apiObj := api.NewAPI()
 
 	testCases := []struct {
-		name		string
-		window      string
-		aggregate   string
-		accumulate  string
+		name       string
+		window     string
+		aggregate  string
+		accumulate string
 	}{
 		{
-			name: "Yesterday",
-			window: "1d",
-			aggregate: "namespace",
+			name:       "Yesterday",
+			window:     "1d",
+			aggregate:  "namespace",
 			accumulate: "false",
 		},
 	}
@@ -100,7 +101,7 @@ func TestAllocationAndAllocationSummary(t *testing.T) {
 
 			// API Client
 			apiResponse, err := apiObj.GetAllocation(api.AllocationRequest{
-				Window: tc.window,
+				Window:    tc.window,
 				Aggregate: tc.aggregate,
 			})
 
@@ -112,7 +113,7 @@ func TestAllocationAndAllocationSummary(t *testing.T) {
 			}
 
 			apiSummaryResponse, err := apiObj.GetAllocationSummary(api.AllocationRequest{
-				Window: tc.window,
+				Window:    tc.window,
 				Aggregate: tc.aggregate, // Summary API is not working as expecte
 			})
 
@@ -129,7 +130,7 @@ func TestAllocationAndAllocationSummary(t *testing.T) {
 				if !namespacePresent {
 					t.Errorf("Namespace %s not present in allocation/summary", namespace)
 					continue
-				} 
+				}
 				comparisonStatus, failedMetrics := assertNamespaceInformation(allocationResponseItem, allocationSummaryResponseItem)
 				if comparisonStatus != true {
 					t.Errorf("Cost Information for resources don't match for namespace %s:\n %v", namespace, failedMetrics)
