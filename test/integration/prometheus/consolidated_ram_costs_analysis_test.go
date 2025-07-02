@@ -362,12 +362,17 @@ func TestRAMByteCosts(t *testing.T) {
 				if AreWithinPercentage(nsRAMBytes, allocationResponseItem.RAMBytes, tolerance) {
 					t.Logf("    - RAMBytes[Pass]: %.2f", nsRAMBytes)
 				} else {
-					t.Logf("    - RAMBytes[Fail]: Prom Results: %.2f, API Results %.2f", nsRAMBytes, allocationResponseItem.RAMBytes)
+					t.Errorf("    - RAMBytes[Fail]: Prom Results: %.2f, API Results %.2f", nsRAMBytes, allocationResponseItem.RAMBytes)
 				}
 				if AreWithinPercentage(nsRAMByteHours, allocationResponseItem.RAMByteHours, tolerance) {
 					t.Logf("    - RAMByteHours[Pass]: %.2f", nsRAMByteHours)
 				} else {
-					t.Logf("    - RAMByteHours[Fail]: Prom Results: %.2f, API Results %.2f", nsRAMByteHours, allocationResponseItem.RAMByteHours)
+					t.Errorf("    - RAMByteHours[Fail]: Prom Results: %.2f, API Results %.2f", nsRAMByteHours, allocationResponseItem.RAMByteHours)
+				}
+				if AreWithinPercentage(nsRAMByteRequest, allocationResponseItem.RAMBytesRequestAverage, tolerance) {
+					t.Logf("    - RAMByteRequestAverage[Pass]: %.2f", nsRAMByteRequest)
+				} else {
+					t.Errorf("    - RAMByteRequestAverage[Fail]: Prom Results: %.2f, API Results %.2f", nsRAMByteRequest, allocationResponseItem.RAMBytesRequestAverage)
 				}
 			}
 		})

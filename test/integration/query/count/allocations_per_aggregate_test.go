@@ -56,7 +56,7 @@ func TestQueryAllocation(t *testing.T) {
 			promInput := prometheus.PrometheusInput{
 				Metric: metric,
 				Filters: filters,
-				Window: tc.window,
+				QueryWindow: tc.window,
 			}
 			promResponse, err := client.RunPromQLQuery(promInput)
 
