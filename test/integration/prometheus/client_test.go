@@ -12,6 +12,7 @@ import (
 // TestConstructPromQLQueryURL tests the constructPromQLQueryURL function.
 func TestConstructPromQLQueryURL(t *testing.T) {
 	// Define a base URL for the test client
+	fixedQueryTime := time.Date(2025, time.July, 2, 16, 0, 0, 0, time.UTC).Truncate(time.Hour).Add(time.Hour).Unix()
 	tests := []struct {
 		name        string
 		input       prometheus.PrometheusInput
@@ -36,11 +37,11 @@ func TestConstructPromQLQueryURL(t *testing.T) {
 				Filters:     map[string]string{"resource": "memory",},
 				IgnoreFilters: map[string][]string{"container": {"", "POD"},"node": {""},},
 				Function:    []string{"avg_over_time", "avg"},
-				AggregateBy: []string{"container", "pod", "namespace"},
+				AggregateBy: []string{"container", "pod", "namespace", "node"},
 				AggregateWindow:      "24h",
 				AggregateResolution: "5m",
 			},
-			expectedURL: fmt.Sprintf("%s/api/v1/query?query=%s", prometheus.DefaultPrometheusURL, url.QueryEscape(`avg(avg_over_time(kube_test_metric{resource="memory", container!="", container!="POD", node!=""})) by (container, pod, namespace)[24h:5m]`)),
+			expectedURL: fmt.Sprintf("%s/api/v1/query?query=%s", prometheus.DefaultPrometheusURL, url.QueryEscape(`avg(avg_over_time(kube_test_metric{resource="memory", container!="", container!="POD", node!=""})) by (container, pod, namespace, node)[24h:5m]`)),
 		},
 		{
 			name: "End Time Parameter",
@@ -51,11 +52,24 @@ func TestConstructPromQLQueryURL(t *testing.T) {
 				QueryWindow: "24h",
 				QueryResolution: "5m",
 				Function:    []string{"avg_over_time", "avg"},
-				AggregateBy: []string{"container", "pod", "namespace"},
-				Time:  time.Date(2025, time.July, 1, 16, 0, 0, 0, time.UTC),
+				AggregateBy: []string{"container", "pod", "namespace", "node"},
+				Time: &fixedQueryTime,
 
 			},
-			expectedURL: fmt.Sprintf("%s/api/v1/query?query=%s", prometheus.DefaultPrometheusURL, url.QueryEscape(`avg(avg_over_time(kube_pod_container_resource_requests{resource="memory", container!="", container!="POD", node!=""}[24h:5m])) by (container, pod, namespace)&2025-07-01 16:00:00 +0000 UTC`)),
+			expectedURL: fmt.Sprintf("%s/api/v1/query?query=%s&time=%d", prometheus.DefaultPrometheusURL, url.QueryEscape(`avg(avg_over_time(kube_pod_container_resource_requests{resource="memory", container!="", container!="POD", node!=""}[24h:5m])) by (container, pod, namespace, node)&time=1751475600`), 1751475600),
+		},
+		{
+			name: "RAM Requested Costs",
+			input: prometheus.PrometheusInput{
+				Metric:      "kube_pod_container_resource_requests",
+				Filters:     map[string]string{"resource": "memory", "unit": "byte"},
+				IgnoreFilters: map[string][]string{"container": {"", "POD"},"node": {""},},
+				QueryWindow: "24h",
+				Function:    []string{"avg_over_time", "avg"},
+				AggregateBy: []string{"container", "pod", "node", "namespace"},
+				Time:  &fixedQueryTime,
+			},
+			expectedURL: fmt.Sprintf("%s/api/v1/query?query=%s&time=%d", prometheus.DefaultPrometheusURL, url.QueryEscape(`avg(avg_over_time(kube_pod_container_resource_requests{resource="memory", unit="byte", container!="", container!="POD", node!=""}[24h])) by (container, pod, node, namespace)`), 1751475600),
 		},
 	}
 

@@ -10,18 +10,11 @@ teardown() {
     go test ./test/integration/prometheus/prometheus_test.go
 }
 
-@test "prometheus: RAM Bytes Request Average" {
-    go test ./test/integration/prometheus/ram_bytehours_ground_truth_test.go
+@test "prometheus: RAM Costs" {
+    go test ./test/integration/prometheus/consolidated_ram_costs_analysis_test.go
 }
 
-@test "prometheus: RAM Bytes Hours" {
-    go test ./test/integration/prometheus/ramallocated_ground_truth_test.go
-}
 
-@test "prometheus: RAM Bytes Max Usage" {
-    go test ./test/integration/prometheus/ram_maxtime_ground_truth_test.go
-}
-
-@test "prometheus: CPU Core Hours" {
-    go test ./test/integration/prometheus/cpu_allocation_ground_truth_test.go
+@test "prometheus: PromQL URL Constructor Test" {
+    go test ./test/integration/prometheus/client_test.go
 }

@@ -36,7 +36,7 @@ type PrometheusInput struct {
 	AggregateBy []string
 	AggregateWindow string
 	AggregateResolution string
-	Time  time.Time
+	Time  *int64
 }
 
 type DataPoint struct {
@@ -181,9 +181,13 @@ func (c *Client) ConstructPromQLQueryURL(promQLArgs PrometheusInput) string {
 	}
 
 	//promQLQuery := fmt.Sprintf("%s%s offset %s", metric, finalPromQLSelector, window)
-	queryWindow := promQLArgs.QueryWindow
-	if promQLArgs.QueryResolution != "" {
-		queryWindow = fmt.Sprintf("[%s:%s]", promQLArgs.QueryWindow, promQLArgs.QueryResolution)
+	queryWindow := ""
+	if promQLArgs.QueryWindow != "" {
+		if promQLArgs.QueryResolution != "" {
+			queryWindow = fmt.Sprintf("[%s:%s]", promQLArgs.QueryWindow, promQLArgs.QueryResolution)
+		} else {
+			queryWindow = fmt.Sprintf("[%s]", promQLArgs.QueryWindow)
+		}
 	}
 
 	promQLQuery := fmt.Sprintf("%s%s%s", promQLArgs.Metric, finalPromQLSelector, queryWindow)
@@ -199,20 +203,22 @@ func (c *Client) ConstructPromQLQueryURL(promQLArgs PrometheusInput) string {
 	if len(promQLArgs.AggregateBy) != 0 {
 		aggregateWindow := ""
 		if promQLArgs.AggregateWindow != "" {
-			aggregateWindow = promQLArgs.AggregateWindow
 			if promQLArgs.AggregateResolution != "" {
 				aggregateWindow = fmt.Sprintf("[%s:%s]", promQLArgs.AggregateWindow, promQLArgs.AggregateResolution)
+			} else {
+				aggregateWindow = fmt.Sprintf("[%s]", promQLArgs.AggregateWindow)
 			}
 		}
 		aggregateBy := strings.Join(promQLArgs.AggregateBy, ", ")
 		promQLQuery = fmt.Sprintf(`%s by (%s)%s`, promQLQuery, aggregateBy, aggregateWindow)
 	}
 
-	if !promQLArgs.Time.IsZero() {
-		promQLQuery = fmt.Sprintf("%s&%s", promQLQuery, promQLArgs.Time)
-	}
-
 	promURL := fmt.Sprintf("%s/api/v1/query?query=%s", c.baseURL, url.QueryEscape(promQLQuery))
+
+	// Time should be unesca[ed]
+	if promQLArgs.Time != nil {
+		promURL= fmt.Sprintf("%s&time=%d", promURL, *promQLArgs.Time)
+	}
 
 	return promURL
 }
