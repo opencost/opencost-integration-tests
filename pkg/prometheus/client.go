@@ -2,13 +2,13 @@ package prometheus
 
 import (
 	"encoding/json"
-	"strconv"
 	"fmt"
 	"net/http"
 	"net/url"
 	"os"
-	"time"
+	"strconv"
 	"strings"
+	"time"
 )
 
 const (
@@ -24,25 +24,26 @@ type Client struct {
 	httpClient *http.Client
 }
 type PrometheusInput struct {
-	Function []string
-	Metric string
-	Filters map[string]string
-	IgnoreFilters map[string][]string
-	MetricNotEqualTo string
-	MetricEqualTo string
-	QueryWindow string
-	QueryResolution string
-	Offset string
-	AggregateBy []string
-	AggregateWindow string
+	Function            []string
+	Metric              string
+	Filters             map[string]string
+	IgnoreFilters       map[string][]string
+	MetricNotEqualTo    string
+	MetricEqualTo       string
+	QueryWindow         string
+	QueryResolution     string
+	Offset              string
+	AggregateBy         []string
+	AggregateWindow     string
 	AggregateResolution string
-	Time  *int64
+	Time                *int64
 }
 
 type DataPoint struct {
 	Timestamp float64
-	Value float64
+	Value     float64
 }
+
 // PrometheusResponse represents the response from Prometheus API
 type PrometheusResponse struct {
 	Status string `json:"status"`
@@ -54,7 +55,7 @@ type PrometheusResponse struct {
 				Namespace string `json:"namespace"`
 				Container string `json:"container"`
 			} `json:"metric"`
-			Value DataPoint `json:"value"`
+			Value  DataPoint   `json:"value"`
 			Values []DataPoint `json:"values"`
 		} `json:"result"`
 	} `json:"data"`
@@ -142,7 +143,6 @@ func (c *Client) GetPodsByController(controllerKind string, window string) (map[
 	return promPods, nil
 }
 
-
 func (c *Client) ConstructPromQLQueryURL(promQLArgs PrometheusInput) string {
 
 	filterParts := make([]string, 0, len(promQLArgs.Filters))
@@ -159,11 +159,11 @@ func (c *Client) ConstructPromQLQueryURL(promQLArgs PrometheusInput) string {
 		// not equal to conditions
 		for _, value := range values {
 			ignoreFilterPart := fmt.Sprintf(`%s!="%s"`, key, value)
-			ignoreFilterParts = append(ignoreFilterParts, ignoreFilterPart)	
+			ignoreFilterParts = append(ignoreFilterParts, ignoreFilterPart)
 		}
 	}
 	ignoreFiltersString := strings.Join(ignoreFilterParts, ", ")
-	
+
 	allFilters := ""
 	if filtersString != "" {
 		allFilters = filtersString
@@ -171,7 +171,6 @@ func (c *Client) ConstructPromQLQueryURL(promQLArgs PrometheusInput) string {
 			allFilters = allFilters + ", " + ignoreFiltersString
 		}
 	}
-	
 
 	var finalPromQLSelector string
 	if allFilters == "" {
@@ -217,7 +216,7 @@ func (c *Client) ConstructPromQLQueryURL(promQLArgs PrometheusInput) string {
 
 	// Time should be unesca[ed]
 	if promQLArgs.Time != nil {
-		promURL= fmt.Sprintf("%s&time=%d", promURL, *promQLArgs.Time)
+		promURL = fmt.Sprintf("%s&time=%d", promURL, *promQLArgs.Time)
 	}
 
 	return promURL
@@ -241,6 +240,6 @@ func (c *Client) RunPromQLQuery(promQLArgs PrometheusInput) (PrometheusResponse,
 	if err := json.NewDecoder(promResp.Body).Decode(&promData); err != nil {
 		return promData, fmt.Errorf("failed to query Prometheus: %v", err)
 	}
-	
+
 	return promData, nil
 }

@@ -2,35 +2,34 @@ package prometheus
 
 // Description: Checks all RAM related Costs
 // - RAMBytes
-// - RAMByteHours
+// - RAMBytesHours
+// - RAMBytesRequestAverage
 // - RAMMaxUsage
-// Also processes RAMByteRequestAverage and RAMByteAllocated for RAMByteHours calculation.
 
 // Testing Methodology
 // 1. Query RAMAllocated and RAMRequested in prometheus
 //     1.1 Use the current "time" as upperbound in promql
-//     1.2 Query by (container, pod, namespace)
+//     1.2 Query by (container, pod, node, namespace)
 // 2. Consolidate containers based on pods
-//     2.1 RAMByte is the max of RAMByteAllocated and RAMByteRequested
-//     2.2 Query [24h:5m] to get 288 (1440/5) points. 
+//     2.1 RAMByte is the max of RAMByteAllocated and RAMByteRequested for each container
+//     2.2 Query [24h:5m] to get 288 (1440/5) points to identify the StartTime and EndTime DataPoint Timestamp.
 // 	   2.3 Assumption 1: Identify the time range for the pod (all containers within the pod have the same time range)
 // 3. Consolidate RAMBytes based on pod and then based on namespace
 // 4. Fetch /allocation data aggregated by namespace
-// 5. Compare results with a 2% error margin.
-
+// 5. Compare results with a 5% error margin.
 
 import (
-	// "fmt"
-	"math"
-	"time"
-	"testing"
-	// "strconv"
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
+	"math"
+	"testing"
+	"time"
 )
 
-func AreWithinPercentage(num1, num2, tolerance float64) bool {
+const tolerance = 0.05
 
+func AreWithinPercentage(num1, num2, tolerance float64) bool {
+	// Checks if two numbers are within a certain absolute range of each other.
 	if num1 == 0 && num2 == 0 {
 		return true
 	}
@@ -42,25 +41,25 @@ func AreWithinPercentage(num1, num2, tolerance float64) bool {
 	return diff <= (reference * tolerance)
 }
 
-func ConvertToHours(minutes float64) (float64) {
+func ConvertToHours(minutes float64) float64 {
 	// Convert Time from Minutes to Hours
 	return minutes / 60
 }
 
-func TestRAMByteCosts(t *testing.T) {
+func TestRAMCosts(t *testing.T) {
 	apiObj := api.NewAPI()
 
 	// test for more windows
 	testCases := []struct {
-		name		string
-		window      string
-		aggregate   string
-		accumulate  string
+		name       string
+		window     string
+		aggregate  string
+		accumulate string
 	}{
 		{
-			name: "Yesterday",
-			window: "24h",
-			aggregate: "namespace",
+			name:       "Yesterday",
+			window:     "24h",
+			aggregate:  "namespace",
 			accumulate: "false",
 		},
 	}
@@ -75,8 +74,8 @@ func TestRAMByteCosts(t *testing.T) {
 			// ----------------------------------------------
 			// /compute/allocation: RAM Costs for all namespaces
 			apiResponse, err := apiObj.GetAllocation(api.AllocationRequest{
-				Window: tc.window,
-				Aggregate: tc.aggregate,
+				Window:     tc.window,
+				Aggregate:  tc.aggregate,
 				Accumulate: tc.accumulate,
 			})
 
@@ -94,14 +93,15 @@ func TestRAMByteCosts(t *testing.T) {
 
 			// Loop over namespaces
 			for namespace, allocationResponseItem := range apiResponse.Data[0] {
-				
+
 				// Use this information to find start and end time of pod
 				queryEnd := time.Now().UTC().Truncate(time.Hour).Add(time.Hour)
 				queryStart := queryEnd.Add(-24 * time.Hour)
 				window24h := api.Window{
-					Start: queryStart, 
-					End: queryEnd,
+					Start: queryStart,
+					End:   queryEnd,
 				}
+				// Note that in the Pod Query, we use a 5m resolution [THIS IS THE DEFAULT VALUE IN OPENCOST]
 				resolution := 5 * time.Minute
 
 				// Query End Time for all Queries
@@ -113,22 +113,22 @@ func TestRAMByteCosts(t *testing.T) {
 				// 			resource="memory", unit="byte", container!="", container!="POD", node!=""
 				// 		}[24h])
 				// )
-				// by 
-				// (container, pod, namespace, node) 
-				
+				// by
+				// (container, pod, namespace, node)
+
 				// Q) What about Cluster Filter and Cluster Label?
 				promRAMRequestedInput := prometheus.PrometheusInput{}
 
 				promRAMRequestedInput.Metric = "kube_pod_container_resource_requests"
 				promRAMRequestedInput.Filters = map[string]string{
 					// "job": "opencost", Averaging all results negates this process
-					"resource": "memory",
-					"unit": "byte",
+					"resource":  "memory",
+					"unit":      "byte",
 					"namespace": namespace,
 				}
 				promRAMRequestedInput.IgnoreFilters = map[string][]string{
 					"container": {"", "POD"},
-					"node": {""},
+					"node":      {""},
 				}
 				promRAMRequestedInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
 				promRAMRequestedInput.Function = []string{"avg_over_time", "avg"}
@@ -146,9 +146,9 @@ func TestRAMByteCosts(t *testing.T) {
 				// 			container!="", container!="POD", node!=""
 				// 		}[24h])
 				// )
-				// by 
-				// (container, pod, namespace, node) 
-				
+				// by
+				// (container, pod, namespace, node)
+
 				// Q) What about Cluster Filter and Cluster Label?
 				promRAMAllocatedInput := prometheus.PrometheusInput{}
 
@@ -159,13 +159,13 @@ func TestRAMByteCosts(t *testing.T) {
 				}
 				promRAMAllocatedInput.IgnoreFilters = map[string][]string{
 					"container": {"", "POD"},
-					"node": {""},
+					"node":      {""},
 				}
 				promRAMAllocatedInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
 				promRAMAllocatedInput.Function = []string{"avg_over_time", "avg"}
 				promRAMAllocatedInput.QueryWindow = tc.window
 				promRAMAllocatedInput.Time = &endTime
-				
+
 				allocatedRAM, err := client.RunPromQLQuery(promRAMAllocatedInput)
 				if err != nil {
 					t.Fatalf("Error while calling Prometheus API %v", err)
@@ -173,9 +173,9 @@ func TestRAMByteCosts(t *testing.T) {
 
 				// Query all running pod information
 				// avg(kube_pod_container_status_running{} != 0)
-				// by 
+				// by
 				// (container, pod, namespace, node)[24h:5m]
-				
+
 				// Q) != 0 is not necessary I suppose?
 				promPodInfoInput := prometheus.PrometheusInput{}
 
@@ -198,46 +198,53 @@ func TestRAMByteCosts(t *testing.T) {
 				// Define Local Struct for PoD Data Consolidation
 				// PoD is composed of multiple containers, we want to represent all that information succinctly here
 				type ContainerRAMData struct {
-					Container string
+					Container              string
 					RAMBytesRequestAverage float64
-					RAMBytes float64
-					RAMBytesHours float64
+					RAMBytes               float64
+					RAMBytesHours          float64
 				}
 
 				type PodData struct {
-					Pod string
-					Namespace string
-					Start time.Time
-					End time.Time
-					Minutes float64
+					Pod        string
+					Namespace  string
+					Start      time.Time
+					End        time.Time
+					Minutes    float64
 					Containers map[string]*ContainerRAMData
 				}
 
 				// ----------------------------------------------
 				// Identify All Pods and Containers for that Pod
+
+				// Create a map of PodData for each pod, and calculate the runtime.
+				// The query we make for pods is _NOT_ an average over time "range" vector. Instead, it's a range vector
+				// that returns _ALL_ samples for the pod over the last 24 hours. So, when you see <metric>[24h:5m] the
+				// number after the ':' (5m) is the resolution of the samples. So for the pod query, we get 24h / 5m
 				// ----------------------------------------------
-				
+
 				// Pointers to modify in place
 				podMap := make(map[string]*PodData)
+
 				for _, podInfoResponseItem := range podInfo.Data.Result {
-					// Calculate Start and End Time for Pod
-					// out of the samples, we are interested in the first and last sample
+					// The summary of this method is that we grab the _last_ sample time and _first_ sample time
+					// from the pod's metrics, which roughly represents the start and end of the pod's lifetime
+					// WITHIN the query window (24h in this case).
 					s, e := prometheus.CalculateStartAndEnd(podInfoResponseItem.Values, resolution, window24h)
 
 					// Add a key in the podMap for current Pod
 					podMap[podInfoResponseItem.Metric.Pod] = &PodData{
-						Pod: podInfoResponseItem.Metric.Pod,
-						Namespace: namespace,
-						Start: s,
-						End: e,
-						Minutes: e.Sub(s).Minutes(),
+						Pod:        podInfoResponseItem.Metric.Pod,
+						Namespace:  namespace,
+						Start:      s,
+						End:        e,
+						Minutes:    e.Sub(s).Minutes(),
 						Containers: make(map[string]*ContainerRAMData),
 					}
 				}
-
-				// t.Logf("%v", podMap)
 				// ----------------------------------------------
 				// Gather RAMBytes (RAMAllocated) for every container in a Pod
+
+				// Iterate over results and group by pod
 				// ----------------------------------------------
 
 				for _, ramAllocatedItem := range allocatedRAM.Data.Result {
@@ -261,16 +268,17 @@ func TestRAMByteCosts(t *testing.T) {
 
 					runHours := ConvertToHours(runMinutes)
 					podData.Containers[container] = &ContainerRAMData{
-						Container: container,
-						RAMBytesHours: ramBytes * runHours,
-						RAMBytes: ramBytes,
+						Container:              container,
+						RAMBytesHours:          ramBytes * runHours,
+						RAMBytes:               ramBytes,
 						RAMBytesRequestAverage: 0.0,
 					}
 				}
 
-
 				// ----------------------------------------------
 				// Gather RAMRequestAverage (RAMRequested) for every container in a Pod
+
+				// Iterate over results and group by pod
 				// ----------------------------------------------
 				for _, ramRequestedItem := range requestedRAM.Data.Result {
 					container := ramRequestedItem.Metric.Container
@@ -286,13 +294,13 @@ func TestRAMByteCosts(t *testing.T) {
 					}
 
 					ramBytesRequestedAverage := ramRequestedItem.Value.Value
-			
+
 					runMinutes := podData.Minutes
 					if runMinutes <= 0 {
 						t.Logf("Namespace: %s, Pod %s has a run duration of 0 minutes, skipping RAM allocation calculation", podData.Namespace, podData.Pod)
 						continue
 					}
-					
+
 					runHours := ConvertToHours(runMinutes)
 
 					// if the container exists, you need to apply the opencost cost specification
@@ -327,7 +335,7 @@ func TestRAMByteCosts(t *testing.T) {
 				var nsStart, nsEnd time.Time
 
 				for _, podData := range podMap {
-					
+
 					start := podData.Start
 					end := podData.End
 					minutes := podData.Minutes
@@ -341,18 +349,18 @@ func TestRAMByteCosts(t *testing.T) {
 					}
 					// t.Logf("Pod %s, ramByteHours %v", podData.Pod, ramByteHours)
 					// Sum up Pod Values
-					nsRAMBytesRequest += (ramByteRequest * minutes + nsRAMBytesRequest * nsMinutes)
+					nsRAMBytesRequest += (ramByteRequest*minutes + nsRAMBytesRequest*nsMinutes)
 					nsRAMBytesHours += ramByteHours
-				
+
 					// only the first time
 					if nsStart.IsZero() && nsEnd.IsZero() {
 						nsStart = start
-						nsEnd = end	
+						nsEnd = end
 						nsMinutes = nsEnd.Sub(nsStart).Minutes()
 						nsHours := ConvertToHours(nsMinutes)
 						nsRAMBytes = nsRAMBytesHours / nsHours
 						nsRAMBytesRequest = nsRAMBytesRequest / nsMinutes
-						continue		
+						continue
 					} else {
 						if start.Before(nsStart) {
 							nsStart = start
@@ -372,7 +380,6 @@ func TestRAMByteCosts(t *testing.T) {
 				// ----------------------------------------------
 				t.Logf("Namespace: %s", namespace)
 				// 5 % Tolerance
-				tolerance := 0.05
 				if AreWithinPercentage(nsRAMBytes, allocationResponseItem.RAMBytes, tolerance) {
 					t.Logf("    - RAMBytes[Pass]: ~%.2f", nsRAMBytes)
 				} else {

@@ -1,13 +1,11 @@
 package prometheus
 
 import (
-	"time"
 	"github.com/opencost/opencost-integration-tests/pkg/api"
+	"time"
 )
 
-
 func CalculateStartAndEnd(result []DataPoint, resolution time.Duration, window api.Window) (time.Time, time.Time) {
-
 	// Start and end for a range vector are pulled from the timestamps of the
 	// first and final values in the range. There is no "offsetting" required
 	// of the start or the end, as we used to do. If you query for a duration
