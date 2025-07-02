@@ -230,14 +230,13 @@ func TestRAMByteCosts(t *testing.T) {
 						t.Logf("Failed to find namespace: %s and pod: %s in RAM allocated results", ramAllocatedItem.Metric.Namespace, ramAllocatedItem.Metric.Pod)
 						continue
 					}
-					valueArray, _ := ramAllocatedItem.Value.(interface{})
-					ramBytes, _ := valueArray[1].(int64)
+					ramBytes := ramAllocatedItem.Value.Value
 					runMinutes := podData.Minutes
 					if runMinutes <= 0 {
 						t.Logf("Namespace: %s, Pod %s has a run duration of 0 minutes, skipping RAM allocation calculation", podData.Namespace, podData.Pod)
 						continue
 					}
-					
+
 					runHours := ConvertToHours(runMinutes)
 					podData.Containers[container] = &ContainerRAMData{
 						Container: container,
@@ -262,8 +261,8 @@ func TestRAMByteCosts(t *testing.T) {
 						t.Logf("Failed to find namespace: %s and pod: %s in RAM allocated results", ramRequestedItem.Metric.Namespace, ramRequestedItem.Metric.Pod)
 						continue
 					}
-					valueArray, _ := ramRequestedItem.Value.(interface{})
-					ramBytesRequestedAverage, _ := valueArray[1].(int64)
+
+					ramBytesRequestedAverage := ramRequestedItem.Value.Value
 			
 					runMinutes := podData.Minutes
 					if runMinutes <= 0 {
@@ -292,8 +291,6 @@ func TestRAMByteCosts(t *testing.T) {
 				// ----------------------------------------------
 				// Aggregate Container results to get Pod Output and Aggregate Pod Output to get Namespace results
 				// ----------------------------------------------
-
-
 				nsRAMByteRequest := 0.0
 				nsRAMByteHours := 0.0
 				nsRAMBytes := 0.0
@@ -313,7 +310,7 @@ func TestRAMByteCosts(t *testing.T) {
 						ramByteHours += containerData.RAMByteHours
 						ramByteRequest += containerData.RAMBytesRequestAverage
 					}
-
+					// t.Logf("Pod %s, ramByteHours %v", podData.Pod, ramByteHours)
 					// Sum up Pod Values
 					nsRAMByteRequest += (ramByteRequest * minutes + nsRAMByteRequest * nsMinutes)
 					nsRAMByteHours += ramByteHours
@@ -341,7 +338,7 @@ func TestRAMByteCosts(t *testing.T) {
 				// Compare Results with Allocation
 				// ----------------------------------------------
 				if nsRAMBytes != allocationResponseItem.RAMBytes {
-					t.Errorf("RAM Byte Hours Sum does not match for prometheus %f and /allocation %f for namespace %s", nsRAMBytes, allocationResponseItem.RAMBytes, namespace)	
+					t.Errorf("RAM Byte Sum does not match for prometheus %f and /allocation %f for namespace %s", nsRAMBytes, allocationResponseItem.RAMBytes, namespace)	
 				} else {
 					t.Logf("RAM Byte Hours Match for namespace %s", namespace)	
 				}

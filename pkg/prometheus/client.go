@@ -2,6 +2,7 @@ package prometheus
 
 import (
 	"encoding/json"
+	"strconv"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -39,7 +40,7 @@ type PrometheusInput struct {
 }
 
 type DataPoint struct {
-	TimeStamp int64
+	Timestamp float64
 	Value float64
 }
 // PrometheusResponse represents the response from Prometheus API
@@ -53,8 +54,8 @@ type PrometheusResponse struct {
 				Namespace string `json:"namespace"`
 				Container string `json:"container"`
 			} `json:"metric"`
-			Value []interface{} `json:"value"`
-			Values []interface{} `json:"values"`
+			Value DataPoint `json:"value"`
+			Values []DataPoint `json:"values"`
 		} `json:"result"`
 	} `json:"data"`
 }
@@ -72,6 +73,41 @@ func NewClient() *Client {
 			Timeout: 10 * time.Second,
 		},
 	}
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface for DataPoint.
+// This method is called automatically by json.Unmarshal when it encounters a DataPoint.
+func (dp *DataPoint) UnmarshalJSON(b []byte) error {
+	// We expect the JSON to be an array, e.g., [1751296800, "1"]
+	var raw []json.RawMessage
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return fmt.Errorf("DataPoint: expected JSON array for unmarshaling, got %s: %w", string(b), err)
+	}
+
+	// --- Unmarshal the first element as the Timestamp (float64) ---
+	if err := json.Unmarshal(raw[0], &dp.Timestamp); err != nil {
+		return fmt.Errorf("DataPoint: failed to unmarshal first element (timestamp) to float64 from %s: %w", raw[0], err)
+	}
+
+	// --- Unmarshal the second element as the Value (string, then convert to float64) ---
+	if len(raw) > 1 {
+		var valueStr string
+		if err := json.Unmarshal(raw[1], &valueStr); err != nil {
+			return fmt.Errorf("DataPoint: failed to unmarshal second element (value) to string from %s: %w", raw[1], err)
+		}
+
+		parsedValue, err := strconv.ParseFloat(valueStr, 64)
+		if err != nil {
+			return fmt.Errorf("DataPoint: failed to parse value string '%s' to float64: %w", valueStr, err)
+		}
+		dp.Value = parsedValue
+	} else {
+		// If the value string is missing (e.g., [timestamp]), set Value to its zero value (0.0)
+		// or any other default you deem appropriate.
+		dp.Value = 0.0
+	}
+
+	return nil
 }
 
 // GetPodsByController queries Prometheus for pods of a specific controller type
@@ -193,6 +229,9 @@ func (c *Client) RunPromQLQuery(promQLArgs PrometheusInput) (PrometheusResponse,
 	}
 	defer promResp.Body.Close()
 
+	// AlterNative Implementation that requires the entire dataset to be in memory
+	// var promResult PromethesResponse
+	// err = json.Unmarshal([]byte(promResp.Body), &promResult)
 	if err := json.NewDecoder(promResp.Body).Decode(&promData); err != nil {
 		return promData, fmt.Errorf("failed to query Prometheus: %v", err)
 	}

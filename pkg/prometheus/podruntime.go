@@ -6,18 +6,20 @@ import (
 )
 
 
-func CalculateStartAndEnd(result []interface{}, resolution time.Duration, window api.Window) (time.Time, time.Time) {
+func CalculateStartAndEnd(result []DataPoint, resolution time.Duration, window api.Window) (time.Time, time.Time) {
 
-	valueArraySlice := result[0]
-	valueArray, _ := valueArraySlice.(interface{})
-	sTimestamp, _ := valueArray[0].(int64)
-
-	valueArraySlice, _ = result.(interface{})
-	valueArray, _ = valueArraySlice[len(result)-1].(interface{})
-	eTimestamp, _ := valueArray[0].(int64)
-
-	s := time.Unix(int64(sTimestamp), 0).UTC()
-	e := time.Unix(int64(eTimestamp), 0).UTC()
+	// Start and end for a range vector are pulled from the timestamps of the
+	// first and final values in the range. There is no "offsetting" required
+	// of the start or the end, as we used to do. If you query for a duration
+	// of time that is divisible by the given resolution, and set the end time
+	// to be precisely the end of the window, Prometheus should give all the
+	// relevant timestamps.
+	//
+	// E.g. avg(kube_pod_container_status_running{}) by (pod, namespace)[1h:1m]
+	// with time=01:00:00 will return, for a pod running the entire time,
+	// 61 timestamps where the first is 00:00:00 and the last is 01:00:00.
+	s := time.Unix(int64(result[0].Timestamp), 0).UTC()
+	e := time.Unix(int64(result[len(result)-1].Timestamp), 0).UTC()
 
 	// The only corner-case here is what to do if you only get one timestamp.
 	// This dilemma still requires the use of the resolution, and can be
