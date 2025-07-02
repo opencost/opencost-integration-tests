@@ -155,7 +155,6 @@ func TestRAMByteCosts(t *testing.T) {
 				promRAMAllocatedInput.Metric = "container_memory_allocation_bytes"
 				promRAMAllocatedInput.Filters = map[string]string{
 					// "job": "opencost", Averaging all results negates this process
-					"unit": "byte",
 					"namespace": namespace,
 				}
 				promRAMAllocatedInput.IgnoreFilters = map[string][]string{
@@ -181,6 +180,9 @@ func TestRAMByteCosts(t *testing.T) {
 				promPodInfoInput := prometheus.PrometheusInput{}
 
 				promPodInfoInput.Metric = "kube_pod_container_status_running"
+				promPodInfoInput.Filters = map[string]string{
+					"namespace": namespace,
+				}
 				promPodInfoInput.MetricNotEqualTo = "0"
 				promPodInfoInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
 				promPodInfoInput.Function = []string{"avg"}
@@ -311,6 +313,12 @@ func TestRAMByteCosts(t *testing.T) {
 
 				// ----------------------------------------------
 				// Aggregate Container results to get Pod Output and Aggregate Pod Output to get Namespace results
+
+				// Aggregating the AVG RAM values is not as simple as just summing them up because we have to consider that
+				// each pod's average ram data is relative to that same pod's lifetime. So, in order to aggregate the data
+				// together, we have to expand the averages back into their pure byte values, merge the run times, sum the
+				// raw values, and then REAPPLY the merged run time. See core/pkg/opencost/allocation.go "add()" line #1225
+				// NOTE: This is only for the average RAM values, RAMByteHours can be summed directly.
 				// ----------------------------------------------
 				nsRAMBytesRequest := 0.0
 				nsRAMBytesHours := 0.0
@@ -340,7 +348,10 @@ func TestRAMByteCosts(t *testing.T) {
 					if nsStart.IsZero() && nsEnd.IsZero() {
 						nsStart = start
 						nsEnd = end	
-						nsMinutes = nsEnd.Sub(nsStart).Minutes()	
+						nsMinutes = nsEnd.Sub(nsStart).Minutes()
+						nsHours := ConvertToHours(nsMinutes)
+						nsRAMBytes = nsRAMBytesHours / nsHours
+						nsRAMBytesRequest = nsRAMBytesRequest / nsMinutes
 						continue		
 					} else {
 						if start.Before(nsStart) {
@@ -363,17 +374,17 @@ func TestRAMByteCosts(t *testing.T) {
 				// 5 % Tolerance
 				tolerance := 0.05
 				if AreWithinPercentage(nsRAMBytes, allocationResponseItem.RAMBytes, tolerance) {
-					t.Logf("    - RAMBytes[Pass]: %.2f", nsRAMBytes)
+					t.Logf("    - RAMBytes[Pass]: ~%.2f", nsRAMBytes)
 				} else {
 					t.Errorf("    - RAMBytes[Fail]: Prom Results: %.2f, API Results: %.2f", nsRAMBytes, allocationResponseItem.RAMBytes)
 				}
 				if AreWithinPercentage(nsRAMBytesHours, allocationResponseItem.RAMByteHours, tolerance) {
-					t.Logf("    - RAMByteHours[Pass]: %.2f", nsRAMBytesHours)
+					t.Logf("    - RAMByteHours[Pass]: ~%.2f", nsRAMBytesHours)
 				} else {
 					t.Errorf("    - RAMByteHours[Fail]: Prom Results: %.2f, API Results: %.2f", nsRAMBytesHours, allocationResponseItem.RAMByteHours)
 				}
 				if AreWithinPercentage(nsRAMBytesRequest, allocationResponseItem.RAMBytesRequestAverage, tolerance) {
-					t.Logf("    - RAMByteRequestAverage[Pass]: %.2f", nsRAMBytesRequest)
+					t.Logf("    - RAMByteRequestAverage[Pass]: ~%.2f", nsRAMBytesRequest)
 				} else {
 					t.Errorf("    - RAMByteRequestAverage[Fail]: Prom Results: %.2f, API Results: %.2f", nsRAMBytesRequest, allocationResponseItem.RAMBytesRequestAverage)
 				}
