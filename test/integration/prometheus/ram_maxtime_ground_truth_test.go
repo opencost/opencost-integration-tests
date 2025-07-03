@@ -32,24 +32,11 @@ import (
 	// "time"
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
-	"math"
+	"github.com/opencost/opencost-integration-tests/pkg/utils"
 	"testing"
 )
 
 const tolerance = 0.05
-
-func AreWithinPercentage(num1, num2, tolerance float64) bool {
-	// Checks if two numbers are within a certain absolute range of each other.
-	if num1 == 0 && num2 == 0 {
-		return true
-	}
-
-	tolerance = math.Abs(tolerance)
-	diff := math.Abs(num1 - num2)
-	reference := math.Max(math.Abs(num1), math.Abs(num2))
-
-	return diff <= (reference * tolerance)
-}
 
 func TestRAMMax(t *testing.T) {
 	apiObj := api.NewAPI()
@@ -156,8 +143,9 @@ func TestRAMMax(t *testing.T) {
 			// Windows are not accurate for prometheus and allocation
 			for pod, ramMaxUsageValues := range ramUsageMaxPodMap {
 				t.Logf("Pod %s", pod)
-				if !AreWithinPercentage(ramMaxUsageValues.PrometheusUsageMax, ramMaxUsageValues.AllocationUsageMax, tolerance) {
-					t.Errorf("RAMUsageMax[Fail]: Prometheus: %0.2f, /allocation: %0.2f", ramMaxUsageValues.PrometheusUsageMax, ramMaxUsageValues.AllocationUsageMax)
+				withinTolerance, diff_percent := utils.AreWithinPercentage(ramMaxUsageValues.PrometheusUsageMax, ramMaxUsageValues.AllocationUsageMax, tolerance)
+				if !withinTolerance {
+					t.Errorf("RAMUsageMax[Fail]: DifferencePercent %0.2f, Prometheus: %0.2f, /allocation: %0.2f", diff_percent, ramMaxUsageValues.PrometheusUsageMax, ramMaxUsageValues.AllocationUsageMax)
 				} else {
 					t.Logf("RAMUsageMax[Pass]: ~ %v", ramMaxUsageValues.PrometheusUsageMax)
 				}
@@ -182,8 +170,9 @@ func TestRAMMax(t *testing.T) {
 			// Windows are not accurate for prometheus and allocation
 			for namespace, ramMaxUsageValues := range ramUsageMaxNamespaceMap {
 				t.Logf("Namespace %s", namespace)
-				if !AreWithinPercentage(ramMaxUsageValues.PrometheusUsageMax, ramMaxUsageValues.AllocationUsageMax, tolerance) {
-					t.Errorf("RAMUsageMax[Fail]: Prometheus: %0.2f, /allocation: %0.2f", ramMaxUsageValues.PrometheusUsageMax, ramMaxUsageValues.AllocationUsageMax)
+				withinRange, diff_percent := utils.AreWithinPercentage(ramMaxUsageValues.PrometheusUsageMax, ramMaxUsageValues.AllocationUsageMax, tolerance)
+				if !withinRange {
+					t.Errorf("RAMUsageMax[Fail]: DifferencePercent %0.2f, Prometheus: %0.2f, /allocation: %0.2f", diff_percent, ramMaxUsageValues.PrometheusUsageMax, ramMaxUsageValues.AllocationUsageMax)
 				} else {
 					t.Logf("RAMUsageMax[Pass]: ~ %v", ramMaxUsageValues.PrometheusUsageMax)
 				}

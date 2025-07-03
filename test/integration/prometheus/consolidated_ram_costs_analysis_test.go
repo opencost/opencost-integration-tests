@@ -21,25 +21,12 @@ package prometheus
 import (
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
-	"math"
+	"github.com/opencost/opencost-integration-tests/pkg/utils"
 	"testing"
 	"time"
 )
 
 const tolerance = 0.05
-
-func AreWithinPercentage(num1, num2, tolerance float64) bool {
-	// Checks if two numbers are within a certain absolute range of each other.
-	if num1 == 0 && num2 == 0 {
-		return true
-	}
-
-	tolerance = math.Abs(tolerance)
-	diff := math.Abs(num1 - num2)
-	reference := math.Max(math.Abs(num1), math.Abs(num2))
-
-	return diff <= (reference * tolerance)
-}
 
 func ConvertToHours(minutes float64) float64 {
 	// Convert Time from Minutes to Hours
@@ -380,20 +367,23 @@ func TestRAMCosts(t *testing.T) {
 				// ----------------------------------------------
 				t.Logf("Namespace: %s", namespace)
 				// 5 % Tolerance
-				if AreWithinPercentage(nsRAMBytes, allocationResponseItem.RAMBytes, tolerance) {
+				withinRange, diff_percent := utils.AreWithinPercentage(nsRAMBytes, allocationResponseItem.RAMBytes, tolerance)
+				if withinRange {
 					t.Logf("    - RAMBytes[Pass]: ~%.2f", nsRAMBytes)
 				} else {
-					t.Errorf("    - RAMBytes[Fail]: Prom Results: %.2f, API Results: %.2f", nsRAMBytes, allocationResponseItem.RAMBytes)
+					t.Errorf("    - RAMBytes[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsRAMBytes, allocationResponseItem.RAMBytes)
 				}
-				if AreWithinPercentage(nsRAMBytesHours, allocationResponseItem.RAMByteHours, tolerance) {
+				withinRange, diff_percent = utils.AreWithinPercentage(nsRAMBytesHours, allocationResponseItem.RAMByteHours, tolerance)
+				if withinRange {
 					t.Logf("    - RAMByteHours[Pass]: ~%.2f", nsRAMBytesHours)
 				} else {
-					t.Errorf("    - RAMByteHours[Fail]: Prom Results: %.2f, API Results: %.2f", nsRAMBytesHours, allocationResponseItem.RAMByteHours)
+					t.Errorf("    - RAMByteHours[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsRAMBytesHours, allocationResponseItem.RAMByteHours)
 				}
-				if AreWithinPercentage(nsRAMBytesRequest, allocationResponseItem.RAMBytesRequestAverage, tolerance) {
+				withinRange, diff_percent = utils.AreWithinPercentage(nsRAMBytesRequest, allocationResponseItem.RAMBytesRequestAverage, tolerance)
+				if withinRange {
 					t.Logf("    - RAMByteRequestAverage[Pass]: ~%.2f", nsRAMBytesRequest)
 				} else {
-					t.Errorf("    - RAMByteRequestAverage[Fail]: Prom Results: %.2f, API Results: %.2f", nsRAMBytesRequest, allocationResponseItem.RAMBytesRequestAverage)
+					t.Errorf("    - RAMByteRequestAverage[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsRAMBytesRequest, allocationResponseItem.RAMBytesRequestAverage)
 				}
 			}
 		})
