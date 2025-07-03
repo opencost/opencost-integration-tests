@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -152,6 +153,9 @@ func (c *Client) ConstructPromQLQueryURL(promQLArgs PrometheusInput) string {
 		filterPart := fmt.Sprintf(`%s="%s"`, key, value)
 		filterParts = append(filterParts, filterPart)
 	}
+	sort.Slice(filterParts, func(i, j int) bool {
+		return strings.ToLower(filterParts[i]) < strings.ToLower(filterParts[j])
+	})
 	filtersString := strings.Join(filterParts, ", ")
 
 	ignoreFilterParts := []string{}
@@ -162,8 +166,11 @@ func (c *Client) ConstructPromQLQueryURL(promQLArgs PrometheusInput) string {
 			ignoreFilterParts = append(ignoreFilterParts, ignoreFilterPart)
 		}
 	}
+	sort.Slice(ignoreFilterParts, func(i, j int) bool {
+		return strings.ToLower(ignoreFilterParts[i]) < strings.ToLower(ignoreFilterParts[j])
+	})
 	ignoreFiltersString := strings.Join(ignoreFilterParts, ", ")
-
+	
 	allFilters := ""
 	if filtersString != "" {
 		allFilters = filtersString
