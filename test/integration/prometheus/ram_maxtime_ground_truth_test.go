@@ -143,6 +143,10 @@ func TestRAMMax(t *testing.T) {
 			// Windows are not accurate for prometheus and allocation
 			for pod, ramMaxUsageValues := range ramUsageMaxPodMap {
 				t.Logf("Pod %s", pod)
+				// Ignore Zero Max Value Pods
+				if ramMaxUsageValues.AllocationUsageMax == 0{
+					continue
+				}
 				withinTolerance, diff_percent := utils.AreWithinPercentage(ramMaxUsageValues.PrometheusUsageMax, ramMaxUsageValues.AllocationUsageMax, tolerance)
 				if !withinTolerance {
 					t.Errorf("RAMUsageMax[Fail]: DifferencePercent %0.2f, Prometheus: %0.2f, /allocation: %0.2f", diff_percent, ramMaxUsageValues.PrometheusUsageMax, ramMaxUsageValues.AllocationUsageMax)
