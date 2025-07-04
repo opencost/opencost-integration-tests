@@ -54,11 +54,14 @@ func TestQueryAllocation(t *testing.T) {
 			}
 
 			// Prometheus Client
+			// Want to Run avg(avg_over_time(kube_pod_container_status_running[24h]) == 0) by (container, pod, containernamespace)
+			// Running avg(avg_over_time(kube_pod_container_status_running[24h])) by (container, pod, containernamespace)
 			client := prometheus.NewClient()
 			promInput := prometheus.PrometheusInput{
 				Metric: "kube_pod_container_status_running",
-				MetricNotEqualTo: "0",
-				Function: []string{"avg"},
+				// MetricNotEqualTo: "0",
+				Function: []string{"avg_over_time", "avg"},
+				QueryWindow: tc.window,
 				AggregateBy: []string{"container", "pod", "namespace"},
 			}
 			promResponse, err := client.RunPromQLQuery(promInput)
@@ -82,6 +85,9 @@ func TestQueryAllocation(t *testing.T) {
 					}
 					continue
 				} 
+				if allocationResponeItem.Properties.Pod == "" {
+					continue
+				}
 				if !slices.Contains(apiAggregateItem.Pods, pod) {
 					apiAggregateItem.Pods = append(apiAggregateItem.Pods, pod)
 				}
@@ -93,6 +99,10 @@ func TestQueryAllocation(t *testing.T) {
 			for _, metric := range promResponse.Data.Result {
 				podNamespace := metric.Metric.Namespace
 				pod := metric.Metric.Pod
+				// This pod was down, unable to do it with the query
+				if metric.Value.Value == 0 {
+					continue
+				}
 				promAggregateItem, namespacePresent := promAggregateCount[podNamespace]
 				if !namespacePresent {
 					promAggregateCount[podNamespace] = &podAggregation{
