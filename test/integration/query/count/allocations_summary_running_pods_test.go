@@ -10,9 +10,11 @@ import (
         "github.com/opencost/opencost-integration-tests/pkg/prometheus"
         "testing"
         "sort"
-
+        "strings"
+        "slices"
         "github.com/pmezard/go-difflib/difflib"
 )
+
 
 func TestQueryAllocationSummary(t *testing.T) {
         apiObj := api.NewAPI()
@@ -51,52 +53,57 @@ func TestQueryAllocationSummary(t *testing.T) {
                         }
 
                         // Prometheus Client
-                        client := prometheus.NewClient()
-                        metric := "kube_pod_container_status_running"
-                        // kube-state-metrics is another job type
-                        filters := map[string]string{
-                                "job": "opencost",
-                        }
-                        promInput := prometheus.PrometheusInput{
-                                Metric: metric,
-                                Filters: filters,
-                                QueryWindow: tc.window,
-                        }
-                        promResponse, err := client.RunPromQLQuery(promInput)
-
-                        if err != nil {
-                                t.Fatalf("Error while calling Prometheus API %v", err)
-                        }
-
-                        apiAllocationsSummaryCount := len(apiResponse.Data.Sets[0].Allocations)
-                        promAllocationsSummaryCount := len(promResponse.Data.Result)
+                        // Prometheus Client
+			client := prometheus.NewClient()
+			promInput := prometheus.PrometheusInput{
+				Metric: "kube_pod_container_status_running",
+				MetricNotEqualTo: "0",
+				Function: []string{"avg"},
+				AggregateBy: []string{"container", "pod", "namespace"},
+			}
+			promResponse, err := client.RunPromQLQuery(promInput)
+			if err != nil {
+				t.Fatalf("Error while calling Prometheus API %v", err)
+			}
 
                         var apiAllocationPodNames []string
                         for podName, _ := range apiResponse.Data.Sets[0].Allocations {
-                                apiAllocationPodNames = append(apiAllocationPodNames, podName)
+                                if !slices.Contains(apiAllocationPodNames, podName){
+                                        apiAllocationPodNames = append(apiAllocationPodNames, podName)
+                                } 
                         }
 
                         var promPodNames []string
                         for _, promItem := range promResponse.Data.Result {
-                                promPodNames = append(promPodNames, promItem.Metric.Pod)
+                                if !slices.Contains(promPodNames, promItem.Metric.Pod){
+                                        promPodNames = append(promPodNames, promItem.Metric.Pod)
+                                }       
                         }
-                        // sort the strings
+
+                        apiAllocationsSummaryCount := len(apiAllocationPodNames)
+                        promAllocationsSummaryCount := len(promPodNames)
+
+                        // sort the string slices
                         sort.Strings(promPodNames)
                         sort.Strings(apiAllocationPodNames)
 
-                        // How to Tackle: Count might be equal the pods might not be the same
+
+                        promPodNamesString := strings.Join(promPodNames, "\n")
+                        apiAllocationPodNamesString := strings.Join(apiAllocationPodNames, "\n")
+
+                        // Old version file are Prometheus Results and New Version filea are API Allocation Results
                         if apiAllocationsSummaryCount != promAllocationsSummaryCount {
                                 diff := difflib.UnifiedDiff{
-                                        A:        promPodNames,
-                                        B:        apiAllocationPodNames,
-                                        FromFile: "Prometheus",
-                                        ToFile:   "AllocationSummary",
+                                        A:        difflib.SplitLines(promPodNamesString),
+                                        B:        difflib.SplitLines(apiAllocationPodNamesString),
+                                        FromFile: "Original",
+                                        ToFile:   "Current",
                                         Context:  3,
                                 }
                                 podNamesDiff, _ := difflib.GetUnifiedDiffString(diff)
-                                t.Errorf("Number of Allocations Responses from Prometheus %d and /allocation/summary %d did not match\n Unified Diff:\n %s", promAllocationsSummaryCount, apiAllocationsSummaryCount, podNamesDiff)
+                                t.Errorf("[Fail]: Number of Pods from Prometheus(%d) and /allocation/summary (%d) did not match.\n Unified Diff:\n %s", promAllocationsSummaryCount, apiAllocationsSummaryCount, podNamesDiff)
                         } else {
-                                t.Logf("Number of Allocations from Promtheus and /allocation/summary match")
+                                t.Logf("[Pass]: Number of Pods from Promtheus and /allocation/summary Match.")
                         }
 
                 })
