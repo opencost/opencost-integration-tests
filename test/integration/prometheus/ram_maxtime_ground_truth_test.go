@@ -29,7 +29,7 @@ package prometheus
 
 import (
 	// "fmt"
-	// "time"
+	"time"
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 	"github.com/opencost/opencost-integration-tests/pkg/utils"
@@ -79,6 +79,8 @@ func TestRAMMax(t *testing.T) {
 			// (container_name, container, pod_name, pod, namespace, node, instance, %s)
 			////////////////////////////////////////////////////////////////////////////
 
+			queryEnd := time.Now().UTC().Truncate(time.Hour).Add(time.Hour)
+			endTime := queryEnd.Unix()
 			// Collect Namespace results from Prometheus
 			client := prometheus.NewClient()
 			promInput := prometheus.PrometheusInput{
@@ -92,6 +94,8 @@ func TestRAMMax(t *testing.T) {
 			promInput.QueryWindow = tc.window
 			promInput.IgnoreFilters = ignoreFilters
 			promInput.AggregateBy = []string{"container", "pod", "namespace", "node", "instance"}
+			promInput.Time = &endTime
+			
 			promResponse, err := client.RunPromQLQuery(promInput)
 			// Do we need container_name and pod_name
 			if err != nil {

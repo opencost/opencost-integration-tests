@@ -15,7 +15,7 @@ teardown() {
 }
 
 @test "prometheus: Max RAM Usage Costs" {
-    go test ./test/integration/prometheus/consolidated_ram_costs_analysis_test.go
+    go test ./test/integration/prometheus/ram_maxtime_ground_truth_test.go
 }
 
 @test "prometheus: PromQL URL Constructor Test" {
