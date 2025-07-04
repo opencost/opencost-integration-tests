@@ -40,7 +40,7 @@ teardown() {
 
 # ------------------------------------------------------
 # GPU Costs
-@test "prometheus: CPUCores, CPUCoreHours and CPUCoreRequestAverage Costs" {
+@test "prometheus: GPUHours and GPURequestAverage Costs" {
     go test ./test/integration/prometheus/gpu__gpu_request_average_costs_analysis_test.go
 }
 
