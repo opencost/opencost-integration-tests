@@ -21,7 +21,7 @@ teardown() {
 # ------------------------------------------------------
 # RAM Costs
 @test "prometheus: RAMBytes, RAMBytesHours and RAMByteRequestAverage Costs" {
-    go test ./test/integration/prometheus/ram_bytehours_ram_request_average_cost_analysis_test.go
+    go test ./test/integration/prometheus/ram_bytehours__ram_request_average_costs_analysis_test.go
 }
 
 @test "prometheus: Max RAM Usage Costs" {
@@ -31,9 +31,17 @@ teardown() {
 
 # ------------------------------------------------------
 # CPU Costs
-
 @test "prometheus: CPUCores, CPUCoreHours and CPUCoreRequestAverage Costs" {
-    go test ./test/integration/prometheus/cpu_corehours_cpu_request_average_costs_analysis_test.go
+    go test ./test/integration/prometheus/cpu_corehours__cpu_request_average_costs_analysis_test.go
+}
+
+# ------------------------------------------------------
+
+
+# ------------------------------------------------------
+# GPU Costs
+@test "prometheus: CPUCores, CPUCoreHours and CPUCoreRequestAverage Costs" {
+    go test ./test/integration/prometheus/gpu__gpu_request_average_costs_analysis_test.go
 }
 
 # ------------------------------------------------------
