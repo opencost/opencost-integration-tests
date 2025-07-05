@@ -129,7 +129,7 @@ func TestRAMCosts(t *testing.T) {
 
 				// Metric: RAMAllocated
 				// avg(avg_over_time(
-				// 		kube_pod_container_resource_requests{
+				// 		container_memory_allocation_bytes{
 				// 			container!="", container!="POD", node!=""
 				// 		}[24h])
 				// )
