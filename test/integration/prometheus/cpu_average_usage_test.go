@@ -77,7 +77,7 @@ func TestCPUAvgUsage(t *testing.T) {
 			}
 
 			for _, promResponseItem := range promResponse.Data.Result {
-				if promResponseItem.Metric.Container != "" {
+				if promResponseItem.Metric.Container == "" {
 					continue
 				}
 				if promResponseItem.Value.Value >= CPU_SANITY_LIMIT {

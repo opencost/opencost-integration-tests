@@ -1,6 +1,6 @@
 package prometheus
 
-// Description - Checks for RAM Average Usage from prometheus and /allocation are the same
+// Description - Checks for GPU Average Usage from prometheus and /allocation are the same
 
 import (
 	// "fmt"
@@ -13,7 +13,7 @@ import (
 
 const tolerance = 0.05
 
-func TestRAMAvgUsage(t *testing.T) {
+func TestGPUAvgUsage(t *testing.T) {
 	apiObj := api.NewAPI()
 
 	testCases := []struct {
@@ -35,19 +35,17 @@ func TestRAMAvgUsage(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
-			type RAMUsageAvgAggregate struct {
+			type GPUUsageAvgAggregate struct {
 				AllocationUsageAvg float64
 				PrometheusUsageAvg float64
 			}
 
-			ramUsageAvgNamespaceMap := make(map[string]*RAMUsageAvgAggregate)
+			gpuUsageAvgNamespaceMap := make(map[string]*GPUUsageAvgAggregate)
 
 			////////////////////////////////////////////////////////////////////////////
-			// RAMAvgUsage Calculation
-			// avg(avg_over_time(container_memory_working_set_bytes{
-			//     container!="", container_name!="POD", container!="POD", %s}[%s]))
-			// by
-			// (container_name, container, pod_name, pod, namespace, node, instance, %s)
+			// GPUAvgUsage Calculation
+
+			// avg(avg_over_time(DCGM_FI_PROF_GR_ENGINE_ACTIVE{container!=""}[%s])) by (container, pod, namespace, %s)
 			////////////////////////////////////////////////////////////////////////////
 
 			queryEnd := time.Now().UTC().Truncate(time.Hour).Add(time.Hour)
@@ -55,16 +53,15 @@ func TestRAMAvgUsage(t *testing.T) {
 			// Collect Namespace results from Prometheus
 			client := prometheus.NewClient()
 			promInput := prometheus.PrometheusInput{
-				Metric: "container_memory_working_set_bytes",
+				Metric: "DCGM_FI_PROF_GR_ENGINE_ACTIVE",
 			}
 			ignoreFilters := map[string][]string{
-				"container": {"", "POD"},
-				"node":      {""},
+				"container": {""},
 			}
 			promInput.Function = []string{"avg_over_time", "avg"}
 			promInput.QueryWindow = tc.window
 			promInput.IgnoreFilters = ignoreFilters
-			promInput.AggregateBy = []string{"container", "pod", "namespace", "node", "instance"}
+			promInput.AggregateBy = []string{"container", "pod", "namespace"}
 			promInput.Time = &endTime
 			
 			promResponse, err := client.RunPromQLQuery(promInput)
@@ -77,15 +74,15 @@ func TestRAMAvgUsage(t *testing.T) {
 				if promResponseItem.Metric.Container == "" {
 					continue
 				}
-				ramUsageAvgPod, ok := ramUsageAvgNamespaceMap[promResponseItem.Metric.Namespace]
+				gpuUsageAvgPod, ok := gpuUsageAvgNamespaceMap[promResponseItem.Metric.Namespace]
 				if !ok {
-					ramUsageAvgNamespaceMap[promResponseItem.Metric.Namespace] = &RAMUsageAvgAggregate{
+					gpuUsageAvgNamespaceMap[promResponseItem.Metric.Namespace] = &GPUUsageAvgAggregate{
 						PrometheusUsageAvg: promResponseItem.Value.Value,
 						AllocationUsageAvg: 0.0,
 					}
 					continue
 				}
-				ramUsageAvgPod.PrometheusUsageAvg += promResponseItem.Value.Value
+				gpuUsageAvgPod.PrometheusUsageAvg += promResponseItem.Value.Value
 			}
 
 			/////////////////////////////////////////////
@@ -106,25 +103,25 @@ func TestRAMAvgUsage(t *testing.T) {
 			}
 
 			for namespace, allocationResponseItem := range apiResponse.Data[0] {
-				ramUsageAvgPod, ok := ramUsageAvgNamespaceMap[namespace]
+				gpuUsageAvgPod, ok := gpuUsageAvgNamespaceMap[namespace]
 				if !ok {
-					ramUsageAvgNamespaceMap[namespace] = &RAMUsageAvgAggregate{
-						AllocationUsageAvg: allocationResponseItem.RAMBytesUsageAverage,
+					gpuUsageAvgNamespaceMap[namespace] = &GPUUsageAvgAggregate{
+						AllocationUsageAvg: allocationResponseItem.GPUAllocation.GPUUsageAverage,
 					}
 					continue
 				}
-				ramUsageAvgPod.AllocationUsageAvg += allocationResponseItem.RAMBytesUsageAverage
+				gpuUsageAvgPod.AllocationUsageAvg += allocationResponseItem.GPUAllocation.GPUUsageAverage
 			}
 
 			t.Logf("\nAvg Values for Namespaces.\n")
 			// Windows are not accurate for prometheus and allocation
-			for namespace, ramAvgUsageValues := range ramUsageAvgNamespaceMap {
+			for namespace, gpuAvgUsageValues := range gpuUsageAvgNamespaceMap {
 				t.Logf("Namespace %s", namespace)
-				withinRange, diff_percent := utils.AreWithinPercentage(ramAvgUsageValues.PrometheusUsageAvg, ramAvgUsageValues.AllocationUsageAvg, tolerance)
+				withinRange, diff_percent := utils.AreWithinPercentage(gpuAvgUsageValues.PrometheusUsageAvg, gpuAvgUsageValues.AllocationUsageAvg, tolerance)
 				if !withinRange {
-					t.Errorf("RAMUsageAvg[Fail]: DifferencePercent %0.2f, Prometheus: %0.2f, /allocation: %0.2f", diff_percent, ramAvgUsageValues.PrometheusUsageAvg, ramAvgUsageValues.AllocationUsageAvg)
+					t.Errorf("GPUUsageAvg[Fail]: DifferencePercent %0.2f, Prometheus: %0.2f, /allocation: %0.2f", diff_percent, gpuAvgUsageValues.PrometheusUsageAvg, gpuAvgUsageValues.AllocationUsageAvg)
 				} else {
-					t.Logf("RAMUsageAvg[Pass]: ~ %v", ramAvgUsageValues.PrometheusUsageAvg)
+					t.Logf("GPUUsageAvg[Pass]: ~ %v", gpuAvgUsageValues.PrometheusUsageAvg)
 				}
 			}
 		})
