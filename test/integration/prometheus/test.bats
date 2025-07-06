@@ -53,6 +53,10 @@ teardown() {
     go test ./test/integration/prometheus/gpu__gpu_request_average_costs_analysis_test.go
 }
 
+@test "prometheus: Max GPU Usage Costs" {
+    go test ./test/integration/prometheus/gpu_maxtime_ground_truth_test.go
+}
+
 @test "prometheus: Average GPU Usage Costs" {
     go test ./test/integration/prometheus/gpu_average_usage_test.go
 }

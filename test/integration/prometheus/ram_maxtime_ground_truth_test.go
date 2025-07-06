@@ -103,6 +103,9 @@ func TestRAMMax(t *testing.T) {
 			}
 
 			for _, promResponseItem := range promResponse.Data.Result {
+				if promResponseItem.Metric.Container == "" {
+					continue
+				}
 				ramUsageMaxPod, ok := ramUsageMaxPodMap[promResponseItem.Metric.Pod]
 				if !ok {
 					ramUsageMaxPodMap[promResponseItem.Metric.Pod] = &RAMUsageMaxAggregate{
@@ -137,6 +140,7 @@ func TestRAMMax(t *testing.T) {
 				ramUsageMaxPod, ok := ramUsageMaxPodMap[allocationResponseItem.Properties.Pod]
 				if !ok {
 					ramUsageMaxPodMap[allocationResponseItem.Properties.Pod] = &RAMUsageMaxAggregate{
+						PrometheusUsageMax: 0.0,
 						AllocationUsageMax: allocationResponseItem.RawAllocationsOnly.RAMByteUsageMax,
 					}
 					continue
