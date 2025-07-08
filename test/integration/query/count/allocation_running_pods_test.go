@@ -77,6 +77,10 @@ func TestQueryAllocation(t *testing.T) {
 			var apiAggregateCount = make(map[string]*podAggregation)
 
 			for pod, allocationResponeItem := range apiResponse.Data[0] {
+				// Synthetic value generated and returned by /allocation and not /prometheus
+				if pod == "prometheus-system-unmounted-pvcs" {
+					continue
+				}
 				podNamespace := allocationResponeItem.Properties.Namespace
 				apiAggregateItem, namespacePresent := apiAggregateCount[podNamespace]
 				if !namespacePresent {
