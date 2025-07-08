@@ -121,8 +121,6 @@ type AllocationResponseItem struct {
 	NetworkCrossRegionCost         float64                                 `json:"networkCrossRegionCost"`
 	NetworkInternetCost            float64                                 `json:"networkInternetCost"`
 	NetworkCostAdjustment          float64                                 `json:"networkCostAdjustment"`
-	PVBytes						   float64								   `json:"pvBytes`
-	PVByteHours					   float64								   `json:"pvByteHours`
 	LoadBalancerCost               float64                                 `json:"loadBalancerCost"`
 	LoadBalancerCostAdjustment     float64                                 `json:"loadBalancerCostAdjustment"`
 	PersistentVolumes              AllocationResponseItemPersistentVolumes `json:"pvs"`
