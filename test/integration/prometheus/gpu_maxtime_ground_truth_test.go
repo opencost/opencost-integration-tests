@@ -25,7 +25,7 @@ func TestGPUMax(t *testing.T) {
 		{
 			name:       "Yesterday",
 			window:     "24h",
-			aggregate:  "pod",
+			aggregate:  "container,pod",
 			accumulate: "false",
 		},
 	}
