@@ -44,6 +44,10 @@ teardown() {
     go test ./test/integration/prometheus/cpu_average_usage_test.go
 }
 
+@test "prometheus: Max CPU Usage Costs" {
+    go test ./test/integration/prometheus/cpu_maxtime_ground_truth_test.go
+}
+
 # ------------------------------------------------------
 
 
