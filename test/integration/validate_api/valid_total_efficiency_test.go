@@ -1,9 +1,8 @@
 package validate_api
 
-// Tests AllocationAPI returns a valid output for TotalEfficiency 
+// Tests AllocationAPI returns a valid output for TotalEfficiency
 // The test assumes a valid efficiency value (based on the literal definition of efficiency) to be between 0% and 100%.
 // API returns TotalEfficiency as a float64 value between 0.0 and 1.0. a 1.0 value signifies INF (Infinite) Efficieny in the dashboard.
-
 
 // Test Cases
 // Designed to test various payload combinations in the API
@@ -11,38 +10,37 @@ package validate_api
 // API Payload combinations include varying "aggregate" and "window" values. Ex: aggregate=namespace&window=today, aggregate=service&window=yesterday
 // Currency just seems to prepend the respective currency symbol, so not testing it here
 
-
 // Pass Criteria
 // If all items identified by their name have valid TotalEfficiency
 import (
 	"fmt"
-	"time"
-	"testing"
 	"github.com/opencost/opencost-integration-tests/pkg/api"
+	"testing"
+	"time"
 )
 
 func TestTotalEfficiencyValue(t *testing.T) {
 	apiObj := api.NewAPI()
 
 	testCases := []struct {
-		name		string
+		name        string
 		window      string
 		aggregate   string
 		accumulate  string
 		includeidle string
 	}{
 		{
-			name: "Today",
-			window: "today",
-			aggregate: "namespace",
-			accumulate: "false",
+			name:        "Today",
+			window:      "today",
+			aggregate:   "namespace",
+			accumulate:  "false",
 			includeidle: "true",
 		},
 		{
-			name: "Yesterday",
-			window: "yesterday",
-			aggregate: "cluster",
-			accumulate: "false",
+			name:        "Yesterday",
+			window:      "yesterday",
+			aggregate:   "cluster",
+			accumulate:  "false",
 			includeidle: "true",
 		},
 		// {
@@ -82,9 +80,9 @@ func TestTotalEfficiencyValue(t *testing.T) {
 				)
 			}
 			response, err := apiObj.GetAllocation(api.AllocationRequest{
-				Window: tc.window,
-				Aggregate: tc.aggregate,
-				Accumulate: tc.accumulate,
+				Window:      tc.window,
+				Aggregate:   tc.aggregate,
+				Accumulate:  tc.accumulate,
 				IncludeIdle: tc.includeidle,
 			})
 			// Catch API Request Errors
@@ -106,7 +104,7 @@ func TestTotalEfficiencyValue(t *testing.T) {
 						t.Errorf("Total Efficiency for %v is an Invalid Value: %v", mapkey, allocationRequestObj.TotalEfficiency)
 					}
 				}
-		}
+			}
 		})
 	}
 }

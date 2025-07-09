@@ -4,11 +4,11 @@ package prometheus
 
 import (
 	// "fmt"
-	"time"
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 	"github.com/opencost/opencost-integration-tests/pkg/utils"
 	"testing"
+	"time"
 )
 
 const tolerance = 0.05
@@ -66,7 +66,7 @@ func TestGPUMax(t *testing.T) {
 			promInput.IgnoreFilters = ignoreFilters
 			promInput.AggregateBy = []string{"container", "pod", "namespace"}
 			promInput.Time = &endTime
-			
+
 			promResponse, err := client.RunPromQLQuery(promInput)
 			// Do we need container_name and pod_name
 			if err != nil {

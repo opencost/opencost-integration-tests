@@ -3,33 +3,32 @@ package count
 // Description - Checks for the aggregate count of pods for each namespace from prometheus request
 // and allocation API request are the same
 
-
 // Both prometheus and allocation seem to be returning duplicate results. Does this we might be double counting costs times?
 
 import (
 	// "fmt"
-	"time"
-	"sort"
-	"strings"
-	"slices"
-	"testing"
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
+	"slices"
+	"sort"
+	"strings"
+	"testing"
+	"time"
 )
 
 func TestQueryAllocation(t *testing.T) {
 	apiObj := api.NewAPI()
 
 	testCases := []struct {
-		name		string
-		window      string
-		aggregate   string
-		accumulate  string
+		name       string
+		window     string
+		aggregate  string
+		accumulate string
 	}{
 		{
-			name: "Yesterday",
-			window: "24h",
-			aggregate: "pod",
+			name:       "Yesterday",
+			window:     "24h",
+			aggregate:  "pod",
 			accumulate: "false",
 		},
 	}
@@ -41,8 +40,8 @@ func TestQueryAllocation(t *testing.T) {
 
 			// API Client
 			apiResponse, err := apiObj.GetAllocation(api.AllocationRequest{
-				Window: tc.window,
-				Aggregate: tc.aggregate,
+				Window:     tc.window,
+				Aggregate:  tc.aggregate,
 				Accumulate: tc.accumulate,
 			})
 
@@ -63,19 +62,18 @@ func TestQueryAllocation(t *testing.T) {
 			promInput := prometheus.PrometheusInput{
 				Metric: "kube_pod_container_status_running",
 				// MetricNotEqualTo: "0",
-				Function: []string{"avg_over_time", "avg"},
+				Function:    []string{"avg_over_time", "avg"},
 				QueryWindow: tc.window,
 				AggregateBy: []string{"container", "pod", "namespace"},
-				Time: &endTime,
-
+				Time:        &endTime,
 			}
 			promResponse, err := client.RunPromQLQuery(promInput)
 			if err != nil {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}
-			
+
 			// Calculate Number of Pods per Aggregate for API Object
-			type podAggregation struct  {
+			type podAggregation struct {
 				Pods []string
 			}
 			// Namespace based calculation
@@ -93,7 +91,7 @@ func TestQueryAllocation(t *testing.T) {
 						Pods: []string{pod},
 					}
 					continue
-				} 
+				}
 				if allocationResponeItem.Properties.Pod == "" {
 					continue
 				}
@@ -101,7 +99,7 @@ func TestQueryAllocation(t *testing.T) {
 					apiAggregateItem.Pods = append(apiAggregateItem.Pods, pod)
 				}
 			}
-            
+
 			// Calculate Number of Pods per Aggregate for Prom Object
 			var promAggregateCount = make(map[string]*podAggregation)
 

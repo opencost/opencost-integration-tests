@@ -1,6 +1,6 @@
 package allocation
 
-// Tests AllocationAPI returns a valid Window.start and Window.end 
+// Tests AllocationAPI returns a valid Window.start and Window.end
 // This is PoC test, there are lot of cases like "lastweek", "30m" and Unix timestamp values
 // Since I don't find the end date calculation consistent in the response, I have chosen to hardcode based on simple examples.
 
@@ -8,9 +8,9 @@ package allocation
 // If Window.Start and Window.End correspond to the same time window as Input Window Argument
 
 import (
-	"time"
-	"testing"
 	"github.com/opencost/opencost-integration-tests/pkg/api"
+	"testing"
+	"time"
 )
 
 //Calculate time window given a time string
@@ -23,57 +23,57 @@ func calculateTimeWindow(window string, apiObj api.Window) (bool, api.Window) {
 	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 
 	switch window {
-		case "today":
-			startTime = todayStart
-			endTime = todayStart.Add(24 * time.Hour)
-		case "yesterday":
-			startTime = todayStart.AddDate(0, 0, -1) 
-			endTime = todayStart           
-		case "7d":
-			startTime = todayStart.AddDate(0, 0, -6) // or todayStart.Add(24 * time.Hour).AddDate(0, 0, -7)
-			endTime = todayStart.Add(24 * time.Hour)
-		default:
-			return false, api.Window{}
-		}
+	case "today":
+		startTime = todayStart
+		endTime = todayStart.Add(24 * time.Hour)
+	case "yesterday":
+		startTime = todayStart.AddDate(0, 0, -1)
+		endTime = todayStart
+	case "7d":
+		startTime = todayStart.AddDate(0, 0, -6) // or todayStart.Add(24 * time.Hour).AddDate(0, 0, -7)
+		endTime = todayStart.Add(24 * time.Hour)
+	default:
+		return false, api.Window{}
+	}
 
-		calculatedWindow := api.Window{
-			Start: startTime,
-			End: endTime,
-		}
-		// Compare and set status
-		if calculatedWindow.Start == apiObj.Start && calculatedWindow.End == apiObj.End {
-			windowComparisonStatus = true
-		}
+	calculatedWindow := api.Window{
+		Start: startTime,
+		End:   endTime,
+	}
+	// Compare and set status
+	if calculatedWindow.Start == apiObj.Start && calculatedWindow.End == apiObj.End {
+		windowComparisonStatus = true
+	}
 
-		return windowComparisonStatus, calculatedWindow
+	return windowComparisonStatus, calculatedWindow
 }
 
 func TestResponseWindowandInput(t *testing.T) {
 	apiObj := api.NewAPI()
 
 	testCases := []struct {
-		name		string
+		name        string
 		window      string
 		aggregate   string
 		accumulate  string
 		includeidle string
 	}{
 		{
-			name: "Today",
-			window: "today",
-			aggregate: "namespace",
+			name:       "Today",
+			window:     "today",
+			aggregate:  "namespace",
 			accumulate: "false",
 		},
 		{
-			name: "Yesterday",
-			window: "yesterday",
-			aggregate: "cluster",
+			name:       "Yesterday",
+			window:     "yesterday",
+			aggregate:  "cluster",
 			accumulate: "false",
 		},
 		{
-			name: "week",
-			window: "7d",
-			aggregate: "namespace",
+			name:       "week",
+			window:     "7d",
+			aggregate:  "namespace",
 			accumulate: "false",
 		},
 	}
@@ -83,9 +83,9 @@ func TestResponseWindowandInput(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			response, err := apiObj.GetAllocation(api.AllocationRequest{
-				Window: tc.window,
-				Aggregate: tc.aggregate,
-				Accumulate: tc.accumulate,
+				Window:      tc.window,
+				Aggregate:   tc.aggregate,
+				Accumulate:  tc.accumulate,
 				IncludeIdle: tc.includeidle,
 			})
 			// Catch API Request Errors
@@ -107,7 +107,7 @@ func TestResponseWindowandInput(t *testing.T) {
 						t.Errorf("Response Window %v does not match Input Windows %v", calcualtedWindow, allocationRequestObj.Window)
 					}
 				}
-		}
+			}
 		})
 	}
 }

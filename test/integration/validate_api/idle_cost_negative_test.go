@@ -15,14 +15,14 @@ package validate_api
 import (
 	// "fmt"
 	// "time"
-	"testing"
 	"github.com/opencost/opencost-integration-tests/pkg/api"
+	"testing"
 )
 
 // Checks relevant cost fields in an AllocationResponseItem for negative values
-func checkNegativeCosts(m api.AllocationResponseItem) (bool, []string){
+func checkNegativeCosts(m api.AllocationResponseItem) (bool, []string) {
 
-	isNegative := false // Flag to track if any negative value is found
+	isNegative := false         // Flag to track if any negative value is found
 	var negativeFields []string // To store names of negative fields
 
 	// Check each field individually
@@ -86,17 +86,17 @@ func TestNegativeIdleCosts(t *testing.T) {
 	apiObj := api.NewAPI()
 
 	testCases := []struct {
-		name		string
+		name        string
 		window      string
 		aggregate   string
 		accumulate  string
 		includeidle string
 	}{
 		{
-			name: "Today",
-			window: "today",
-			aggregate: "namespace",
-			accumulate: "false",
+			name:        "Today",
+			window:      "today",
+			aggregate:   "namespace",
+			accumulate:  "false",
 			includeidle: "true",
 		},
 		// { // This test is meant to fail because there is no includeidle field, i.e no __idle__
@@ -106,10 +106,10 @@ func TestNegativeIdleCosts(t *testing.T) {
 		// 	accumulate: "false",
 		// },
 		{
-			name: "Yesterday",
-			window: "yesterday",
-			aggregate: "node",
-			accumulate: "false",
+			name:        "Yesterday",
+			window:      "yesterday",
+			aggregate:   "node",
+			accumulate:  "false",
 			includeidle: "true",
 		},
 		// {
@@ -150,9 +150,9 @@ func TestNegativeIdleCosts(t *testing.T) {
 			// }
 
 			response, err := apiObj.GetAllocation(api.AllocationRequest{
-				Window: tc.window,
-				Aggregate: tc.aggregate,
-				Accumulate: tc.accumulate,
+				Window:      tc.window,
+				Aggregate:   tc.aggregate,
+				Accumulate:  tc.accumulate,
 				IncludeIdle: tc.includeidle,
 			})
 

@@ -11,11 +11,10 @@ package validate_api
 // Passing Criteria
 // AllocationResponseItem.TotalCost and "CalculatedCost", when rounded to first two decimal places, must exhibit a variance not exceeding 0.5.
 
-
 import (
+	"github.com/opencost/opencost-integration-tests/pkg/api"
 	"math"
 	"testing"
-	"github.com/opencost/opencost-integration-tests/pkg/api"
 )
 
 func RoundUpToTwoDecimals(num float64) float64 {
@@ -26,7 +25,7 @@ func RoundUpToTwoDecimals(num float64) float64 {
 }
 
 // Checks relevant cost fields in an AllocationResponseItem for negative values
-func addIndividualCosts(m api.AllocationResponseItem) (float64, float64){
+func addIndividualCosts(m api.AllocationResponseItem) (float64, float64) {
 
 	calculated_totalCost := 0.0
 	// Add Resource Usage Costs for item
@@ -40,24 +39,24 @@ func TestSumofCostsnTotalCosts(t *testing.T) {
 	apiObj := api.NewAPI()
 
 	testCases := []struct {
-		name		string
+		name        string
 		window      string
 		aggregate   string
 		accumulate  string
 		includeidle string
 	}{
 		{
-			name: "Today",
-			window: "today",
-			aggregate: "namespace",
-			accumulate: "false",
+			name:        "Today",
+			window:      "today",
+			aggregate:   "namespace",
+			accumulate:  "false",
 			includeidle: "true",
 		},
 		{
-			name: "Yesterday",
-			window: "yesterday",
-			aggregate: "cluster",
-			accumulate: "false",
+			name:        "Yesterday",
+			window:      "yesterday",
+			aggregate:   "cluster",
+			accumulate:  "false",
 			includeidle: "true",
 		},
 		// {
@@ -81,11 +80,10 @@ func TestSumofCostsnTotalCosts(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
-
 			response, err := apiObj.GetAllocation(api.AllocationRequest{
-				Window: tc.window,
-				Aggregate: tc.aggregate,
-				Accumulate: tc.accumulate,
+				Window:      tc.window,
+				Aggregate:   tc.aggregate,
+				Accumulate:  tc.accumulate,
 				IncludeIdle: tc.includeidle,
 			})
 
@@ -105,7 +103,7 @@ func TestSumofCostsnTotalCosts(t *testing.T) {
 
 					// Compute Error Margin
 					acceptableErrorMargin := 0.5
-					errorMargin := math.Abs(totalCost - calculated_totalCost) / totalCost
+					errorMargin := math.Abs(totalCost-calculated_totalCost) / totalCost
 					if errorMargin > acceptableErrorMargin {
 						t.Errorf("Resource Costs: %v", allocationRequestObj)
 						t.Errorf("Total Cost: %v did not match computed cost: %v", totalCost, calculated_totalCost)
@@ -113,8 +111,8 @@ func TestSumofCostsnTotalCosts(t *testing.T) {
 						t.Logf("%v passed", mapkey)
 					}
 
+				}
 			}
-		}
 		})
 	}
 }

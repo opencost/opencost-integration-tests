@@ -14,15 +14,15 @@ package allocation
 
 import (
 	"fmt"
-	"time"
-	"testing"
 	"github.com/opencost/opencost-integration-tests/pkg/api"
+	"testing"
+	"time"
 )
 
 // Checks relevant cost fields in an AllocationResponseItem for negative values
-func checkNegativeCosts(m api.AllocationResponseItem) (bool, []string){
+func checkNegativeCosts(m api.AllocationResponseItem) (bool, []string) {
 
-	isNegative := false // Flag to track if any negative value is found
+	isNegative := false         // Flag to track if any negative value is found
 	var negativeFields []string // To store names of negative fields
 
 	// Check each field individually
@@ -86,45 +86,45 @@ func TestNegativeIdleCosts(t *testing.T) {
 	apiObj := api.NewAPI()
 
 	testCases := []struct {
-		name		string
+		name        string
 		window      string
 		aggregate   string
 		accumulate  string
 		includeidle string
 	}{
 		{
-			name: "Today",
-			window: "today",
-			aggregate: "namespace",
-			accumulate: "false",
+			name:        "Today",
+			window:      "today",
+			aggregate:   "namespace",
+			accumulate:  "false",
 			includeidle: "true",
 		},
 		{
-			name: "Yesterday",
-			window: "yesterday",
-			aggregate: "node",
-			accumulate: "false",
+			name:        "Yesterday",
+			window:      "yesterday",
+			aggregate:   "node",
+			accumulate:  "false",
 			includeidle: "true",
 		},
 		{
-			name: "Last week",
-			window: "week",
-			aggregate: "service",
-			accumulate: "false",
+			name:        "Last week",
+			window:      "week",
+			aggregate:   "service",
+			accumulate:  "false",
 			includeidle: "true",
 		},
 		{
-			name: "Last 14 days",
-			window: "14d",
-			aggregate: "pod",
-			accumulate: "false",
+			name:        "Last 14 days",
+			window:      "14d",
+			aggregate:   "pod",
+			accumulate:  "false",
 			includeidle: "true",
 		},
 		{
-			name: "Custom",
-			window: "%sT00:00:00Z,%sT00:00:00Z", // This can be generated dynamically based on the running time
-			aggregate: "namespace",
-			accumulate: "false",
+			name:        "Custom",
+			window:      "%sT00:00:00Z,%sT00:00:00Z", // This can be generated dynamically based on the running time
+			aggregate:   "namespace",
+			accumulate:  "false",
 			includeidle: "true",
 		},
 	}
@@ -144,9 +144,9 @@ func TestNegativeIdleCosts(t *testing.T) {
 			}
 
 			response, err := apiObj.GetAllocation(api.AllocationRequest{
-				Window: tc.window,
-				Aggregate: tc.aggregate,
-				Accumulate: tc.accumulate,
+				Window:      tc.window,
+				Aggregate:   tc.aggregate,
+				Accumulate:  tc.accumulate,
 				IncludeIdle: tc.includeidle,
 			})
 
