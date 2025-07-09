@@ -5,7 +5,7 @@ package count
 
 import (
         // "fmt"
-        // "time"
+        "time"
         "github.com/opencost/opencost-integration-tests/pkg/api"
         "github.com/opencost/opencost-integration-tests/pkg/prometheus"
         "testing"
@@ -52,7 +52,9 @@ func TestQueryAllocationSummary(t *testing.T) {
                                 t.Errorf("API returned non-200 code")
                         }
 
-                        // Prometheus Client
+                        queryEnd := time.Now().UTC().Truncate(time.Hour).Add(time.Hour)
+			endTime := queryEnd.Unix()
+
                         // Prometheus Client
 			client := prometheus.NewClient()
 			promInput := prometheus.PrometheusInput{
@@ -60,8 +62,10 @@ func TestQueryAllocationSummary(t *testing.T) {
 				MetricNotEqualTo: "0",
 				Function: []string{"avg"},
 				AggregateBy: []string{"container", "pod", "namespace"},
+                                Time: &endTime,
 			}
 			promResponse, err := client.RunPromQLQuery(promInput)
+       
 			if err != nil {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}

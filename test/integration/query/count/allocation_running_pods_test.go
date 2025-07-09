@@ -8,7 +8,7 @@ package count
 
 import (
 	// "fmt"
-	// "time"
+	"time"
 	"sort"
 	"strings"
 	"slices"
@@ -53,9 +53,12 @@ func TestQueryAllocation(t *testing.T) {
 				t.Errorf("API returned non-200 code")
 			}
 
+			queryEnd := time.Now().UTC().Truncate(time.Hour).Add(time.Hour)
+			endTime := queryEnd.Unix()
+
 			// Prometheus Client
-			// Want to Run avg(avg_over_time(kube_pod_container_status_running[24h]) == 0) by (container, pod, containernamespace)
-			// Running avg(avg_over_time(kube_pod_container_status_running[24h])) by (container, pod, containernamespace)
+			// Want to Run avg(avg_over_time(kube_pod_container_status_running[24h]) == 0) by (container, pod, namespace)
+			// Running avg(avg_over_time(kube_pod_container_status_running[24h])) by (container, pod, namespace)
 			client := prometheus.NewClient()
 			promInput := prometheus.PrometheusInput{
 				Metric: "kube_pod_container_status_running",
@@ -63,6 +66,8 @@ func TestQueryAllocation(t *testing.T) {
 				Function: []string{"avg_over_time", "avg"},
 				QueryWindow: tc.window,
 				AggregateBy: []string{"container", "pod", "namespace"},
+				Time: &endTime,
+
 			}
 			promResponse, err := client.RunPromQLQuery(promInput)
 			if err != nil {
