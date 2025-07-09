@@ -241,9 +241,6 @@ func (c *Client) RunPromQLQuery(promQLArgs PrometheusInput) (PrometheusResponse,
 	}
 	defer promResp.Body.Close()
 
-	// AlterNative Implementation that requires the entire dataset to be in memory
-	// var promResult PromethesResponse
-	// err = json.Unmarshal([]byte(promResp.Body), &promResult)
 	if err := json.NewDecoder(promResp.Body).Decode(&promData); err != nil {
 		return promData, fmt.Errorf("failed to query Prometheus: %v", err)
 	}

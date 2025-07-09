@@ -18,3 +18,10 @@ func AreWithinPercentage(num1, num2, tolerance float64) (bool, float64) {
 	
 	return (diff <= (reference * tolerance)), diff_percent
 }
+
+func RoundUpToTwoDecimals(num float64) float64 {
+
+	temp := num * 100
+	roundedTemp := math.Round(temp)
+	return roundedTemp / 100
+}

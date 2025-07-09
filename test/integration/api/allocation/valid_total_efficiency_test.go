@@ -45,27 +45,27 @@ func TestTotalEfficiencyValue(t *testing.T) {
 			accumulate: "false",
 			includeidle: "true",
 		},
-		// {
-		// 	name: "Last week",
-		// 	window: "week",
-		// 	aggregate: "container",
-		// 	accumulate: "false",
-		// 	includeidle: "true",
-		// },
-		// {
-		// 	name: "Last 14 days",
-		// 	window: "14d",
-		// 	aggregate: "service",
-		// 	accumulate: "false",
-		// 	includeidle: "true",
-		// },
-		// {
-		// 	name: "Custom",
-		// 	window: "%sT00:00:00Z,%sT00:00:00Z", // This can be generated dynamically based on the running time
-		// 	aggregate: "namespace",
-		// 	accumulate: "false",
-		// 	includeidle: "true",
-		// },
+		{
+			name: "Last week",
+			window: "week",
+			aggregate: "container",
+			accumulate: "false",
+			includeidle: "true",
+		},
+		{
+			name: "Last 14 days",
+			window: "14d",
+			aggregate: "service",
+			accumulate: "false",
+			includeidle: "true",
+		},
+		{
+			name: "Custom",
+			window: "%sT00:00:00Z,%sT00:00:00Z", // This can be generated dynamically based on the running time
+			aggregate: "namespace",
+			accumulate: "false",
+			includeidle: "true",
+		},
 	}
 
 	t.Logf("testCases: %v", testCases)
