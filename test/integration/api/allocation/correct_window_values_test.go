@@ -1,4 +1,4 @@
-package validate_api
+package allocation
 
 // Tests AllocationAPI returns a valid Window.start and Window.end
 // This is PoC test, there are lot of cases like "lastweek", "30m" and Unix timestamp values
@@ -36,16 +36,16 @@ func calculateTimeWindow(window string, apiObj api.Window) (bool, api.Window) {
 		return false, api.Window{}
 	}
 
-	calcualtedWindow := api.Window{
+	calculatedWindow := api.Window{
 		Start: startTime,
 		End:   endTime,
 	}
 	// Compare and set status
-	if calcualtedWindow.Start == apiObj.Start && calcualtedWindow.End == apiObj.End {
+	if calculatedWindow.Start == apiObj.Start && calculatedWindow.End == apiObj.End {
 		windowComparisonStatus = true
 	}
 
-	return windowComparisonStatus, calcualtedWindow
+	return windowComparisonStatus, calculatedWindow
 }
 
 func TestResponseWindowandInput(t *testing.T) {
