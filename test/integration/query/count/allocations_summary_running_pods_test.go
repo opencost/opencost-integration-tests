@@ -55,14 +55,18 @@ func TestQueryAllocationSummary(t *testing.T) {
 			endTime := queryEnd.Unix()
 
 			// Prometheus Client
+			// Want to Run avg(avg_over_time(kube_pod_container_status_running[24h]) == 0) by (container, pod, namespace)
+			// Running avg(avg_over_time(kube_pod_container_status_running[24h])) by (container, pod, namespace)
 			client := prometheus.NewClient()
 			promInput := prometheus.PrometheusInput{
-				Metric:           "kube_pod_container_status_running",
-				MetricNotEqualTo: "0",
-				Function:         []string{"avg"},
-				AggregateBy:      []string{"container", "pod", "namespace"},
-				Time:             &endTime,
+				Metric: "kube_pod_container_status_running",
+				// MetricNotEqualTo: "0",
+				Function:    []string{"avg_over_time", "avg"},
+				QueryWindow: tc.window,
+				AggregateBy: []string{"container", "pod", "namespace"},
+				Time:        &endTime,
 			}
+
 			promResponse, err := client.RunPromQLQuery(promInput)
 
 			if err != nil {
@@ -82,6 +86,10 @@ func TestQueryAllocationSummary(t *testing.T) {
 
 			var promPodNames []string
 			for _, promItem := range promResponse.Data.Result {
+				// This pod was down, unable to do it with the query
+				if promItem.Value.Value == 0 {
+					continue
+				}
 				if !slices.Contains(promPodNames, promItem.Metric.Pod) {
 					promPodNames = append(promPodNames, promItem.Metric.Pod)
 				}

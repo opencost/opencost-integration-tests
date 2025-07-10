@@ -67,6 +67,7 @@ func TestQueryAllocation(t *testing.T) {
 				AggregateBy: []string{"container", "pod", "namespace"},
 				Time:        &endTime,
 			}
+
 			promResponse, err := client.RunPromQLQuery(promInput)
 			if err != nil {
 				t.Fatalf("Error while calling Prometheus API %v", err)
