@@ -1,4 +1,4 @@
-package validate_api
+package allocation
 
 // Description
 // Validate if when idle costs are spread across resources, the net sum of the split to all resources is equal to the idle cost for that resource when in a separate namespace __idle__
@@ -10,16 +10,9 @@ package validate_api
 
 import (
 	"github.com/opencost/opencost-integration-tests/pkg/api"
-	"math"
+	"github.com/opencost/opencost-integration-tests/pkg/utils"
 	"testing"
 )
-
-func RoundUpToTwoDecimals(num float64) float64 {
-
-	temp := num * 100
-	roundedTemp := math.Round(temp)
-	return roundedTemp / 100
-}
 
 func TestIdleSharingWorkflow(t *testing.T) {
 	apiObj := api.NewAPI()
@@ -84,24 +77,24 @@ func TestIdleSharingWorkflow(t *testing.T) {
 			}
 		}
 
-		calculated_idle_costs_cpu := RoundUpToTwoDecimals(separate_idle_all_cpu_sum - shared_idle_all_cpu_sum)
-		calculated_idle_costs_gpu := RoundUpToTwoDecimals(separate_idle_all_gpu_sum - shared_idle_all_gpu_sum)
-		calculated_idle_costs_ram := RoundUpToTwoDecimals(separate_idle_all_ram_sum - shared_idle_all_ram_sum)
+		calculated_idle_costs_cpu := utils.RoundUpToTwoDecimals(separate_idle_all_cpu_sum - shared_idle_all_cpu_sum)
+		calculated_idle_costs_gpu := utils.RoundUpToTwoDecimals(separate_idle_all_gpu_sum - shared_idle_all_gpu_sum)
+		calculated_idle_costs_ram := utils.RoundUpToTwoDecimals(separate_idle_all_ram_sum - shared_idle_all_ram_sum)
 
-		if calculated_idle_costs_cpu == RoundUpToTwoDecimals(separate_idle_response.Data[0]["__idle__"].CPUCost) {
+		if calculated_idle_costs_cpu == utils.RoundUpToTwoDecimals(separate_idle_response.Data[0]["__idle__"].CPUCost) {
 			t.Logf("Idle Values are Completely distributed amoung other namespace CPU resources")
 		} else {
-			t.Errorf("Sum of Idle values distributed %v do not match original idle_value %v for CPU", calculated_idle_costs_cpu, RoundUpToTwoDecimals(separate_idle_response.Data[0]["__idle__"].CPUCost))
+			t.Errorf("Sum of Idle values distributed %v do not match original idle_value %v for CPU", calculated_idle_costs_cpu, utils.RoundUpToTwoDecimals(separate_idle_response.Data[0]["__idle__"].CPUCost))
 		}
-		if calculated_idle_costs_gpu == RoundUpToTwoDecimals(separate_idle_response.Data[0]["__idle__"].GPUCost) {
+		if calculated_idle_costs_gpu == utils.RoundUpToTwoDecimals(separate_idle_response.Data[0]["__idle__"].GPUCost) {
 			t.Logf("Idle Values are Completely distributed amoung other namespace GPU resources")
 		} else {
-			t.Errorf("Sum of Idle values distributed %v do not match original idle_value %v for GPU", calculated_idle_costs_gpu, RoundUpToTwoDecimals(separate_idle_all_gpu_sum-shared_idle_all_gpu_sum))
+			t.Errorf("Sum of Idle values distributed %v do not match original idle_value %v for GPU", calculated_idle_costs_gpu, utils.RoundUpToTwoDecimals(separate_idle_all_gpu_sum-shared_idle_all_gpu_sum))
 		}
-		if calculated_idle_costs_ram == RoundUpToTwoDecimals(separate_idle_response.Data[0]["__idle__"].RAMCost) {
+		if calculated_idle_costs_ram == utils.RoundUpToTwoDecimals(separate_idle_response.Data[0]["__idle__"].RAMCost) {
 			t.Logf("Idle Values are Completely distributed amoung other namespace RAM resources")
 		} else {
-			t.Errorf("Sum of Idle values distributed %v do not match original idle_value %v for RAM", calculated_idle_costs_ram, RoundUpToTwoDecimals(separate_idle_all_ram_sum-shared_idle_all_ram_sum))
+			t.Errorf("Sum of Idle values distributed %v do not match original idle_value %v for RAM", calculated_idle_costs_ram, utils.RoundUpToTwoDecimals(separate_idle_all_ram_sum-shared_idle_all_ram_sum))
 		}
 
 	}
