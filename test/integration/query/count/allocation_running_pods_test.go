@@ -56,7 +56,7 @@ func TestQueryAllocation(t *testing.T) {
 			endTime := queryEnd.Unix()
 
 			// Prometheus Client
-			// Want to Run avg(avg_over_time(kube_pod_container_status_running[24h]) == 0) by (container, pod, namespace)
+			// Want to Run avg(avg_over_time(kube_pod_container_status_running[24h]) != 0) by (container, pod, namespace)
 			// Running avg(avg_over_time(kube_pod_container_status_running[24h])) by (container, pod, namespace)
 			client := prometheus.NewClient()
 			promInput := prometheus.PrometheusInput{
