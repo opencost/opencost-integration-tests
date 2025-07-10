@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-//Calculate time window given a time string
+// Calculate time window given a time string
 func calculateTimeWindow(window string, apiObj api.Window) (bool, api.Window) {
 	now := time.Now().UTC()
 	var startTime, endTime time.Time

@@ -62,9 +62,9 @@ func TestGPUAvgUsage(t *testing.T) {
 			}
 
 			type PodData struct {
-				Pod        string
-				Namespace  string
-				RunTime    float64
+				Pod       string
+				Namespace string
+				RunTime   float64
 			}
 
 			podMap := make(map[string]*PodData)
@@ -73,9 +73,9 @@ func TestGPUAvgUsage(t *testing.T) {
 
 				s, e := prometheus.CalculateStartAndEnd(podInfoResponseItem.Values, resolution, window24h)
 				podMap[podInfoResponseItem.Metric.Pod] = &PodData{
-					Pod:        podInfoResponseItem.Metric.Pod,
-					Namespace:  podInfoResponseItem.Metric.Namespace,
-					RunTime:    e.Sub(s).Minutes(),
+					Pod:       podInfoResponseItem.Metric.Pod,
+					Namespace: podInfoResponseItem.Metric.Namespace,
+					RunTime:   e.Sub(s).Minutes(),
 				}
 			}
 
@@ -84,7 +84,7 @@ func TestGPUAvgUsage(t *testing.T) {
 				PrometheusUsageAvg float64
 			}
 			GPUUsageAvgNamespaceMap := make(map[string]*GPUUsageAvgAggregate)
-			
+
 			////////////////////////////////////////////////////////////////////////////
 			// GPUAvgUsage Calculation
 
@@ -113,7 +113,7 @@ func TestGPUAvgUsage(t *testing.T) {
 				if promResponseItem.Metric.Container == "" {
 					continue
 				}
-				// Get containerRunTime by getting the pod's (parent object) runtime. 
+				// Get containerRunTime by getting the pod's (parent object) runtime.
 				containerRunTime := podMap[promResponseItem.Metric.Pod].RunTime
 
 				GPUUsageAvgPod, ok := GPUUsageAvgNamespaceMap[promResponseItem.Metric.Namespace]

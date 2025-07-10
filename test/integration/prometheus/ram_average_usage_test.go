@@ -62,9 +62,9 @@ func TestRAMAvgUsage(t *testing.T) {
 			}
 
 			type PodData struct {
-				Pod        string
-				Namespace  string
-				RunTime    float64
+				Pod       string
+				Namespace string
+				RunTime   float64
 			}
 
 			podMap := make(map[string]*PodData)
@@ -73,9 +73,9 @@ func TestRAMAvgUsage(t *testing.T) {
 
 				s, e := prometheus.CalculateStartAndEnd(podInfoResponseItem.Values, resolution, window24h)
 				podMap[podInfoResponseItem.Metric.Pod] = &PodData{
-					Pod:        podInfoResponseItem.Metric.Pod,
-					Namespace:  podInfoResponseItem.Metric.Namespace,
-					RunTime:    e.Sub(s).Minutes(),
+					Pod:       podInfoResponseItem.Metric.Pod,
+					Namespace: podInfoResponseItem.Metric.Namespace,
+					RunTime:   e.Sub(s).Minutes(),
 				}
 			}
 
@@ -84,7 +84,7 @@ func TestRAMAvgUsage(t *testing.T) {
 				PrometheusUsageAvg float64
 			}
 			ramUsageAvgNamespaceMap := make(map[string]*RAMUsageAvgAggregate)
-			
+
 			////////////////////////////////////////////////////////////////////////////
 			// RAMAvgUsage Calculation
 			// avg(avg_over_time(container_memory_working_set_bytes{
@@ -117,7 +117,7 @@ func TestRAMAvgUsage(t *testing.T) {
 				if promResponseItem.Metric.Container == "" {
 					continue
 				}
-				// Get containerRunTime by getting the pod's (parent object) runtime. 
+				// Get containerRunTime by getting the pod's (parent object) runtime.
 				containerRunTime := podMap[promResponseItem.Metric.Pod].RunTime
 
 				ramUsageAvgPod, ok := ramUsageAvgNamespaceMap[promResponseItem.Metric.Namespace]
