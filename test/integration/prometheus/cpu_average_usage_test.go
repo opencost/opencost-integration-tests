@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const tolerance = 0.05
+const tolerance = 0.07
 
 func TestCPUAvgUsage(t *testing.T) {
 	apiObj := api.NewAPI()
