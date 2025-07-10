@@ -1,6 +1,6 @@
 package prometheus
 
-// Description - Checks for CPU Average Usage from prometheus and /allocation are the same
+// Description - Checks for cpu Average Usage from prometheus and /allocation are the same
 
 import (
 	// "fmt"
@@ -11,9 +11,6 @@ import (
 	"time"
 )
 
-// This is a bit of a hack to work around garbage data from cadvisor
-// Ideally you cap each pod to the max CPU on its node, but that involves a bit more complexity, as it it would need to be done when allocations joins with asset data.
-const CPU_SANITY_LIMIT = 512
 const tolerance = 0.05
 
 func TestCPUAvgUsage(t *testing.T) {
@@ -38,13 +35,56 @@ func TestCPUAvgUsage(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
-			type CPUUsageAvgAggregate struct {
+			// Use this information to find start and end time of pod
+			queryEnd := time.Now().UTC().Truncate(time.Hour).Add(time.Hour)
+			queryStart := queryEnd.Add(-24 * time.Hour)
+			window24h := api.Window{
+				Start: queryStart,
+				End:   queryEnd,
+			}
+			resolution := 5 * time.Minute
+			endTime := queryEnd.Unix()
+
+			client := prometheus.NewClient()
+			// Pod Info
+			promPodInfoInput := prometheus.PrometheusInput{}
+			promPodInfoInput.Metric = "kube_pod_container_status_running"
+			promPodInfoInput.MetricNotEqualTo = "0"
+			promPodInfoInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
+			promPodInfoInput.Function = []string{"avg"}
+			promPodInfoInput.AggregateWindow = tc.window
+			promPodInfoInput.AggregateResolution = "5m"
+			promPodInfoInput.Time = &endTime
+
+			podInfo, err := client.RunPromQLQuery(promPodInfoInput)
+			if err != nil {
+				t.Fatalf("Error while calling Prometheus API %v", err)
+			}
+
+			type PodData struct {
+				Pod        string
+				Namespace  string
+				RunTime    float64
+			}
+
+			podMap := make(map[string]*PodData)
+
+			for _, podInfoResponseItem := range podInfo.Data.Result {
+
+				s, e := prometheus.CalculateStartAndEnd(podInfoResponseItem.Values, resolution, window24h)
+				podMap[podInfoResponseItem.Metric.Pod] = &PodData{
+					Pod:        podInfoResponseItem.Metric.Pod,
+					Namespace:  podInfoResponseItem.Metric.Namespace,
+					RunTime:    e.Sub(s).Minutes(),
+				}
+			}
+
+			type cpuUsageAvgAggregate struct {
 				AllocationUsageAvg float64
 				PrometheusUsageAvg float64
 			}
-
-			cpuUsageAvgNamespaceMap := make(map[string]*CPUUsageAvgAggregate)
-
+			cpuUsageAvgNamespaceMap := make(map[string]*cpuUsageAvgAggregate)
+			
 			////////////////////////////////////////////////////////////////////////////
 			// CPUAvgUsage Calculation
 			// avg(rate(container_cpu_usage_seconds_total{
@@ -52,11 +92,6 @@ func TestCPUAvgUsage(t *testing.T) {
 			// by
 			// (container_name, container, pod_name, pod, namespace, node, instance, %s)
 			////////////////////////////////////////////////////////////////////////////
-
-			queryEnd := time.Now().UTC().Truncate(time.Hour).Add(time.Hour)
-			endTime := queryEnd.Unix()
-			// Collect Namespace results from Prometheus
-			client := prometheus.NewClient()
 			promInput := prometheus.PrometheusInput{
 				Metric: "container_cpu_usage_seconds_total",
 			}
@@ -80,20 +115,24 @@ func TestCPUAvgUsage(t *testing.T) {
 				if promResponseItem.Metric.Container == "" {
 					continue
 				}
-				if promResponseItem.Value.Value >= CPU_SANITY_LIMIT {
-					continue
-				}
+				// Get containerRunTime by getting the pod's (parent object) runtime. 
+				containerRunTime := podMap[promResponseItem.Metric.Pod].RunTime
+
 				cpuUsageAvgPod, ok := cpuUsageAvgNamespaceMap[promResponseItem.Metric.Namespace]
 				if !ok {
-					cpuUsageAvgNamespaceMap[promResponseItem.Metric.Namespace] = &CPUUsageAvgAggregate{
-						PrometheusUsageAvg: promResponseItem.Value.Value,
+					cpuUsageAvgNamespaceMap[promResponseItem.Metric.Namespace] = &cpuUsageAvgAggregate{
+						PrometheusUsageAvg: promResponseItem.Value.Value * containerRunTime,
 						AllocationUsageAvg: 0.0,
 					}
 					continue
 				}
-				cpuUsageAvgPod.PrometheusUsageAvg += promResponseItem.Value.Value
+				cpuUsageAvgPod.PrometheusUsageAvg += promResponseItem.Value.Value * containerRunTime
 			}
 
+			windowRunTime := queryEnd.Sub(queryStart).Minutes()
+			for _, cpuUsageAvgProm := range cpuUsageAvgNamespaceMap {
+				cpuUsageAvgProm.PrometheusUsageAvg = cpuUsageAvgProm.PrometheusUsageAvg / windowRunTime
+			}
 			/////////////////////////////////////////////
 			// API Client
 			/////////////////////////////////////////////
@@ -114,7 +153,8 @@ func TestCPUAvgUsage(t *testing.T) {
 			for namespace, allocationResponseItem := range apiResponse.Data[0] {
 				cpuUsageAvgPod, ok := cpuUsageAvgNamespaceMap[namespace]
 				if !ok {
-					cpuUsageAvgNamespaceMap[namespace] = &CPUUsageAvgAggregate{
+					cpuUsageAvgNamespaceMap[namespace] = &cpuUsageAvgAggregate{
+						PrometheusUsageAvg: 0,
 						AllocationUsageAvg: allocationResponseItem.CPUCoreUsageAverage,
 					}
 					continue
@@ -128,9 +168,9 @@ func TestCPUAvgUsage(t *testing.T) {
 				t.Logf("Namespace %s", namespace)
 				withinRange, diff_percent := utils.AreWithinPercentage(cpuAvgUsageValues.PrometheusUsageAvg, cpuAvgUsageValues.AllocationUsageAvg, tolerance)
 				if !withinRange {
-					t.Errorf("CPUUsageAvg[Fail]: DifferencePercent %0.2f, Prometheus: %0.2f, /allocation: %0.2f", diff_percent, cpuAvgUsageValues.PrometheusUsageAvg, cpuAvgUsageValues.AllocationUsageAvg)
+					t.Errorf("cpuUsageAvg[Fail]: DifferencePercent %0.2f, Prometheus: %0.2f, /allocation: %0.2f", diff_percent, cpuAvgUsageValues.PrometheusUsageAvg, cpuAvgUsageValues.AllocationUsageAvg)
 				} else {
-					t.Logf("CPUUsageAvg[Pass]: ~ %v", cpuAvgUsageValues.PrometheusUsageAvg)
+					t.Logf("cpuUsageAvg[Pass]: ~ %v", cpuAvgUsageValues.PrometheusUsageAvg)
 				}
 			}
 		})

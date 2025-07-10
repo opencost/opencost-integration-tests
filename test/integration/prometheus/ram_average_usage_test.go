@@ -35,25 +35,65 @@ func TestRAMAvgUsage(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
+			// Use this information to find start and end time of pod
+			queryEnd := time.Now().UTC().Truncate(time.Hour).Add(time.Hour)
+			queryStart := queryEnd.Add(-24 * time.Hour)
+			window24h := api.Window{
+				Start: queryStart,
+				End:   queryEnd,
+			}
+			resolution := 5 * time.Minute
+			endTime := queryEnd.Unix()
+
+			client := prometheus.NewClient()
+			// Pod Info
+			promPodInfoInput := prometheus.PrometheusInput{}
+			promPodInfoInput.Metric = "kube_pod_container_status_running"
+			promPodInfoInput.MetricNotEqualTo = "0"
+			promPodInfoInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
+			promPodInfoInput.Function = []string{"avg"}
+			promPodInfoInput.AggregateWindow = tc.window
+			promPodInfoInput.AggregateResolution = "5m"
+			promPodInfoInput.Time = &endTime
+
+			podInfo, err := client.RunPromQLQuery(promPodInfoInput)
+			if err != nil {
+				t.Fatalf("Error while calling Prometheus API %v", err)
+			}
+
+			type PodData struct {
+				Pod        string
+				Namespace  string
+				RunTime    float64
+			}
+
+			podMap := make(map[string]*PodData)
+
+			for _, podInfoResponseItem := range podInfo.Data.Result {
+
+				s, e := prometheus.CalculateStartAndEnd(podInfoResponseItem.Values, resolution, window24h)
+				podMap[podInfoResponseItem.Metric.Pod] = &PodData{
+					Pod:        podInfoResponseItem.Metric.Pod,
+					Namespace:  podInfoResponseItem.Metric.Namespace,
+					RunTime:    e.Sub(s).Minutes(),
+				}
+			}
+
 			type RAMUsageAvgAggregate struct {
 				AllocationUsageAvg float64
 				PrometheusUsageAvg float64
 			}
-
 			ramUsageAvgNamespaceMap := make(map[string]*RAMUsageAvgAggregate)
-
+			
 			////////////////////////////////////////////////////////////////////////////
 			// RAMAvgUsage Calculation
 			// avg(avg_over_time(container_memory_working_set_bytes{
 			//     container!="", container_name!="POD", container!="POD", %s}[%s]))
 			// by
-			// (container_name, container, pod_name, pod, namespace, node, instance, %s)
+			// (container_name, container, pod_name, pod, namespace, node, instance, %s)[24h:5m]
 			////////////////////////////////////////////////////////////////////////////
 
-			queryEnd := time.Now().UTC().Truncate(time.Hour).Add(time.Hour)
-			endTime := queryEnd.Unix()
 			// Collect Namespace results from Prometheus
-			client := prometheus.NewClient()
 			promInput := prometheus.PrometheusInput{
 				Metric: "container_memory_working_set_bytes",
 			}
@@ -77,17 +117,24 @@ func TestRAMAvgUsage(t *testing.T) {
 				if promResponseItem.Metric.Container == "" {
 					continue
 				}
+				// Get containerRunTime by getting the pod's (parent object) runtime. 
+				containerRunTime := podMap[promResponseItem.Metric.Pod].RunTime
+
 				ramUsageAvgPod, ok := ramUsageAvgNamespaceMap[promResponseItem.Metric.Namespace]
 				if !ok {
 					ramUsageAvgNamespaceMap[promResponseItem.Metric.Namespace] = &RAMUsageAvgAggregate{
-						PrometheusUsageAvg: promResponseItem.Value.Value,
+						PrometheusUsageAvg: promResponseItem.Value.Value * containerRunTime,
 						AllocationUsageAvg: 0.0,
 					}
 					continue
 				}
-				ramUsageAvgPod.PrometheusUsageAvg += promResponseItem.Value.Value
+				ramUsageAvgPod.PrometheusUsageAvg += promResponseItem.Value.Value * containerRunTime
 			}
 
+			windowRunTime := queryEnd.Sub(queryStart).Minutes()
+			for _, ramUsageAvgProm := range ramUsageAvgNamespaceMap {
+				ramUsageAvgProm.PrometheusUsageAvg = ramUsageAvgProm.PrometheusUsageAvg / windowRunTime
+			}
 			/////////////////////////////////////////////
 			// API Client
 			/////////////////////////////////////////////
@@ -109,6 +156,7 @@ func TestRAMAvgUsage(t *testing.T) {
 				ramUsageAvgPod, ok := ramUsageAvgNamespaceMap[namespace]
 				if !ok {
 					ramUsageAvgNamespaceMap[namespace] = &RAMUsageAvgAggregate{
+						PrometheusUsageAvg: 0,
 						AllocationUsageAvg: allocationResponseItem.RAMBytesUsageAverage,
 					}
 					continue
