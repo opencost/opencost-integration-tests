@@ -24,7 +24,7 @@ func TestGPUInfo(t *testing.T) {
 		{
 			name:       "Yesterday",
 			window:     "24h",
-			aggregate:  "namespace",
+			aggregate:  "pod,container",
 			accumulate: "false",
 		},
 	}
@@ -106,14 +106,18 @@ func TestGPUInfo(t *testing.T) {
 			}
 
 			podAllocGPUMap := make(map[string]*PodGPUData)
-			for namespace, allocationResponseItem := range apiResponse.Data[0] {
+			for _, allocationResponseItem := range apiResponse.Data[0] {
 				_, ok := allocationResponseItem.Properties.Labels["nvidia_com_gpu_count"]
 				if !ok {
 					continue
 				}
+				// Is there a better way to check if GPU's were assigned to a pod?
+				if allocationResponseItem.GPUAllocation.GPUDevice == "" {
+					continue
+				}
 				podAllocGPUMap[allocationResponseItem.Properties.Container] = &PodGPUData{
 					Pod: allocationResponseItem.Properties.Pod,
-					Namespace: namespace,
+					Namespace: allocationResponseItem.Properties.Namespace,
 					Device: allocationResponseItem.GPUAllocation.GPUDevice,
 					ModelName: allocationResponseItem.GPUAllocation.GPUModel,
 					UUID: allocationResponseItem.GPUAllocation.GPUUUID,
