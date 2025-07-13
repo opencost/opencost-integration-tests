@@ -56,7 +56,7 @@ func TestNetworkCosts(t *testing.T) {
 			////////////////////////////////////////////////////////////////////////////
 			// Network Receive Bytes
 
-			// sum(increase(container_network_receive_bytes_total{pod!=""}[24h:5m])) by (pod, namespace)`
+			// sum(increase(container_network_receive_bytes_total{pod!=""}[24h:5m])) by (pod, namespace)
 			////////////////////////////////////////////////////////////////////////////
 
 			promNetworkReceiveInput := prometheus.PrometheusInput{
@@ -79,7 +79,7 @@ func TestNetworkCosts(t *testing.T) {
 			////////////////////////////////////////////////////////////////////////////
 			// Network Transfer Bytes
 
-			// sum(increase(container_network_transmit_bytes_total{pod!="", %s}[%s:%dm])) by (pod_name, pod, namespace, %s)`
+			// sum(increase(container_network_transmit_bytes_total{pod!="", %s}[%s:%dm])) by (pod_name, pod, namespace, %s)
 			////////////////////////////////////////////////////////////////////////////
 
 			promNetworkTransferInput := prometheus.PrometheusInput{
