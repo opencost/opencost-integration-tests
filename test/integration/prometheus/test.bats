@@ -62,3 +62,11 @@ teardown() {
 }
 
 # ------------------------------------------------------
+
+# ------------------------------------------------------
+# Load Balancer Costs
+@test "prometheus: Load Balancer Cost" {
+    go test ./test/integration/prometheus/load_balancer_costs_test.go
+}
+
+# ------------------------------------------------------
