@@ -61,4 +61,8 @@ teardown() {
     go test ./test/integration/prometheus/gpu_average_usage_test.go
 }
 
+@test "prometheus: GPU Info" {
+    go test ./test/integration/prometheus/gpu_info_test.go
+}
+
 # ------------------------------------------------------
