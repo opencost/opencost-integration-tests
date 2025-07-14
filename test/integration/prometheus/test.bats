@@ -66,7 +66,7 @@ teardown() {
 
 # ------------------------------------------------------
 # Network Costs
-@test "prometheus: Average GPU Usage Costs" {
+@test "prometheus: Network Cost" {
     go test ./test/integration/prometheus/network_costs_test.go
 }
 
