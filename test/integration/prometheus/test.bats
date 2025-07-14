@@ -62,3 +62,12 @@ teardown() {
 }
 
 # ------------------------------------------------------
+
+
+# ------------------------------------------------------
+# Network Costs
+@test "prometheus: Average GPU Usage Costs" {
+    go test ./test/integration/prometheus/network_costs_test.go
+}
+
+# ------------------------------------------------------
