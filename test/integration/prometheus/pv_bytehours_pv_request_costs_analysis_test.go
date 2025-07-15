@@ -17,6 +17,12 @@ import (
 )
 
 const tolerance = 0.05
+const KiB = 1024.0
+const MiB = 1024.0 * KiB
+const GiB = 1024.0 * MiB
+const TiB = 1024.0 * GiB
+const PiB = 1024.0 * TiB
+const PV_USAGE_SANITY_LIMIT_BYTES = 10.0 * PiB
 
 func TestPVCosts(t *testing.T) {
 	apiObj := api.NewAPI()
@@ -262,9 +268,75 @@ func TestPVCosts(t *testing.T) {
 			// Map for Persistent Volume Claim
 			// Use Allocation, and Pod data to get coefficient
 
+			// --------------------------------------
+			// Populate PersistentVolume Map
+			// --------------------------------------
+			type PersistentVolume struct {
+				Name: 		    string
+				Start 		    time.time
+				End 		    time.time
+				CostPerGiBHour  float64
+				ProviderID	    string
+				PVBytes		    float64
+			}
+			PersistentVolumeMap := make(map[string]*PersistentVolume)
 
+			// Start and End Times for a PV
+			for _, promPVRunTimeItem := range promPVRunTime.Data.Result{
+				persistentVolumeName := promPVRunTimeItem.PersistentVolume
+				s, e := prometheus.CalculateStartAndEnd(promPVRunTimeItem.Values, resolution, window24h)
+				PersistentVolumeMap[persistentVolumeName] = &PersistentVolume{
+					Name: persistentVolumeName,
+					Start: s,
+					End: e,
+					CostPerGiBHour: 0.0,
+					ProviderID: "",
+				}
+			}
 
+			// CostPerGiBHour for a PV
+			for _, promCostPerGiBHourItem := range promCostPerGiBHourItem{
+				persistentVolumeName := promPVRunTimeItem.PersistentVolume
+				providerId := promPVRunTimeItem.Metric.ProviderID
+				
+				PVItem, ok := PersistentVolumeMap[persistentVolumeName]
+				if !ok {
+					t.Errorf("PersistentVolume %s missing from kube_persistentvolume_capacity_bytes", persistentVolumeName)
+					continue
+				}
+				PVItem.CostPerGiBHour = promCostPerGiBHourItem.Value.Value
+			}
 
+			// only add metadata for disks that exist in the other metrics
+			for _, promPVMetaItem := range promPVMeta{
+				persistentVolumeName := promPVMetaItem.PersistentVolume
+				providerId := promPVMetaItem.Metric.ProviderID
+				
+				PVItem, ok := PersistentVolumeMap[persistentVolumeName]; ok {
+					if providerId != ""{
+						PVItem.ProviderID = providerId
+					}
+				}
+			}
+
+			// Add PVBytes for PV
+			for _, promPVBytesItem := range promPVBytes{
+				persistentVolumeName := promPVBytesItem.PersistentVolume
+				providerId := promPVBytesItem.Metric.ProviderID
+				
+				PVItem, ok := PersistentVolumeMap[persistentVolumeName]
+				if !ok {
+					t.Errorf("PersistentVolume %s missing from kube_persistentvolume_capacity_bytes", persistentVolumeName)
+					continue
+				}
+				PVItem.PVBytes = promPVBytesItem.Value.Value
+				
+				// PV usage exceeds sanity limit
+				if PVItem.PVBytes > PV_USAGE_SANITY_LIMIT_BYTES {
+					t.Logf("PV usage exceeds sanity limit, clamping to zero for %s" persistentVolumeName)
+					PVItem.PVBytes = 0.0
+				}
+			}
 
 
 
