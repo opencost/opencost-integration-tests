@@ -11,7 +11,7 @@ package prometheus
 import (
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
-	"github.com/opencost/opencost-integration-tests/pkg/utils"
+	// "github.com/opencost/opencost-integration-tests/pkg/utils"
 	"testing"
 	"time"
 )
@@ -197,7 +197,7 @@ func TestPVCosts(t *testing.T) {
 			// promPVCInfo.Filters = map[string]string{
 			// 	"namespace": namespace,
 			// }
-			promPVCInfo.IgnoreFilters = map[string][string]{
+			promPVCInfo.IgnoreFilters = map[string][]string{
 				"volumename": {""},
 			}
 			promPVCInfo.AggregateBy = []string{"persistentvolumeclaim", "storageclass", "volumename", "namespace"}
@@ -263,18 +263,18 @@ func TestPVCosts(t *testing.T) {
 
 
 
-			// Next Stuff
-			// Create a Persistent Volume map to store first level information
-			// Map for Persistent Volume Claim
-			// Use Allocation, and Pod data to get coefficient
+			// Phase - II
+			// Create and Populate a PersistentVolume Map
+			// Create and Populate a PersistentVolumeClaim Map
+			// Use Allocation, and Pod data to get coefficient factor
 
 			// --------------------------------------
 			// Populate PersistentVolume Map
 			// --------------------------------------
 			type PersistentVolume struct {
-				Name: 		    string
-				Start 		    time.time
-				End 		    time.time
+				Name 		    string
+				Start 		    time.Time
+				End 		    time.Time
 				CostPerGiBHour  float64
 				ProviderID	    string
 				PVBytes		    float64
@@ -283,8 +283,8 @@ func TestPVCosts(t *testing.T) {
 			PersistentVolumeMap := make(map[string]*PersistentVolume)
 
 			// Start and End Times for a PV
-			for _, promPVRunTimeItem := range promPVRunTime.Data.Result{
-				persistentVolumeName := promPVRunTimeItem.PersistentVolume
+			for _, promPVRunTimeItem := range PVRunTime.Data.Result {
+				persistentVolumeName := promPVRunTimeItem.Metric.PersistentVolume
 				s, e := prometheus.CalculateStartAndEnd(promPVRunTimeItem.Values, resolution, window24h)
 				PersistentVolumeMap[persistentVolumeName] = &PersistentVolume{
 					Name: persistentVolumeName,
@@ -296,9 +296,9 @@ func TestPVCosts(t *testing.T) {
 			}
 
 			// CostPerGiBHour for a PV
-			for _, promCostPerGiBHourItem := range promCostPerGiBHourItem{
-				persistentVolumeName := promPVRunTimeItem.PersistentVolume
-				providerId := promPVRunTimeItem.Metric.ProviderID
+			for _, promCostPerGiBHourItem := range PVCostPerGiBHour.Data.Result {
+				persistentVolumeName := promCostPerGiBHourItem.Metric.PersistentVolume
+				// providerId := promCostPerGiBHourItem.Metric.ProviderID
 				
 				PVItem, ok := PersistentVolumeMap[persistentVolumeName]
 				if !ok {
@@ -309,21 +309,21 @@ func TestPVCosts(t *testing.T) {
 			}
 
 			// only add metadata for disks that exist in the other metrics
-			for _, promPVMetaItem := range promPVMeta{
-				persistentVolumeName := promPVMetaItem.PersistentVolume
+			for _, promPVMetaItem := range PVMeta.Data.Result {
+				persistentVolumeName := promPVMetaItem.Metric.PersistentVolume
 				providerId := promPVMetaItem.Metric.ProviderID
 				
-				PVItem, ok := PersistentVolumeMap[persistentVolumeName]; ok {
-					if providerId != ""{
+				if PVItem, ok := PersistentVolumeMap[persistentVolumeName]; ok {
+					if providerId != "" {
 						PVItem.ProviderID = providerId
 					}
 				}
 			}
 
 			// Add PVBytes for PV
-			for _, promPVBytesItem := range promPVBytes{
-				persistentVolumeName := promPVBytesItem.PersistentVolume
-				providerId := promPVBytesItem.Metric.ProviderID
+			for _, promPVBytesItem := range PVBytes.Data.Result{
+				persistentVolumeName := promPVBytesItem.Metric.PersistentVolume
+				// providerId := promPVBytesItem.Metric.ProviderID
 				
 				PVItem, ok := PersistentVolumeMap[persistentVolumeName]
 				if !ok {
@@ -334,7 +334,7 @@ func TestPVCosts(t *testing.T) {
 				
 				// PV usage exceeds sanity limit
 				if PVItem.PVBytes > PV_USAGE_SANITY_LIMIT_BYTES {
-					t.Logf("PV usage exceeds sanity limit, clamping to zero for %s" persistentVolumeName)
+					t.Logf("PV usage exceeds sanity limit, clamping to zero for %s", persistentVolumeName)
 					PVItem.PVBytes = 0.0
 				}
 			}
@@ -352,20 +352,20 @@ func TestPVCosts(t *testing.T) {
 				PersistentVolume			    *PersistentVolume
 				Namespace						string
 				PersistentVolumeClaimName		string
-				Start							time.time
-				End								time.time
+				Start							time.Time
+				End								time.Time
 				RequestedBytes					float64
 			}
 
 			// Map Key is Namespace
-			PersistentVolumeClaimMap := make(map[PersistentVolumeClaimKe]*PersistentVolumeClaim)
+			PersistentVolumeClaimMap := make(map[PersistentVolumeClaimKey]*PersistentVolumeClaim)
 
 			// Get PVC Information
-			for _, promPVCInfoItem := range promPVCInfo{
-				persistentVolumeName := promPVCInfoItem.PersistentVolume
-				persistentVolumeClaimName := promPVCInfoItem.PersistentVolumeClaim
-				storageClass := promPVCInfoItem.StorageClass
-				namespace := promPVCInfoItem.Namespace
+			for _, promPVCInfoItem := range PVCInfo.Data.Result {
+				persistentVolumeName := promPVCInfoItem.Metric.PersistentVolume
+				persistentVolumeClaimName := promPVCInfoItem.Metric.PersistentVolumeClaim
+				storageClass := promPVCInfoItem.Metric.StorageClass
+				namespace := promPVCInfoItem.Metric.Namespace
 				
 				if namespace == "" || persistentVolumeClaimName == "" || persistentVolumeName == "" || storageClass == "" {
 					t.Logf("CostModel.ComputeAllocation: pvc info query result missing field")
@@ -383,28 +383,28 @@ func TestPVCosts(t *testing.T) {
 				s, e := prometheus.CalculateStartAndEnd(promPVCInfoItem.Values, resolution, window24h)
 
 				// Create a PersistentVolume Index and link the PersistentVolume Information
-				persistentVolumeClaimKey := &PersistentVolumeClaimKey{
+				persistentVolumeClaimKey := PersistentVolumeClaimKey{
 					Namespace: namespace,
 					PersistentVolumeClaimName: persistentVolumeClaimName,
 				}
 
-				PersistentVolumeClaimMap[persistentVolumeClaimKey] := &PersistentVolumeClaim{
+				PersistentVolumeClaimMap[persistentVolumeClaimKey] = &PersistentVolumeClaim{
 					Namespace: namespace,
 					PersistentVolumeClaimName: persistentVolumeClaimName,
-					PersistentVolume: PVItem
+					PersistentVolume: PVItem,
 					Start: s,
 					End: e,
 				}
 			}	
 			
 			// Add PVCRequestedBytes
-			for _, promPVCRequestedBytesItem := range promPVCRequestedBytes{
+			for _, promPVCRequestedBytesItem := range PVCRequestedBytes.Data.Result {
 				persistentVolumeClaimName := promPVCRequestedBytesItem.Metric.PersistentVolumeClaim
 				namespace := promPVCRequestedBytesItem.Metric.Namespace
 
-				persistentVolumeClaimKey := &PersistentVolumeClaimKey{
+				persistentVolumeClaimKey := PersistentVolumeClaimKey{
 					Namespace: namespace,
-					PersistentVolumeClaim: persistentvolumeclaim
+					PersistentVolumeClaimName: persistentVolumeClaimName,
 				}
 				
 				PersistentVolumeClaimItem, ok := PersistentVolumeClaimMap[persistentVolumeClaimKey]
@@ -415,6 +415,7 @@ func TestPVCosts(t *testing.T) {
 				// Add Requested Bytes Information
 				PersistentVolumeClaimItem.RequestedBytes = promPVCRequestedBytesItem.Value.Value
 			}
+
 
 
 
