@@ -52,14 +52,15 @@ type PrometheusResponse struct {
 		ResultType string `json:"resultType"`
 		Result     []struct {
 			Metric struct {
-				Pod       			string `json:"pod"`
-				Namespace 			string `json:"namespace"`
-				Container 			string `json:"container"`
+				Pod       			        string `json:"pod"`
+				Namespace 			        string `json:"namespace"`
+				Container 			        string `json:"container"`
 				// PersistentVolume Specific Information
-				PersistentVolume 	string `json:"persistentvolume"`
-				VolumeName			string `json:"volumename"`
-				ProviderID          string `json:"provider_id"`
-				StorageClass        string `json:"storageclass`
+				PersistentVolume 	        string `json:"persistentvolume"`
+				PersistentVolumeClaim       string `json:"persistentvolumeclaim"`
+				VolumeName					string `json:"volumename"`
+				ProviderID          		string `json:"provider_id"`
+				StorageClass        		string `json:"storageclass`
 			} `json:"metric"`
 			Value  DataPoint   `json:"value"`
 			Values []DataPoint `json:"values"`
