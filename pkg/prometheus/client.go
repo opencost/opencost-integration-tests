@@ -55,6 +55,7 @@ type PrometheusResponse struct {
 				Pod       			        string `json:"pod"`
 				Namespace 			        string `json:"namespace"`
 				Container 			        string `json:"container"`
+				UID							string `json:"uid`
 				// PersistentVolume Specific Information
 				PersistentVolume 	        string `json:"persistentvolume"`
 				PersistentVolumeClaim       string `json:"persistentvolumeclaim"`

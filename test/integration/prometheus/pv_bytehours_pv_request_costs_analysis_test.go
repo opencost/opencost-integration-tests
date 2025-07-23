@@ -37,7 +37,7 @@ func TestPVCosts(t *testing.T) {
 		{
 			name:       "Yesterday",
 			window:     "24h",
-			aggregate:  "namespace",
+			aggregate:  "pod,container",
 			accumulate: "false",
 		},
 	}
@@ -271,22 +271,14 @@ func TestPVCosts(t *testing.T) {
 			// --------------------------------------
 			// Populate PersistentVolume Map
 			// --------------------------------------
-			type PersistentVolume struct {
-				Name 		    string
-				Start 		    time.Time
-				End 		    time.Time
-				CostPerGiBHour  float64
-				ProviderID	    string
-				PVBytes		    float64
-				StorageClass	string
-			}
-			PersistentVolumeMap := make(map[string]*PersistentVolume)
+			
+			PersistentVolumeMap := make(map[string]*prometheus.PersistentVolume)
 
 			// Start and End Times for a PV
 			for _, promPVRunTimeItem := range PVRunTime.Data.Result {
 				persistentVolumeName := promPVRunTimeItem.Metric.PersistentVolume
 				s, e := prometheus.CalculateStartAndEnd(promPVRunTimeItem.Values, resolution, window24h)
-				PersistentVolumeMap[persistentVolumeName] = &PersistentVolume{
+				PersistentVolumeMap[persistentVolumeName] = &prometheus.PersistentVolume{
 					Name: persistentVolumeName,
 					Start: s,
 					End: e,
@@ -348,17 +340,9 @@ func TestPVCosts(t *testing.T) {
 				PersistentVolumeClaimName	string
 			}
 
-			type PersistentVolumeClaim struct {
-				PersistentVolume			    *PersistentVolume
-				Namespace						string
-				PersistentVolumeClaimName		string
-				Start							time.Time
-				End								time.Time
-				RequestedBytes					float64
-			}
-
+			
 			// Map Key is Namespace
-			PersistentVolumeClaimMap := make(map[PersistentVolumeClaimKey]*PersistentVolumeClaim)
+			PersistentVolumeClaimMap := make(map[PersistentVolumeClaimKey]*prometheus.PersistentVolumeClaim)
 
 			// Get PVC Information
 			for _, promPVCInfoItem := range PVCInfo.Data.Result {
@@ -388,7 +372,7 @@ func TestPVCosts(t *testing.T) {
 					PersistentVolumeClaimName: persistentVolumeClaimName,
 				}
 
-				PersistentVolumeClaimMap[persistentVolumeClaimKey] = &PersistentVolumeClaim{
+				PersistentVolumeClaimMap[persistentVolumeClaimKey] = &prometheus.PersistentVolumeClaim{
 					Namespace: namespace,
 					PersistentVolumeClaimName: persistentVolumeClaimName,
 					PersistentVolume: PVItem,
@@ -416,53 +400,238 @@ func TestPVCosts(t *testing.T) {
 				PersistentVolumeClaimItem.RequestedBytes = promPVCRequestedBytesItem.Value.Value
 			}
 
+			// --------------------------------------
+			// Build Pod Map
+			// --------------------------------------
+			
+			// Query all running pod information
+			// avg(kube_pod_container_status_running{} != 0)
+			// by
+			// (container, pod, namespace, node)[24h:5m]
 
+			// Q) != 0 is not necessary I suppose?
+			promPodInfoInput := prometheus.PrometheusInput{}
 
+			promPodInfoInput.Metric = "kube_pod_container_status_running"
+			promPodInfoInput.Filters = map[string]string{
+			}
+			promPodInfoInput.MetricNotEqualTo = "0"
+			promPodInfoInput.AggregateBy = []string{"container", "pod", "namespace", "uid"}
+			promPodInfoInput.Function = []string{"avg"}
+			promPodInfoInput.AggregateWindow = tc.window
+			promPodInfoInput.AggregateResolution = "5m"
+			promPodInfoInput.Time = &endTime
 
+			podInfo, err := client.RunPromQLQuery(promPodInfoInput)
 
+			type PVAllocations struct {
+				ByteHours		float64
+				Cost			float64
+				ProviderID		string
+			}
 
+			type PodData struct {
+				Pod        	string
+				Namespace  	string
+				Start      	time.Time
+				End        	time.Time
+				Minutes    	float64
+				Containers map[string]*PVAllocations
+				
+			}
 
+			podMap := make(map[prometheus.PodKey]*PodData)
+			podUIDKeyMap := make(map[prometheus.PodKey][]prometheus.PodKey)
 
+			for _, podInfoResponseItem := range podInfo.Data.Result {
 
+				namespace := podInfoResponseItem.Metric.Namespace
+				pod := podInfoResponseItem.Metric.Pod
+				container := podInfoResponseItem.Metric.Container
+				uid := podInfoResponseItem.Metric.UID
+				
+				// This is to account for pod replicas
+				if uid == "" {
+					continue
+				}
 
+				podKey := prometheus.PodKey{
+					Namespace: namespace,
+					Pod: pod,
+				}
 
+				newPodKey := prometheus.PodKey{
+					Namespace: namespace,
+					Pod: pod,
+					UID: uid,
+				}
 
+				podUIDKeyMap[podKey] = append(podUIDKeyMap[podKey], newPodKey)
 
+				s, e := prometheus.CalculateStartAndEnd(podInfoResponseItem.Values, resolution, window24h)
 
+				if thisPod, ok := podMap[newPodKey]; ok {
+					// Expand Pod Run Intervals based as an integration of all UIDs
+					if s.Before(thisPod.Start) {
+						thisPod.Start = s
+					}
+					if e.After(thisPod.End) {
+						thisPod.End = e
+					}
+				
+				} else {
+					podMap[newPodKey] = &PodData{
+						// Key:        	newPodKey,
+						Namespace:  	namespace,
+						Start:      	s,
+						End:        	e,
+						Minutes:    	e.Sub(s).Minutes(),
+						Containers:		make(map[string]map[string]PVAllocations),
+					}
+					
+				}
+				podMap[newPodKey].Containers[container] = make(map[string]*PVAllocations)
+
+			}
+
+			// --------------------------------------
+			// Populate Pod to PersistentVolumeClaim Map
+			// --------------------------------------
+
+			// Index is a Pod
+			podPVCMap := make(map[string][]*prometheus.PersistentVolumeClaim)
+
+			for _, podPVCAllocationItem := range PodPVCAllocation {
+				
+				namespace := podPVCAllocationItem.Namespace
+				pod := podPVCAllocationItem.Pod
+				persistentVolumeName := podPVCAllocationItem.PersistentVolume
+				persistentVolumeClaimName := podPVCAllocationItem.PersistentVolumeClaim
+
+				if namespace == "" || pod == "" || persistentVolumeName == "" || persistentVolumeClaimName == "" {
+					t.Logf("CostModel.ComputeAllocation: pvc allocation query result missing field")
+					continue
+				}
+
+				podKey := prometheus.PodKey{
+					Namespace: namespace,
+					Pod: pod,
+				}
+
+				persistentVolumeClaimKey := PersistentVolumeClaimKey{
+					Namespace: namespace,
+					PersistentVolumeClaimName: persistentVolumeClaimName, 
+				}
+
+				for _, key := range podUIDKeyMap {
+					// Add Error Checking Later
+					pvc, ok := PersistentVolumeClaimMap[persistentVolumeClaimKey]
+					pvc.Mounted = true
+					podPVCMap[key] = append(podPVCMap[key], pvc)
+				}
+			}
+
+			// --------------------------------------
+			// Apply PVCs to Pod
+			// --------------------------------------
+			
+
+			// For each persistent volume
+			// Attach the pod along with a modified run time based on the persistent volume.
+			// This interval is the intersection of the persistentvolume alive time and pod alive time intervals
+
+			pvcPodWindowMap := make(map[PersistentVolumeClaimKey]map[PodKey]api.Window)
+
+			for thisPodKey, thisPod := range podMap {
+				// Get all persistent volume claims made by a namespace that a pod belongs to
+				if pvcs, ok := podPVCMap[thisPodKey]; ok {
+					for _, thisPVC := range pvcs {
+
+						// Try to limit the usage interval of persistentclaim for this pod to the pod's window size
+						s, e := thisPod.Start, thisPod.End
+						if thisPVC.Start.After(thisPod.Start) {
+							s = thisPVC.Start
+						}
+						if thisPVC.End.Before(thisPod.End) {
+							e = thisPVC.End
+						}
+
+						thisPVCKey := PersistentVolumeClaimKey{
+							Namespace: thisPVC.Namespace,
+							PersistentVolumeClaimName: thisPVC.PersistentVolumeClaimName,
+						}
+
+						if pvcPodWindowMap[thisPVCKey] == nil {
+							pvcPodWindowMap[thisPVCKey] = make(map[prometheus.PodKey]api.Window)
+						}
+						pvcPodWindowMap[thisPVCKey][thisPodKey] = api.Window{
+							Start: s,
+							End: e,
+						}
+					}
+				}
+			}
+
+			for thisPVCKey, pvcPodWindowMap := range pvcPodWindowMap {
+
+				// Sort the pod intervals in ascending order
+				intervals := prometheus.GetIntervalPointsFromWindows(pvcPodWindowMap)
+
+				// Check for errors later
+				pvc, _ := PersistentVolumeClaimMap[thisPVCKey]
+
+				sharedPVCCostCoefficients, err := prometheus.GetPVCCostCoefficients(intervals, pvc)
+				if err != nil {
+					t.Logf("Allocation: Compute: applyPVCsToPods: getPVCCostCoefficients: %s", err)
+					continue
+				}
+			
+				for thisPodKey, coeffComponents := range sharedPVCCostCoefficients {
+					
+					pod, ok2 := podMap[thisPodKey]
+
+					for _, alloc := range pod.Containers {
+						s, e := pod.Start, pod.End
+
+						minutes := e.Sub(s).Minutes()
+						hrs := minutes / 60.0
+
+						gib := pvc.RequestedBytes / 1024 / 1024 / 1024
+						cost := pvc.PersistentVolume.CostPerGiBHour * gib * hrs
+						byteHours := pvc.RequestedBytes * hrs
+						coef := prometheus.GetCoefficientFromComponents(coeffComponents)
+						pvKey := pvc.PersistentVolume.Name
+
+						// Both Cost and byteHours should be multiplied by the coef and divided by count
+						// so that if all allocations with a given pv key are summed the result of those
+						// would be equal to the values of the original pv
+						count := float64(len(pod.Containers))
+						alloc.PVAllocations[pvKey] = &prometheus.PVAllocation{
+							ByteHours:  byteHours * coef / count,
+							Cost:       cost * coef / count,
+							ProviderID: pvc.PersistentVolume.ProviderID,
+						}
+					}
+				}
+			}
+
+			//----------------------------------------------
+			// Compare Results with Allocation
+			// ----------------------------------------------
+			// Loop over what?
+			// 5 % Tolerance
+			// withinRange, diff_percent := utils.AreWithinPercentage(nsPVBytes, allocationResponseItem.PVBytes, tolerance)
+			// if withinRange {
+			// 	t.Logf("    - PVBytes[Pass]: ~%.2f", nsPVBytes)
+			// } else {
+			// 	t.Errorf("    - PVBytes[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsPVBytes, allocationResponseItem.PVBytes)
+			// }
+			// withinRange, diff_percent = utils.AreWithinPercentage(nsPVBytesHours, allocationResponseItem.PVByteHours, tolerance)
+			// if withinRange {
+			// 	t.Logf("    - PVByteHours[Pass]: ~%.2f", nsPVBytesHours)
+			// } else {
+			// 	t.Errorf("    - PVByteHours[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsPVBytesHours, allocationResponseItem.PVByteHours)
 			// }
 		})
 	}
 }
-
-
-
-
-
-
-
-
-
-
-
-
-// 				// ----------------------------------------------
-// 				// Compare Results with Allocation
-// 				// ----------------------------------------------
-// 				t.Logf("Namespace: %s", namespace)
-// 				// 5 % Tolerance
-// 				withinRange, diff_percent := utils.AreWithinPercentage(nsPVBytes, allocationResponseItem.PVBytes, tolerance)
-// 				if withinRange {
-// 					t.Logf("    - PVBytes[Pass]: ~%.2f", nsPVBytes)
-// 				} else {
-// 					t.Errorf("    - PVBytes[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsPVBytes, allocationResponseItem.PVBytes)
-// 				}
-// 				withinRange, diff_percent = utils.AreWithinPercentage(nsPVBytesHours, allocationResponseItem.PVByteHours, tolerance)
-// 				if withinRange {
-// 					t.Logf("    - PVByteHours[Pass]: ~%.2f", nsPVBytesHours)
-// 				} else {
-// 					t.Errorf("    - PVByteHours[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsPVBytesHours, allocationResponseItem.PVByteHours)
-// 				}
-// 			}
-// 		})
-// 	}
-// }
