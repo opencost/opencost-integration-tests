@@ -53,6 +53,7 @@ type PrometheusResponse struct {
 		Result     []struct {
 			Metric struct {
 				Pod       string `json:"pod"`
+				PodName   string `json:"pod_name"`
 				Namespace string `json:"namespace"`
 				Container string `json:"container"`
 			} `json:"metric"`

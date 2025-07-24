@@ -66,8 +66,12 @@ teardown() {
 
 # ------------------------------------------------------
 # Network Costs
-@test "prometheus: Network Cost" {
+@test "prometheus: Network Transfer and Receive Bytes" {
     go test ./test/integration/prometheus/network_costs_test.go
+}
+
+@test "prometheus: Network Internet Cost" {
+    go test ./test/integration/prometheus/network_internet_costs_test.go
 }
 
 # ------------------------------------------------------
