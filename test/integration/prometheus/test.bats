@@ -61,6 +61,11 @@ teardown() {
     go test ./test/integration/prometheus/gpu_average_usage_test.go
 }
 
+@test "prometheus: GPU Info" {
+    go test ./test/integration/prometheus/gpu_info_test.go
+
+}
+
 # ------------------------------------------------------
 
 # ------------------------------------------------------
@@ -68,5 +73,4 @@ teardown() {
 @test "prometheus: Load Balancer Cost" {
     go test ./test/integration/prometheus/load_balancer_costs_test.go
 }
-
 # ------------------------------------------------------
