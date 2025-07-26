@@ -156,7 +156,14 @@ func TestNetworkInternetCosts(t *testing.T) {
 				networkCostsPod.AllocNetworkInternetGiB = allocationResponseItem.NetworkInternetCost
 			}
 
+			noNegligibleCosts := false
+			negligilbleCost := 0.01  // 1 Cent of a Dollar
 			for pod, networkCostValues := range networkCostsPodMap {
+				if networkCostValues.AllocNetworkInternetGiB < negligilbleCost {
+					continue
+				} else {
+					noNegligibleCosts = true
+				}
 				t.Logf("Pod %s", pod)
 				withinRange, diff_percent := utils.AreWithinPercentage(networkCostValues.AllocNetworkInternetGiB, networkCostValues.PromNetworkInternetGiB, tolerance)
 				if !withinRange {
@@ -164,6 +171,9 @@ func TestNetworkInternetCosts(t *testing.T) {
 				} else {
 					t.Logf("  - NetworkInternetCost[Pass]: ~ %0.5f", networkCostValues.PromNetworkInternetGiB)
 				}
+			}
+			if !noNegligibleCosts {
+				t.Errorf("NetWork Internet Costs for all Pods are below 1 cent and hence cannot be considered as costs from resource usage and validated.")
 			}
 		})
 	}
