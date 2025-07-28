@@ -346,11 +346,15 @@ func TestPVCosts(t *testing.T) {
 
 			// Get PVC Information
 			for _, promPVCInfoItem := range PVCInfo.Data.Result {
-				persistentVolumeName := promPVCInfoItem.Metric.PersistentVolume
+				persistentVolumeName := promPVCInfoItem.Metric.VolumeName
 				persistentVolumeClaimName := promPVCInfoItem.Metric.PersistentVolumeClaim
 				storageClass := promPVCInfoItem.Metric.StorageClass
 				namespace := promPVCInfoItem.Metric.Namespace
 				
+				// t.Logf("PVC Information: %v", promPVCInfoItem.Metric.Namespace)
+				// t.Logf("PVC Information: %v", promPVCInfoItem.Metric.StorageClass)
+				// t.Logf("PVC Information: %v", promPVCInfoItem.Metric.PersistentVolumeClaim)
+				// t.Logf("PVC Information: %v", promPVCInfoItem.Metric.PersistentVolume)
 				if namespace == "" || persistentVolumeClaimName == "" || persistentVolumeName == "" || storageClass == "" {
 					t.Logf("CostModel.ComputeAllocation: pvc info query result missing field")
 					continue
@@ -379,7 +383,12 @@ func TestPVCosts(t *testing.T) {
 					Start: s,
 					End: e,
 				}
-			}	
+			}
+
+			// t.Logf("Persistent Volume Claim Map: %v", PersistentVolumeClaimMap)
+			// if 1 == 1 {
+			// 	return
+			// }
 			
 			// Add PVCRequestedBytes
 			for _, promPVCRequestedBytesItem := range PVCRequestedBytes.Data.Result {
@@ -636,10 +645,18 @@ func TestPVCosts(t *testing.T) {
 					Pod: pod,
 				}
 
-				allocationInformation := podMap[podKey].Containers[container]
-				if allocationResponseItem.PersistentVolumes != nil {
+				podData, ok := podMap[podKey]
+				if !ok {
+					t.Errorf("Pod Information Missing from API")
+					continue
+				}
+				containerPVs, ok := podData.Containers[container]
+				if !ok {
+					t.Errorf("Container Informatino Missing from API")
+				}
+				if containerPVs != nil {
 					t.Logf("API %v", allocationResponseItem.PersistentVolumes)
-					t.Logf("Prometheus %v", allocationInformation)
+					t.Logf("Prometheus %v", containerPVs)
 				}
 
 				// withinRange, diff_percent := utils.AreWithinPercentage(nsPVBytes, allocationResponseItem.PVBytes, tolerance)
