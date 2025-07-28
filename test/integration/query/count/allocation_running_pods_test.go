@@ -82,7 +82,7 @@ func TestQueryAllocation(t *testing.T) {
 
 			for pod, allocationResponeItem := range apiResponse.Data[0] {
 				// Synthetic value generated and returned by /allocation and not /prometheus
-				if pod == "prometheus-system-unmounted-pvcs" {
+				if slices.Contains([]string{"prometheus-system-unmounted-pvcs", "network-load-gen-unmounted-pvcs"}, pod) {
 					continue
 				}
 				podNamespace := allocationResponeItem.Properties.Namespace
