@@ -1,6 +1,6 @@
 package prometheus
 
-// Description - Compares Network Internet Costs from Prometheus and Allocation
+// Description - Compares Network Region Costs from Prometheus and Allocation
 
 import (
 	// "fmt"
@@ -13,7 +13,7 @@ import (
 
 const tolerance = 0.05
 
-func TestNetworkInternetCosts(t *testing.T) {
+func TestNetworkRegionCosts(t *testing.T) {
 	apiObj := api.NewAPI()
 
 	testCases := []struct {
@@ -39,8 +39,8 @@ func TestNetworkInternetCosts(t *testing.T) {
 			// sort of cumulative Allocation (like one that is added).
 
 			type NetworkCostsAggregate struct {
-				PromNetworkInternetGiB		float64
-				AllocNetworkInternetGiB 	float64
+				PromNetworkRegionGiB		float64
+				AllocNetworkRegionGiB 	float64
 			}
 
 			networkCostsPodMap := make(map[string]*NetworkCostsAggregate)
@@ -51,52 +51,54 @@ func TestNetworkInternetCosts(t *testing.T) {
 			client := prometheus.NewClient()
 
 			////////////////////////////////////////////////////////////////////////////
-			// Network Internet GiB
+			// Network Region GiB
 
-			// sum(increase(kubecost_pod_network_egress_bytes_total{internet="true"}[24h:5m])) by (pod_name, namespace) / 1024 / 1024 / 1024
+			// sum(increase(kubecost_pod_network_egress_bytes_total{internet="false", same_zone="false", same_region="false", %s}[%s:%dm])) by (pod_name, namespace, %s) / 1024 / 1024 / 1024
 			// Apply Division by 1024^3 when you are looping over the response
 			////////////////////////////////////////////////////////////////////////////
 
-			promNetworkInternetInput := prometheus.PrometheusInput{
+			promNetworkRegionInput := prometheus.PrometheusInput{
 				Metric: "kubecost_pod_network_egress_bytes_total",
 			}
-			promNetworkInternetInput.Filters = map[string]string{
-				"internet": "true",
+			promNetworkRegionInput.Filters = map[string]string{
+				"internet": "false",
+				"same_Region": "false",
+				"same_region": "false",
 			}
-			promNetworkInternetInput.Function = []string{"increase", "sum"}
-			promNetworkInternetInput.QueryWindow = tc.window
-			promNetworkInternetInput.QueryResolution = "5m"
-			promNetworkInternetInput.AggregateBy = []string{"pod_name", "namespace"}
-			promNetworkInternetInput.Time = &endTime
+			promNetworkRegionInput.Function = []string{"increase", "sum"}
+			promNetworkRegionInput.QueryWindow = tc.window
+			promNetworkRegionInput.QueryResolution = "5m"
+			promNetworkRegionInput.AggregateBy = []string{"pod_name", "namespace"}
+			promNetworkRegionInput.Time = &endTime
 
-			promNetworkInternetResponse, err := client.RunPromQLQuery(promNetworkInternetInput)
+			promNetworkRegionResponse, err := client.RunPromQLQuery(promNetworkRegionInput)
 			if err != nil {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}
 
 			////////////////////////////////////////////////////////////////////////////
-			// Network Internet price per GiB
+			// Network Region price per GiB
 
-			// avg(avg_over_time(kubecost_network_internet_egress_cost{%s}[%s])) by (%s)
+			// avg(avg_over_time(kubecost_network_region_egress_cost{%s}[%s])) by (%s)
 			////////////////////////////////////////////////////////////////////////////
 
-			promNetworkInternetCostInput := prometheus.PrometheusInput{
-				Metric: "kubecost_network_internet_egress_cost",
+			promNetworkRegionCostInput := prometheus.PrometheusInput{
+				Metric: "kubecost_network_region_egress_cost",
 			}
-			promNetworkInternetCostInput.Function = []string{"avg_over_time", "avg"}
-			promNetworkInternetCostInput.QueryWindow = tc.window
-			promNetworkInternetCostInput.Time = &endTime
+			promNetworkRegionCostInput.Function = []string{"avg_over_time", "avg"}
+			promNetworkRegionCostInput.QueryWindow = tc.window
+			promNetworkRegionCostInput.Time = &endTime
 
-			promNetworkInternetCostResponse, err := client.RunPromQLQuery(promNetworkInternetCostInput)
+			promNetworkRegionCostResponse, err := client.RunPromQLQuery(promNetworkRegionCostInput)
 			if err != nil {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}
 
 			// --------------------------------
-			// Network Internet Cost for all Pods
+			// Network Region Cost for all Pods
 			// --------------------------------
 
-			networkInternetCost := promNetworkInternetCostResponse.Data.Result[0].Value.Value
+			networkRegionCost := promNetworkRegionCostResponse.Data.Result[0].Value.Value
 
 			// --------------------------------
 			// Assign Network Costs to Pods and Cumulate based on Namespace
@@ -104,22 +106,22 @@ func TestNetworkInternetCosts(t *testing.T) {
 			
 			// Form a key based on namespace and pod name
 
-			for _, promNetworkInternetItem := range promNetworkInternetResponse.Data.Result {
-				// namespace := promNetworkInternetItem.Metric.Namespace
-				pod := promNetworkInternetItem.Metric.PodName
-				gib := promNetworkInternetItem.Value.Value
+			for _, promNetworkRegionItem := range promNetworkRegionResponse.Data.Result {
+				// namespace := promNetworkRegionItem.Metric.Namespace
+				pod := promNetworkRegionItem.Metric.PodName
+				gib := promNetworkRegionItem.Value.Value
 
 
 				networkCostsPodMap[pod] = &NetworkCostsAggregate{
-					PromNetworkInternetGiB: (gib / 1024 / 1024 / 1024) * networkInternetCost,
-					AllocNetworkInternetGiB: 0.0,
+					PromNetworkRegionGiB: (gib / 1024 / 1024 / 1024) * networkRegionCost,
+					AllocNetworkRegionGiB: 0.0,
 				}
 
 				// networkCostsNamespace, ok := networkCostsPodMap[namespace]
 				// if !ok {
 				// 	networkCostsPodMap[pod] = &NetworkCostsAggregate{
-				// 		PromNetworkInternetGiB: (gib / 1024 / 1024 / 1024) * networkInternetCost,
-				// 		AllocNetworkInternetGiB: 0.0,
+				// 		PromNetworkRegionGiB: (gib / 1024 / 1024 / 1024) * networkRegionCost,
+				// 		AllocNetworkRegionGiB: 0.0,
 				// 	}
 				// 	continue
 				// }
@@ -148,32 +150,32 @@ func TestNetworkInternetCosts(t *testing.T) {
 				networkCostsPod, ok := networkCostsPodMap[pod]
 				if !ok {
 					networkCostsPodMap[pod] = &NetworkCostsAggregate{
-						PromNetworkInternetGiB: 0.0,
-						AllocNetworkInternetGiB: allocationResponseItem.NetworkInternetCost,
+						PromNetworkRegionGiB: 0.0,
+						AllocNetworkRegionGiB: allocationResponseItem.NetworkCrossRegionCost,
 					}
 					continue
 				}
-				networkCostsPod.AllocNetworkInternetGiB = allocationResponseItem.NetworkInternetCost
+				networkCostsPod.AllocNetworkRegionGiB = allocationResponseItem.NetworkCrossRegionCost
 			}
 
 			validCostsSeen := false
 			negligilbleCost := 0.01  // 1 Cent of a Dollar
 			for pod, networkCostValues := range networkCostsPodMap {
-				if networkCostValues.AllocNetworkInternetGiB < negligilbleCost {
+				if networkCostValues.AllocNetworkRegionGiB < negligilbleCost {
 					continue
 				} else {
 					validCostsSeen = true
 				}
 				t.Logf("Pod %s", pod)
-				withinRange, diff_percent := utils.AreWithinPercentage(networkCostValues.AllocNetworkInternetGiB, networkCostValues.PromNetworkInternetGiB, tolerance)
+				withinRange, diff_percent := utils.AreWithinPercentage(networkCostValues.AllocNetworkRegionGiB, networkCostValues.PromNetworkRegionGiB, tolerance)
 				if !withinRange {
-					t.Errorf("  - NetworkInternetCost[Fail]: DifferencePercent: %0.2f, Prometheus: %0.9f, /allocation: %0.9f", diff_percent, networkCostValues.PromNetworkInternetGiB, networkCostValues.AllocNetworkInternetGiB)
+					t.Errorf("  - NetworkRegionCost[Fail]: DifferencePercent: %0.2f, Prometheus: %0.9f, /allocation: %0.9f", diff_percent, networkCostValues.PromNetworkRegionGiB, networkCostValues.AllocNetworkRegionGiB)
 				} else {
-					t.Logf("  - NetworkInternetCost[Pass]: ~ %0.5f", networkCostValues.PromNetworkInternetGiB)
+					t.Logf("  - NetworkRegionCost[Pass]: ~ %0.5f", networkCostValues.PromNetworkRegionGiB)
 				}
 			}
 			if !validCostsSeen {
-				t.Errorf("NetWork Internet Costs for all Pods are below 1 cent and hence cannot be considered as costs from resource usage and validated.")
+				t.Errorf("NetWork Region Costs for all Pods are below 1 cent and hence cannot be considered as costs from resource usage and validated.")
 			}
 		})
 	}

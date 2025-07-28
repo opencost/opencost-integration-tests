@@ -74,4 +74,12 @@ teardown() {
     go test ./test/integration/prometheus/network_internet_costs_test.go
 }
 
+@test "prometheus: Network Zone Cost" {
+    go test ./test/integration/prometheus/network_zone_costs_test.go
+}
+
+@test "prometheus: Network Region Cost" {
+    go test ./test/integration/prometheus/network_region_costs_test.go
+}
+
 # ------------------------------------------------------
