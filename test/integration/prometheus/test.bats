@@ -63,6 +63,7 @@ teardown() {
 
 @test "prometheus: GPU Info" {
     go test ./test/integration/prometheus/gpu_info_test.go
+
 }
 # ------------------------------------------------------
 
@@ -83,5 +84,11 @@ teardown() {
 
 @test "prometheus: Network Region Cost" {
     go test ./test/integration/prometheus/network_region_costs_test.go
+# ------------------------------------------------------
+
+# ------------------------------------------------------
+# Load Balancer Costs
+@test "prometheus: Load Balancer Cost" {
+    go test ./test/integration/prometheus/load_balancer_costs_test.go
 }
 # ------------------------------------------------------

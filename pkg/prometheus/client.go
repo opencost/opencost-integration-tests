@@ -56,6 +56,9 @@ type PrometheusResponse struct {
 				PodName   string `json:"pod_name"`
 				Namespace string `json:"namespace"`
 				Container string `json:"container"`
+				// Load Balancer Specific Costs
+				ServiceName string    `json:"service_name"`
+				IngressIP   string    `json:"ingress_ip"`
 				// GPU Specific Fields (Optional Result)
 				Device    string `json:"device`
 				ModelName string `json:"modelName`
