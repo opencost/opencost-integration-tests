@@ -502,7 +502,6 @@ func TestPVCosts(t *testing.T) {
 				podMap[newPodKey].Containers[container] = make(map[string]*PVAllocations)
 
 			}
-
 			// --------------------------------------
 			// Populate Pod to PersistentVolumeClaim Map
 			// --------------------------------------
@@ -631,6 +630,9 @@ func TestPVCosts(t *testing.T) {
 				}
 			}
 
+
+
+
 			// ----------------------------------------------
 			// Compare Results with Allocation
 			// ----------------------------------------------
@@ -640,24 +642,44 @@ func TestPVCosts(t *testing.T) {
 				pod := allocationResponseItem.Properties.Pod
 				container := allocationResponseItem.Properties.Container
 
-				podKey := prometheus.PodKey{
+				podUIDKey := prometheus.PodKey{
 					Namespace: namespace,
 					Pod: pod,
 				}
 
-				podData, ok := podMap[podKey]
-				if !ok {
-					t.Errorf("Pod Information Missing from API")
-					continue
+				
+				podKeys := podUIDKeyMap[podUIDKey]
+				for _, podKey := range podKeys {
+
+					podData, ok := podMap[podKey]
+					if !ok {
+						t.Errorf("Pod Information Missing from API")
+						continue
+					}
+					containerPVs, ok := podData.Containers[container]
+					if !ok {
+						t.Errorf("Container Informatino Missing from API")
+					}
+					if allocationResponseItem.PersistentVolumes != nil {
+						t.Logf("Container Name: %v, Pod Name: %v", container, pod)
+						t.Logf("API Response")
+						for pvname, _  := range allocationResponseItem.PersistentVolumes {
+							t.Logf("%v", pvname)
+							// t.Logf("%v", val.ByteHours)
+							// t.Logf("%v", val.Cost)
+						}
+						// t.Logf("API %v", allocationResponseItem.PersistentVolumes)
+						// t.Logf("%v", allocationResponseItem.PersistentVolumes)
+						t.Logf("Prometheus Response")
+						for pvname, _ := range containerPVs {
+							t.Logf("%v", pvname)
+							// t.Logf("%v", val.ByteHours)
+							// t.Logf("%v", val.Cost)
+						}
+						// t.Logf("Prometheus %v", containerPVs)
+					}
 				}
-				containerPVs, ok := podData.Containers[container]
-				if !ok {
-					t.Errorf("Container Informatino Missing from API")
-				}
-				if containerPVs != nil {
-					t.Logf("API %v", allocationResponseItem.PersistentVolumes)
-					t.Logf("Prometheus %v", containerPVs)
-				}
+
 
 				// withinRange, diff_percent := utils.AreWithinPercentage(nsPVBytes, allocationResponseItem.PVBytes, tolerance)
 				// if withinRange {
