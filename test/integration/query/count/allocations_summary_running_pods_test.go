@@ -76,9 +76,10 @@ func TestQueryAllocationSummary(t *testing.T) {
 			var apiAllocationPodNames []string
 			for podName, _ := range apiResponse.Data.Sets[0].Allocations {
 				// Synthetic value generated and returned by /allocation and not /prometheus
-				if podName == "prometheus-system-unmounted-pvcs" {
+				if slices.Contains([]string{"prometheus-system-unmounted-pvcs", "network-load-gen-unmounted-pvcs"}, podName) {
 					continue
 				}
+
 				if !slices.Contains(apiAllocationPodNames, podName) {
 					apiAllocationPodNames = append(apiAllocationPodNames, podName)
 				}
