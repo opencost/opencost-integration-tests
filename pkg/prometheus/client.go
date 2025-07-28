@@ -56,6 +56,10 @@ type PrometheusResponse struct {
 				PodName   string `json:"pod_name"`
 				Namespace string `json:"namespace"`
 				Container string `json:"container"`
+				// GPU Specific Fields (Optional Result)
+				Device    string `json:"device`
+				ModelName string `json:"modelName`
+				UUID 	  string `json:UUID`
 			} `json:"metric"`
 			Value  DataPoint   `json:"value"`
 			Values []DataPoint `json:"values"`
