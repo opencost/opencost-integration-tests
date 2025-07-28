@@ -30,6 +30,12 @@ func TestLoadBalancerCost(t *testing.T) {
 			aggregate:  "namespace",
 			accumulate: "false",
 		},
+		{
+			name:       "Last 2 Days",
+			window:     "48h",
+			aggregate:  "namespace",
+			accumulate: "false",
+		},
 	}
 
 	t.Logf("testCases: %v", testCases)
@@ -39,7 +45,11 @@ func TestLoadBalancerCost(t *testing.T) {
 
 			// Use this information to find start and end time of pod
 			queryEnd := time.Now().UTC().Truncate(time.Hour).Add(time.Hour)
-			queryStart := queryEnd.Add(-24 * time.Hour)
+			// Get Time Duration
+			timeMumericVal, _ := utils.ExtractNumericPrefix(tc.window)
+			// Assume the minumum unit is an hour
+			negativeDuration := time.Duration(timeMumericVal * float64(time.Hour)) * -1
+			queryStart := queryEnd.Add(negativeDuration)
 			window24h := api.Window{
 				Start: queryStart,
 				End:   queryEnd,
