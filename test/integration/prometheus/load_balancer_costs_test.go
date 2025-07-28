@@ -88,7 +88,10 @@ func TestLoadBalancerCost(t *testing.T) {
 				Services     	 map[string]*LBServiceData
 			}
 
+			// Namespace
 			LBNamespaceMap := make(map[string]*LoadBalancerData)
+			// Service
+			LBServiceMap := make(map[string]*LoadBalancerData)
 
 			// Get Run Times for each service under a namespace
 			for _, promLBInfoResponseItem := range promLBInfo.Data.Result {
@@ -103,13 +106,13 @@ func TestLoadBalancerCost(t *testing.T) {
 						PromLBCost: 0.0,
 						Services: make(map[string]*LBServiceData),
 					}
-					LBNamespaceMap[namespace].Services[serviceName] = &LBServiceData{
+					LBNamespaceMap[namespace].Services[namespace + "/" + serviceName] = &LBServiceData{
 						RunTime: serviceRunTime,
 						ServicePricePerHr: 0.0,
 					}
 					continue
 				}
-				LBNamespace.Services[serviceName] = &LBServiceData{
+				LBNamespace.Services[namespace + "/" + serviceName] = &LBServiceData{
 					RunTime: serviceRunTime,
 					ServicePricePerHr: 0.0,
 				}
@@ -150,7 +153,7 @@ func TestLoadBalancerCost(t *testing.T) {
 				if !ok {
 					t.Errorf("Namespace missing from Prom Response %s", namespace)
 				}
-				LBServiceItem, ok := LBNamespaceItem.Services[serviceName]
+				LBServiceItem, ok := LBNamespaceItem.Services[namespace + "/" + serviceName]
 				if !ok {
 					t.Errorf("Service missing from Prom Response %s", serviceName)
 				}
@@ -161,8 +164,14 @@ func TestLoadBalancerCost(t *testing.T) {
 			// This is the aggregate result from Prometheus
 			for _, promLBNamespaceItem := range LBNamespaceMap {
 				namespaceLBCost := 0.0
-				for _, serviceLBItem := range promLBNamespaceItem.Services {
-					namespaceLBCost += serviceLBItem.ServicePricePerHr * serviceLBItem.RunTime
+				for serviceName, serviceLBItem := range promLBNamespaceItem.Services {
+					serviceCost := serviceLBItem.ServicePricePerHr * serviceLBItem.RunTime
+					namespaceLBCost += serviceCost
+
+					LBServiceMap[serviceName] = &LoadBalancerData{
+						PromLBCost: serviceCost / 60,
+						AllocLBCost: 0.0,
+					}
 				}
 				// Might be necessary in the future to account for window discreprancies or LoadBalancer provision time differences
 				// promLBNamespaceItem.PromLBCost = namespaceLBCost * ScalingFactor
@@ -186,7 +195,9 @@ func TestLoadBalancerCost(t *testing.T) {
 				t.Errorf("API returned non-200 code")
 			}
 
+			
 			for namespace, allocationResponseItem := range apiResponse.Data[0] {
+				// For Namespace
 				allocLBItem, ok := LBNamespaceMap[namespace]
 				if !ok {
 					LBNamespaceMap[namespace] = &LoadBalancerData{
@@ -197,9 +208,25 @@ func TestLoadBalancerCost(t *testing.T) {
 					continue
 				}
 				allocLBItem.AllocLBCost = allocationResponseItem.LoadBalancerCost
+
+				// For Service
+				for _, loadBalancerItem := range allocationResponseItem.LoadBalancerAllocations {
+					service := loadBalancerItem.Service
+					allocLBItem, ok := LBServiceMap[service]
+					if !ok {
+						LBServiceMap[service] = &LoadBalancerData{
+							PromLBCost: 0.0,
+							AllocLBCost: loadBalancerItem.Cost,
+						}
+						continue
+					}
+					allocLBItem.AllocLBCost = loadBalancerItem.Cost
+				}
 			}
 
-			// Windows are not accurate for prometheus and allocation
+			
+			// By Namespace
+			t.Logf("Load Balancer Costs by Namespace")
 			for namespace, LBNamespaceItem := range LBNamespaceMap {
 				t.Logf("Namespace %s", namespace)
 				withinRange, diff_percent := utils.AreWithinPercentage(LBNamespaceItem.PromLBCost, LBNamespaceItem.AllocLBCost, tolerance)
@@ -207,6 +234,18 @@ func TestLoadBalancerCost(t *testing.T) {
 					t.Errorf("  - LoadBalancerCost[Fail]: DifferencePercent %0.2f, Prometheus: %0.2f, /allocation: %0.2f", diff_percent, LBNamespaceItem.PromLBCost, LBNamespaceItem.AllocLBCost)
 				} else {
 					t.Logf("  - LoadBalancerCost[Pass]: ~ %0.2f", LBNamespaceItem.PromLBCost)
+				}
+			}
+
+			// By Services
+			t.Logf("Load Balancer Costs by Services")
+			for service, LBServiceItem := range LBServiceMap {
+				t.Logf("Service %s", service)
+				withinRange, diff_percent := utils.AreWithinPercentage(LBServiceItem.PromLBCost, LBServiceItem.AllocLBCost, tolerance)
+				if !withinRange {
+					t.Errorf("  - LoadBalancerCost[Fail]: DifferencePercent %0.2f, Prometheus: %0.2f, /allocation: %0.2f", diff_percent, LBServiceItem.PromLBCost, LBServiceItem.AllocLBCost)
+				} else {
+					t.Logf("  - LoadBalancerCost[Pass]: ~ %0.2f", LBServiceItem.PromLBCost)
 				}
 			}
 		})
