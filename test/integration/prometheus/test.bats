@@ -62,3 +62,12 @@ teardown() {
 }
 
 # ------------------------------------------------------
+
+# ------------------------------------------------------
+# Persistent Volume Costs
+    
+@test "prometheus: Mounted Persistent Volume Costs" {
+    go test ./test/integration/prometheus/pv_bytehours_pv_request_costs_analysis_test.go
+}
+
+# ------------------------------------------------------
