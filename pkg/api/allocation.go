@@ -137,6 +137,7 @@ type AllocationResponseItem struct {
 	SharedCost                     float64                                 `json:"sharedCost"`
 	TotalCost                      float64                                 `json:"totalCost"`
 	TotalEfficiency                float64                                 `json:"totalEfficiency"`
+	LoadBalancerAllocations		   map[string]LoadBalancerProperties	   `json:"lbAllocations"`
 	GPUAllocation                  GPUAllocationItemProperties             `json:"gpuAllocation"`
 	RawAllocationsOnly			   RawAllocationsProperties				   `json:"rawAllocationOnly"`
 }
@@ -147,10 +148,23 @@ type RawAllocationsProperties struct {
 	GPUUsageMax float64				`json:"gpuUsageMax"`
 }
 type GPUAllocationItemProperties struct {
+	GPUDevice			string 		`json:gpuDevice`
+	GPUModel			string		`json:gpuModel`
+	GPUUUID				string		`json:gpuUUID`
 	ISGPUShared			bool		`json:"isGPUShared"`
 	GPUUsageAverage		float64		`json:"gpuUsageAverage"`
 	GPURequestAverage	float64		`json:"gpuRequestAverage"`
 }
+
+type LoadBalancerProperties struct {
+	Service		string		`json:"service"`
+	Cost		float64		`json:"cost"`
+	Private     bool		`json:"private`
+	IP          string		`json:"ip"`
+	Hours		float64		`json:"hours"`
+	Adjustment	float64		`json:"adjustment"`
+}
+
 
 func (ari AllocationResponseItem) PersistentVolumeCost() float64 {
 	if ari.PersistentVolumes == nil {
