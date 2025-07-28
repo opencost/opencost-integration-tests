@@ -148,6 +148,9 @@ type RawAllocationsProperties struct {
 	GPUUsageMax float64				`json:"gpuUsageMax"`
 }
 type GPUAllocationItemProperties struct {
+	GPUDevice			string 		`json:gpuDevice`
+	GPUModel			string		`json:gpuModel`
+	GPUUUID				string		`json:gpuUUID`
 	ISGPUShared			bool		`json:"isGPUShared"`
 	GPUUsageAverage		float64		`json:"gpuUsageAverage"`
 	GPURequestAverage	float64		`json:"gpuRequestAverage"`
