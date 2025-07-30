@@ -5,7 +5,6 @@ package prometheus
 // - PVBytesHours
 // - PVBytesRequestAverage
 
-
 // Testing Methodology: Step by Step Information
 //     - Get Persistent Volume RunTimes
 //	   - Get Persistent Volume Information
@@ -100,9 +99,6 @@ func TestPVCosts(t *testing.T) {
 			// ----------------------------------------------
 			promPVRunTime := prometheus.PrometheusInput{}
 			promPVRunTime.Metric = "kube_persistentvolume_capacity_bytes"
-			// promPVRunTime.Filters = map[string]string{
-			// 	"namespace": namespace,
-			// }
 			promPVRunTime.AggregateBy = []string{"persistentvolume"}
 			promPVRunTime.Function = []string{"avg"}
 			promPVRunTime.AggregateWindow = tc.window
@@ -114,21 +110,16 @@ func TestPVCosts(t *testing.T) {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}
 
-
-
 			// ----------------------------------------------
 			// Metric: PVBytes
 			// Description: Get PersistentVolume Capacity
 
-			// avg(avg_over_time(kube_persistentvolume_capacity_bytes{%s}[%s])) 
-			// by 
+			// avg(avg_over_time(kube_persistentvolume_capacity_bytes{%s}[%s]))
+			// by
 			// (persistentvolume, %s)`
 			// ----------------------------------------------
 			promPVBytes := prometheus.PrometheusInput{}
 			promPVBytes.Metric = "kube_persistentvolume_capacity_bytes"
-			// promPVBytes.Filters = map[string]string{
-			// 	"namespace": namespace,
-			// }
 			promPVBytes.AggregateBy = []string{"persistentvolume"}
 			promPVBytes.Function = []string{"avg_over_time", "avg"}
 			promPVBytes.QueryWindow = tc.window
@@ -139,21 +130,16 @@ func TestPVCosts(t *testing.T) {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}
 
-
-
 			// ----------------------------------------------
 			// Metric: PVCostPerGibHour
 			// Description: Get Cost for Every Byte Used in an Hour in GigaBytes
 
 			// avg(avg_over_time(pv_hourly_cost{%s}[%s]))
-			// by 
+			// by
 			// (%s, persistentvolume, volumename, provider_id)
 			// ----------------------------------------------
 			promCostPerGiBHour := prometheus.PrometheusInput{}
 			promCostPerGiBHour.Metric = "pv_hourly_cost"
-			// promCostPerGiBHour.Filters = map[string]string{
-			// 	"namespace": namespace,
-			// }
 			promCostPerGiBHour.AggregateBy = []string{"persistentvolume", "volumename", "provider_id"}
 			promCostPerGiBHour.Function = []string{"avg_over_time", "avg"}
 			promCostPerGiBHour.QueryWindow = tc.window
@@ -164,21 +150,16 @@ func TestPVCosts(t *testing.T) {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}
 
-
-
 			// ----------------------------------------------
 			// Metric: PVMeta
 			// Description: Persistent Volume Information
 
-			// avg(avg_over_time(kubecost_pv_info{%s}[%s])) 
-			// by 
+			// avg(avg_over_time(kubecost_pv_info{%s}[%s]))
+			// by
 			// (%s, storageclass, persistentvolume, provider_id)
 			// ----------------------------------------------
 			promPVMeta := prometheus.PrometheusInput{}
 			promPVMeta.Metric = "kubecost_pv_info"
-			// promPVMeta.Filters = map[string]string{
-			// 	"namespace": namespace,
-			// }
 			promPVMeta.AggregateBy = []string{"storageclass", "persistentvolume", "provider_id"}
 			promPVMeta.Function = []string{"avg_over_time", "avg"}
 			promPVMeta.QueryWindow = tc.window
@@ -189,21 +170,16 @@ func TestPVCosts(t *testing.T) {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}
 
-
-
 			// ----------------------------------------------
 			// Metric: PVCInfo
 			// Description: Persistent Volume Claim Information
 
 			// avg(kube_persistentvolumeclaim_info{volumename != "", %s})
-			// by 
+			// by
 			// (persistentvolumeclaim, storageclass, volumename, namespace, %s)[%s:%dm]
 			// ----------------------------------------------
 			promPVCInfo := prometheus.PrometheusInput{}
 			promPVCInfo.Metric = "kube_persistentvolumeclaim_info"
-			// promPVCInfo.Filters = map[string]string{
-			// 	"namespace": namespace,
-			// }
 			promPVCInfo.IgnoreFilters = map[string][]string{
 				"volumename": {""},
 			}
@@ -218,21 +194,16 @@ func TestPVCosts(t *testing.T) {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}
 
-
-
 			// ----------------------------------------------
 			// Metric: PVCRequestedBytes
 			// Description: Persistent Volume Claim Requested Bytes
 
 			// avg(avg_over_time(kube_persistentvolumeclaim_resource_requests_storage_bytes{%s}[%s]))
-			// by 
+			// by
 			// (persistentvolumeclaim, namespace, %s)
 			// ----------------------------------------------
 			promPVCRequestedBytes := prometheus.PrometheusInput{}
 			promPVCRequestedBytes.Metric = "kube_persistentvolumeclaim_resource_requests_storage_bytes"
-			// promPVCRequestedBytes.Filters = map[string]string{
-			// 	"namespace": namespace,
-			// }
 			promPVCRequestedBytes.AggregateBy = []string{"persistentvolumeclaim", "namespace"}
 			promPVCRequestedBytes.Function = []string{"avg_over_time", "avg"}
 			promPVCRequestedBytes.QueryWindow = tc.window
@@ -243,21 +214,16 @@ func TestPVCosts(t *testing.T) {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}
 
-
-
 			// ----------------------------------------------
 			// Metric: PodPVCAllocation
 			// Description: Pod Persistent Volume Claim Allocation
 
 			// avg(avg_over_time(pod_pvc_allocation{%s}[%s]))
-			// by 
+			// by
 			// (persistentvolume, persistentvolumeclaim, pod, namespace, %s)
 			// ----------------------------------------------
 			promPodPVCAllocation := prometheus.PrometheusInput{}
 			promPodPVCAllocation.Metric = "pod_pvc_allocation"
-			// promPodPVCAllocation.Filters = map[string]string{
-			// 	"namespace": namespace,
-			// }
 			promPodPVCAllocation.AggregateBy = []string{"persistentvolume", "persistentvolumeclaim", "pod", "namespace"}
 			promPodPVCAllocation.Function = []string{"avg_over_time", "avg"}
 			promPodPVCAllocation.QueryWindow = tc.window
@@ -268,8 +234,6 @@ func TestPVCosts(t *testing.T) {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}
 
-
-
 			// Phase - II
 			// Create and Populate a PersistentVolume Map
 			// Create and Populate a PersistentVolumeClaim Map
@@ -278,7 +242,7 @@ func TestPVCosts(t *testing.T) {
 			// --------------------------------------
 			// Populate PersistentVolume Map
 			// --------------------------------------
-			
+
 			PersistentVolumeMap := make(map[string]*prometheus.PersistentVolume)
 
 			// Start and End Times for a PV
@@ -286,19 +250,17 @@ func TestPVCosts(t *testing.T) {
 				persistentVolumeName := promPVRunTimeItem.Metric.PersistentVolume
 				s, e := prometheus.CalculateStartAndEnd(promPVRunTimeItem.Values, resolution, window24h)
 				PersistentVolumeMap[persistentVolumeName] = &prometheus.PersistentVolume{
-					Name: persistentVolumeName,
-					Start: s,
-					End: e,
+					Name:           persistentVolumeName,
+					Start:          s,
+					End:            e,
 					CostPerGiBHour: 0.0,
-					ProviderID: "",
+					ProviderID:     "",
 				}
 			}
 
 			// CostPerGiBHour for a PV
 			for _, promCostPerGiBHourItem := range PVCostPerGiBHour.Data.Result {
 				persistentVolumeName := promCostPerGiBHourItem.Metric.PersistentVolume
-				// providerId := promCostPerGiBHourItem.Metric.ProviderID
-				
 				PVItem, ok := PersistentVolumeMap[persistentVolumeName]
 				if !ok {
 					t.Errorf("PersistentVolume %s missing from kube_persistentvolume_capacity_bytes", persistentVolumeName)
@@ -311,7 +273,7 @@ func TestPVCosts(t *testing.T) {
 			for _, promPVMetaItem := range PVMeta.Data.Result {
 				persistentVolumeName := promPVMetaItem.Metric.PersistentVolume
 				providerId := promPVMetaItem.Metric.ProviderID
-				
+
 				if PVItem, ok := PersistentVolumeMap[persistentVolumeName]; ok {
 					if providerId != "" {
 						PVItem.ProviderID = providerId
@@ -320,17 +282,15 @@ func TestPVCosts(t *testing.T) {
 			}
 
 			// Add PVBytes for PV
-			for _, promPVBytesItem := range PVBytes.Data.Result{
+			for _, promPVBytesItem := range PVBytes.Data.Result {
 				persistentVolumeName := promPVBytesItem.Metric.PersistentVolume
-				// providerId := promPVBytesItem.Metric.ProviderID
-				
 				PVItem, ok := PersistentVolumeMap[persistentVolumeName]
 				if !ok {
 					t.Errorf("PersistentVolume %s missing from kube_persistentvolume_capacity_bytes", persistentVolumeName)
 					continue
 				}
 				PVItem.PVBytes = promPVBytesItem.Value.Value
-				
+
 				// PV usage exceeds sanity limit
 				if PVItem.PVBytes > PV_USAGE_SANITY_LIMIT_BYTES {
 					t.Logf("PV usage exceeds sanity limit, clamping to zero for %s", persistentVolumeName)
@@ -343,11 +303,10 @@ func TestPVCosts(t *testing.T) {
 			// --------------------------------------
 
 			type PersistentVolumeClaimKey struct {
-				Namespace					string
-				PersistentVolumeClaimName	string
+				Namespace                 string
+				PersistentVolumeClaimName string
 			}
 
-			
 			// Map Key is Namespace
 			PersistentVolumeClaimMap := make(map[PersistentVolumeClaimKey]*prometheus.PersistentVolumeClaim)
 
@@ -357,11 +316,7 @@ func TestPVCosts(t *testing.T) {
 				persistentVolumeClaimName := promPVCInfoItem.Metric.PersistentVolumeClaim
 				storageClass := promPVCInfoItem.Metric.StorageClass
 				namespace := promPVCInfoItem.Metric.Namespace
-				
-				// t.Logf("PVC Information: %v", promPVCInfoItem.Metric.Namespace)
-				// t.Logf("PVC Information: %v", promPVCInfoItem.Metric.StorageClass)
-				// t.Logf("PVC Information: %v", promPVCInfoItem.Metric.PersistentVolumeClaim)
-				// t.Logf("PVC Information: %v", promPVCInfoItem.Metric.PersistentVolume)
+
 				if namespace == "" || persistentVolumeClaimName == "" || persistentVolumeName == "" || storageClass == "" {
 					t.Logf("CostModel.ComputeAllocation: pvc info query result missing field")
 					continue
@@ -379,34 +334,29 @@ func TestPVCosts(t *testing.T) {
 
 				// Create a PersistentVolume Index and link the PersistentVolume Information
 				persistentVolumeClaimKey := PersistentVolumeClaimKey{
-					Namespace: namespace,
+					Namespace:                 namespace,
 					PersistentVolumeClaimName: persistentVolumeClaimName,
 				}
 
 				PersistentVolumeClaimMap[persistentVolumeClaimKey] = &prometheus.PersistentVolumeClaim{
-					Namespace: namespace,
+					Namespace:                 namespace,
 					PersistentVolumeClaimName: persistentVolumeClaimName,
-					PersistentVolume: PVItem,
-					Start: s,
-					End: e,
+					PersistentVolume:          PVItem,
+					Start:                     s,
+					End:                       e,
 				}
 			}
 
-			// t.Logf("Persistent Volume Claim Map: %v", PersistentVolumeClaimMap)
-			// if 1 == 1 {
-			// 	return
-			// }
-			
 			// Add PVCRequestedBytes
 			for _, promPVCRequestedBytesItem := range PVCRequestedBytes.Data.Result {
 				persistentVolumeClaimName := promPVCRequestedBytesItem.Metric.PersistentVolumeClaim
 				namespace := promPVCRequestedBytesItem.Metric.Namespace
 
 				persistentVolumeClaimKey := PersistentVolumeClaimKey{
-					Namespace: namespace,
+					Namespace:                 namespace,
 					PersistentVolumeClaimName: persistentVolumeClaimName,
 				}
-				
+
 				PersistentVolumeClaimItem, ok := PersistentVolumeClaimMap[persistentVolumeClaimKey]
 				if !ok {
 					continue
@@ -419,7 +369,7 @@ func TestPVCosts(t *testing.T) {
 			// --------------------------------------
 			// Build Pod Map
 			// --------------------------------------
-			
+
 			// Query all running pod information
 			// avg(kube_pod_container_status_running{} != 0)
 			// by
@@ -429,8 +379,7 @@ func TestPVCosts(t *testing.T) {
 			promPodInfoInput := prometheus.PrometheusInput{}
 
 			promPodInfoInput.Metric = "kube_pod_container_status_running"
-			promPodInfoInput.Filters = map[string]string{
-			}
+			promPodInfoInput.Filters = map[string]string{}
 			promPodInfoInput.MetricNotEqualTo = "0"
 			promPodInfoInput.AggregateBy = []string{"container", "pod", "namespace", "uid"}
 			promPodInfoInput.Function = []string{"avg"}
@@ -441,19 +390,19 @@ func TestPVCosts(t *testing.T) {
 			podInfo, err := client.RunPromQLQuery(promPodInfoInput)
 
 			type PVAllocations struct {
-				ByteHours		float64
-				Cost			float64
-				ProviderID		string
+				ByteHours  float64
+				Cost       float64
+				ProviderID string
 			}
 
 			type PodData struct {
-				Pod        	string
-				Namespace  	string
-				Start      	time.Time
-				End        	time.Time
-				Minutes    	float64
+				Pod        string
+				Namespace  string
+				Start      time.Time
+				End        time.Time
+				Minutes    float64
 				Containers map[string]map[string]*PVAllocations // One to Many Relationship for Each Container. Conatainer --> Multiple Persistent Volumes
-				
+
 			}
 
 			podMap := make(map[prometheus.PodKey]*PodData)
@@ -465,10 +414,10 @@ func TestPVCosts(t *testing.T) {
 				pod := podInfoResponseItem.Metric.Pod
 				container := podInfoResponseItem.Metric.Container
 				uid := podInfoResponseItem.Metric.UID
-				
+
 				podKey := prometheus.PodKey{
 					Namespace: namespace,
-					Pod: pod,
+					Pod:       pod,
 				}
 
 				// This is to account for pod replicas
@@ -477,9 +426,9 @@ func TestPVCosts(t *testing.T) {
 				} else {
 					newPodKey := prometheus.PodKey{
 						Namespace: namespace,
-						Pod: pod,
-						UID: uid,
-					}	
+						Pod:       pod,
+						UID:       uid,
+					}
 					podUIDKeyMap[podKey] = append(podUIDKeyMap[podKey], newPodKey)
 					podKey = newPodKey
 
@@ -499,23 +448,21 @@ func TestPVCosts(t *testing.T) {
 					if e.After(thisPod.End) {
 						thisPod.End = e
 					}
-				
+
 				} else {
 					podMap[podKey] = &PodData{
 						// Key:        	newPodKey,
-						Namespace:  	namespace,
-						Start:      	s,
-						End:        	e,
-						Minutes:    	e.Sub(s).Minutes(),
-						Containers:		make(map[string]map[string]*PVAllocations),
+						Namespace:  namespace,
+						Start:      s,
+						End:        e,
+						Minutes:    e.Sub(s).Minutes(),
+						Containers: make(map[string]map[string]*PVAllocations),
 					}
-					
+
 				}
 				podMap[podKey].Containers[container] = make(map[string]*PVAllocations)
 			}
 
-
-	
 			// --------------------------------------
 			// Populate Pod to PersistentVolumeClaim Map
 			// --------------------------------------
@@ -524,7 +471,7 @@ func TestPVCosts(t *testing.T) {
 			podPVCMap := make(map[prometheus.PodKey][]*prometheus.PersistentVolumeClaim)
 
 			for _, podPVCAllocationItem := range PodPVCAllocation.Data.Result {
-				
+
 				namespace := podPVCAllocationItem.Metric.Namespace
 				pod := podPVCAllocationItem.Metric.Pod
 				persistentVolumeName := podPVCAllocationItem.Metric.PersistentVolume
@@ -537,12 +484,12 @@ func TestPVCosts(t *testing.T) {
 
 				podKey := prometheus.PodKey{
 					Namespace: namespace,
-					Pod: pod,
+					Pod:       pod,
 				}
 
 				persistentVolumeClaimKey := PersistentVolumeClaimKey{
-					Namespace: namespace,
-					PersistentVolumeClaimName: persistentVolumeClaimName, 
+					Namespace:                 namespace,
+					PersistentVolumeClaimName: persistentVolumeClaimName,
 				}
 
 				for _, key := range podUIDKeyMap[podKey] {
@@ -553,16 +500,15 @@ func TestPVCosts(t *testing.T) {
 						continue
 					}
 					pvc.Mounted = true
-					
+
 					podPVCMap[key] = append(podPVCMap[key], pvc)
-					
+
 				}
 			}
 
 			// --------------------------------------
 			// Apply PVCs to Pod
 			// --------------------------------------
-			
 
 			// For each persistent volume
 			// Attach the pod along with a modified run time based on the persistent volume.
@@ -585,7 +531,7 @@ func TestPVCosts(t *testing.T) {
 						}
 
 						thisPVCKey := PersistentVolumeClaimKey{
-							Namespace: thisPVC.Namespace,
+							Namespace:                 thisPVC.Namespace,
 							PersistentVolumeClaimName: thisPVC.PersistentVolumeClaimName,
 						}
 
@@ -594,7 +540,7 @@ func TestPVCosts(t *testing.T) {
 						}
 						pvcPodWindowMap[thisPVCKey][thisPodKey] = api.Window{
 							Start: s,
-							End: e,
+							End:   e,
 						}
 					}
 				}
@@ -613,9 +559,9 @@ func TestPVCosts(t *testing.T) {
 					t.Logf("Allocation: Compute: applyPVCsToPods: getPVCCostCoefficients: %s", err)
 					continue
 				}
-			
+
 				for thisPodKey, coeffComponents := range sharedPVCCostCoefficients {
-					
+
 					pod, _ := podMap[thisPodKey]
 
 					// Alloc is pvs, the map of persistent volumes
@@ -644,9 +590,6 @@ func TestPVCosts(t *testing.T) {
 				}
 			}
 
-
-
-
 			// ----------------------------------------------
 			// Compare Results with Allocation
 			// ----------------------------------------------
@@ -658,13 +601,13 @@ func TestPVCosts(t *testing.T) {
 
 				podUIDKey := prometheus.PodKey{
 					Namespace: namespace,
-					Pod: pod,
+					Pod:       pod,
 				}
-				
+
 				// Get Pods
 				podKeys := podUIDKeyMap[podUIDKey]
 				for _, podKey := range podKeys {
-					
+
 					podData, ok := podMap[podKey]
 					if !ok {
 						t.Errorf("Pod Information Missing from API")
@@ -689,7 +632,7 @@ func TestPVCosts(t *testing.T) {
 							// allocPVName = cluster=default-cluster:name=csi-7da248e4-1143-4c64-ab24-3ab1ba178f9
 							re := regexp.MustCompile(`name=([^:]+)`)
 							allocPVName := re.FindStringSubmatch(allocPVName)[1]
-							
+
 							if containerPVs[allocPVName].ProviderID != allocProviderID {
 								t.Errorf("Provider IDs don't match for the same Pod")
 								continue
