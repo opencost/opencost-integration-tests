@@ -633,14 +633,22 @@ func TestPVCosts(t *testing.T) {
 					Pod:       pod,
 				}
 
-				// Check for unmounted containers if any
-
 				// Get Pods
 				podKeys := podUIDKeyMap[podUIDKey]
+
+				// In the case of unmounted pods
+				if container == "__unmounted__" {
+					podKeys = []prometheus.PodKey{podUIDKey}
+				}
+
 				for _, podKey := range podKeys {
 
 					podData, ok := podMap[podKey]
 					if !ok {
+						if container == "__unmounted__" { // If promethues starts recognising unmounted pods, remove this. Temporary Fix
+							t.Logf("    - [Skipping] Unmounted PVs not supported")
+							continue
+						}
 						t.Errorf("Pod Information Missing from API")
 						continue
 					}
@@ -648,7 +656,7 @@ func TestPVCosts(t *testing.T) {
 					// Get Containers
 					containerPVs, ok := podData.Containers[container]
 					if !ok {
-						t.Errorf("Container Informatino Missing from API")
+						t.Errorf("Container Information Missing from API")
 					}
 
 					// Loop Over Persistent Volume Claims
