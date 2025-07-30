@@ -14,15 +14,14 @@ package prometheus
 //	   - Compute Cost of PVC usage for each pod based on its running interval in the pods lifecycle
 
 import (
+	"fmt"
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 	"github.com/opencost/opencost-integration-tests/pkg/utils"
-	"fmt"
 	"regexp"
 	"testing"
 	"time"
 )
-
 
 const tolerance = 0.05
 const KiB = 1024.0
@@ -37,18 +36,18 @@ func TestPVCosts(t *testing.T) {
 
 	// test for more windows
 	testCases := []struct {
-		name       	string
-		window     	string
-		aggregate  	string
-		accumulate 	string
+		name        string
+		window      string
+		aggregate   string
+		accumulate  string
 		includeIdle string
 	}{
 		{
-			name:       	"Yesterday",
-			window:     	"24h",
-			aggregate:  	"pod,container",
-			accumulate: 	"False",
-			includeIdle: 	"True",
+			name:        "Yesterday",
+			window:      "24h",
+			aggregate:   "pod,container",
+			accumulate:  "False",
+			includeIdle: "True",
 		},
 	}
 
@@ -62,10 +61,10 @@ func TestPVCosts(t *testing.T) {
 			// ----------------------------------------------
 			// /compute/allocation: PV Costs for all namespaces
 			apiResponse, err := apiObj.GetAllocation(api.AllocationRequest{
-				Window:     	tc.window,
-				Aggregate:  	tc.aggregate,
-				Accumulate: 	tc.accumulate,
-				IncludeIdle: 	tc.includeIdle,
+				Window:      tc.window,
+				Aggregate:   tc.aggregate,
+				Accumulate:  tc.accumulate,
+				IncludeIdle: tc.includeIdle,
 			})
 
 			if err != nil {
@@ -483,11 +482,10 @@ func TestPVCosts(t *testing.T) {
 
 				for _, key := range podUIDKeyMap[podKey] {
 					// Add Error Checking Later
-					
+
 					if _, ok := PersistentVolumeMap[persistentVolumeName]; !ok {
 						t.Logf("PV Test: pv missing for pvc allocation query result: %s", persistentVolumeName)
 					}
-
 
 					pvc, ok := PersistentVolumeClaimMap[persistentVolumeClaimKey]
 					if !ok {
@@ -557,15 +555,14 @@ func TestPVCosts(t *testing.T) {
 
 				for thisPodKey, coeffComponents := range sharedPVCCostCoefficients {
 
-					pod, ok  := podMap[thisPodKey]
-					
+					pod, ok := podMap[thisPodKey]
+
 					if !ok || len(pod.Containers) == 0 {
 						// Get namespace unmounted pod, as pvc will have a namespace
 						window := api.Window{
 							Start: queryStart,
-							End: queryEnd,
+							End:   queryEnd,
 						}
-						t.Logf("Found Unmounted")
 						pod = getUnmountedPodForNamespace(window, podMap, pvc.Namespace)
 					}
 
@@ -601,15 +598,15 @@ func TestPVCosts(t *testing.T) {
 
 			for _, pvc := range PersistentVolumeClaimMap {
 				if !pvc.Mounted && pvc.PersistentVolume != nil {
-					
+
 					// Get namespace unmounted pod, as pvc will have a namespace
 					window := api.Window{
 						Start: queryStart,
-						End: queryEnd,
+						End:   queryEnd,
 					}
-					t.Log("Hello")
+
 					pod := getUnmountedPodForNamespace(window, podMap, pvc.Namespace)
-					
+
 					// Use the Volume Bytes here because pvc bytes could be different,
 					// however the pv bytes are what are going to determine cost
 					gib := pvc.RequestedBytes / 1024 / 1024 / 1024
@@ -621,7 +618,6 @@ func TestPVCosts(t *testing.T) {
 					}
 				}
 			}
-
 
 			// ----------------------------------------------
 			// Compare Results with Allocation
@@ -637,7 +633,7 @@ func TestPVCosts(t *testing.T) {
 					Pod:       pod,
 				}
 
-				// Check for unmounted containers
+				// Check for unmounted containers if any
 
 				// Get Pods
 				podKeys := podUIDKeyMap[podUIDKey]
@@ -698,8 +694,6 @@ func TestPVCosts(t *testing.T) {
 	}
 }
 
-
-
 // getUnmountedPodForNamespace is as getUnmountedPodForCluster, but keys allocation property pod/namespace field off namespace
 // This creates or adds allocations to an unmounted pod in the specified namespace, rather than in __unmounted__
 func getUnmountedPodForNamespace(window api.Window, podMap map[prometheus.PodKey]*prometheus.PodData, namespace string) *prometheus.PodData {
@@ -707,16 +701,16 @@ func getUnmountedPodForNamespace(window api.Window, podMap map[prometheus.PodKey
 	podName := fmt.Sprintf("%s-unmounted-pvcs", namespace)
 
 	thisPodKey := prometheus.PodKey{
-		Namespace: namespace, 
-		Pod: podName,
+		Namespace: namespace,
+		Pod:       podName,
 	}
 
 	// Initialize pod and container if they do not already exist
 	thisPod, ok := podMap[thisPodKey]
 	if !ok {
 		thisPod = &prometheus.PodData{
-			Start:       window.Start,
-			End:         window.End,
+			Start:      window.Start,
+			End:        window.End,
 			Containers: make(map[string]map[string]*prometheus.PVAllocations),
 		}
 
