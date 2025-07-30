@@ -658,6 +658,7 @@ func TestPVCosts(t *testing.T) {
 				// Get Pods
 				podKeys := podUIDKeyMap[podUIDKey]
 				for _, podKey := range podKeys {
+					
 					podData, ok := podMap[podKey]
 					if !ok {
 						t.Errorf("Pod Information Missing from API")
@@ -671,8 +672,8 @@ func TestPVCosts(t *testing.T) {
 					}
 
 					// Loop Over Persistent Volume Claims
+					t.Logf("Container Name: %v, Pod: %v, Pod UID: %v", container, pod, podKey.UID)
 					if allocationResponseItem.PersistentVolumes != nil {
-						t.Logf("Container Name: %v, Pod Name: %v", container, pod)
 						for allocPVName, allocPV := range allocationResponseItem.PersistentVolumes {
 							allocProviderID := allocPV.ProviderID
 							allocByteHours := allocPV.ByteHours
@@ -694,16 +695,18 @@ func TestPVCosts(t *testing.T) {
 							if withinRange {
 								t.Logf("    - ByteHours[Pass]: ~%0.2f", allocByteHours)
 							} else {
-								t.Errorf("    - ByteHours[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, containerPVs[allocPVName].ByteHours, allocByteHours)
+								t.Errorf("    - ByteHours[Fail]: DifferencePercent: %0.2f, Prom Results: %0.2f, API Results: %0.2f", diff_percent, containerPVs[allocPVName].ByteHours, allocByteHours)
 							}
 							// Compare Cost
 							withinRange, diff_percent = utils.AreWithinPercentage(containerPVs[allocPVName].Cost, allocCost, tolerance)
 							if withinRange {
 								t.Logf("    - Cost[Pass]: ~%0.2f", allocCost)
 							} else {
-								t.Errorf("    - Cost[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, containerPVs[allocPVName].Cost, allocCost)
+								t.Errorf("    - Cost[Fail]: DifferencePercent: %0.2f, Prom Results: %0.2f, API Results: %0.2f", diff_percent, containerPVs[allocPVName].Cost, allocCost)
 							}
 						}
+					} else {
+						t.Logf("    - [Skipping]: No Persistent Volume Claims")
 					}
 				}
 			}
