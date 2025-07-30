@@ -646,7 +646,7 @@ func TestPVCosts(t *testing.T) {
 					podData, ok := podMap[podKey]
 					if !ok {
 						if container == "__unmounted__" { // If promethues starts recognising unmounted pods, remove this. Temporary Fix
-							t.Logf("    - [Skipping] Unmounted PVs not supported")
+							t.Logf("[Skipping] Unmounted PVs not supported")
 							continue
 						}
 						t.Errorf("Pod Information Missing from API")
