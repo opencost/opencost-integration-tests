@@ -11,7 +11,8 @@ package prometheus
 import (
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
-	// "github.com/opencost/opencost-integration-tests/pkg/utils"
+	"github.com/opencost/opencost-integration-tests/pkg/utils"
+	"regexp"
 	"testing"
 	"time"
 )
@@ -416,7 +417,7 @@ func TestPVCosts(t *testing.T) {
 			// Query all running pod information
 			// avg(kube_pod_container_status_running{} != 0)
 			// by
-			// (container, pod, namespace, node)[24h:5m]
+			// (container, pod, namespace, uid)[24h:5m]
 
 			// Q) != 0 is not necessary I suppose?
 			promPodInfoInput := prometheus.PrometheusInput{}
@@ -459,27 +460,32 @@ func TestPVCosts(t *testing.T) {
 				container := podInfoResponseItem.Metric.Container
 				uid := podInfoResponseItem.Metric.UID
 				
-				// This is to account for pod replicas
-				if uid == "" {
-					continue
-				}
-
 				podKey := prometheus.PodKey{
 					Namespace: namespace,
 					Pod: pod,
 				}
 
-				newPodKey := prometheus.PodKey{
-					Namespace: namespace,
-					Pod: pod,
-					UID: uid,
-				}
+				// This is to account for pod replicas
+				if uid == "" {
+					t.Logf("Query Result missing UID for Pod %s", pod)
+				} else {
+					newPodKey := prometheus.PodKey{
+						Namespace: namespace,
+						Pod: pod,
+						UID: uid,
+					}	
+					podUIDKeyMap[podKey] = append(podUIDKeyMap[podKey], newPodKey)
+					podKey = newPodKey
 
-				podUIDKeyMap[podKey] = append(podUIDKeyMap[podKey], newPodKey)
+				}
 
 				s, e := prometheus.CalculateStartAndEnd(podInfoResponseItem.Values, resolution, window24h)
 
-				if thisPod, ok := podMap[newPodKey]; ok {
+				if s.IsZero() || e.IsZero() {
+					continue
+				}
+
+				if thisPod, ok := podMap[podKey]; ok {
 					// Expand Pod Run Intervals based as an integration of all UIDs
 					if s.Before(thisPod.Start) {
 						thisPod.Start = s
@@ -489,7 +495,7 @@ func TestPVCosts(t *testing.T) {
 					}
 				
 				} else {
-					podMap[newPodKey] = &PodData{
+					podMap[podKey] = &PodData{
 						// Key:        	newPodKey,
 						Namespace:  	namespace,
 						Start:      	s,
@@ -499,9 +505,11 @@ func TestPVCosts(t *testing.T) {
 					}
 					
 				}
-				podMap[newPodKey].Containers[container] = make(map[string]*PVAllocations)
-
+				podMap[podKey].Containers[container] = make(map[string]*PVAllocations)
 			}
+
+
+	
 			// --------------------------------------
 			// Populate Pod to PersistentVolumeClaim Map
 			// --------------------------------------
@@ -521,17 +529,17 @@ func TestPVCosts(t *testing.T) {
 					continue
 				}
 
-				// podKey := prometheus.PodKey{
-				// 	Namespace: namespace,
-				// 	Pod: pod,
-				// }
+				podKey := prometheus.PodKey{
+					Namespace: namespace,
+					Pod: pod,
+				}
 
 				persistentVolumeClaimKey := PersistentVolumeClaimKey{
 					Namespace: namespace,
 					PersistentVolumeClaimName: persistentVolumeClaimName, 
 				}
 
-				for _, keys := range podUIDKeyMap {
+				for _, key := range podUIDKeyMap[podKey] {
 					// Add Error Checking Later
 					pvc, ok := PersistentVolumeClaimMap[persistentVolumeClaimKey]
 					if !ok {
@@ -539,9 +547,9 @@ func TestPVCosts(t *testing.T) {
 						continue
 					}
 					pvc.Mounted = true
-					for _, key := range keys{
-						podPVCMap[key] = append(podPVCMap[key], pvc)
-					}
+					
+					podPVCMap[key] = append(podPVCMap[key], pvc)
+					
 				}
 			}
 
@@ -646,53 +654,58 @@ func TestPVCosts(t *testing.T) {
 					Namespace: namespace,
 					Pod: pod,
 				}
-
 				
+				// Get Pods
 				podKeys := podUIDKeyMap[podUIDKey]
 				for _, podKey := range podKeys {
-
 					podData, ok := podMap[podKey]
 					if !ok {
 						t.Errorf("Pod Information Missing from API")
 						continue
 					}
+
+					// Get Containers
 					containerPVs, ok := podData.Containers[container]
 					if !ok {
 						t.Errorf("Container Informatino Missing from API")
 					}
+
+					// Loop Over Persistent Volume Claims
 					if allocationResponseItem.PersistentVolumes != nil {
 						t.Logf("Container Name: %v, Pod Name: %v", container, pod)
-						t.Logf("API Response")
-						for pvname, _  := range allocationResponseItem.PersistentVolumes {
-							t.Logf("%v", pvname)
-							// t.Logf("%v", val.ByteHours)
-							// t.Logf("%v", val.Cost)
+						for allocPVName, allocPV := range allocationResponseItem.PersistentVolumes {
+							allocProviderID := allocPV.ProviderID
+							allocByteHours := allocPV.ByteHours
+							allocCost := allocPV.Cost
+
+							// Get PV Name
+							// allocPVName = cluster=default-cluster:name=csi-7da248e4-1143-4c64-ab24-3ab1ba178f9
+							re := regexp.MustCompile(`name=([^:]+)`)
+							allocPVName := re.FindStringSubmatch(allocPVName)[1]
+							
+							if containerPVs[allocPVName].ProviderID != allocProviderID {
+								t.Errorf("Provider IDs don't match for the same Pod")
+								continue
+							}
+
+							t.Logf("Persistent Volume Name: %v", allocPVName)
+							// Compare ByteHours
+							withinRange, diff_percent := utils.AreWithinPercentage(containerPVs[allocPVName].ByteHours, allocByteHours, tolerance)
+							if withinRange {
+								t.Logf("    - ByteHours[Pass]: ~%0.2f", allocByteHours)
+							} else {
+								t.Errorf("    - ByteHours[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, containerPVs[allocPVName].ByteHours, allocByteHours)
+							}
+							// Compare Cost
+							withinRange, diff_percent = utils.AreWithinPercentage(containerPVs[allocPVName].Cost, allocCost, tolerance)
+							if withinRange {
+								t.Logf("    - Cost[Pass]: ~%0.2f", allocCost)
+							} else {
+								t.Errorf("    - Cost[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, containerPVs[allocPVName].Cost, allocCost)
+							}
 						}
-						// t.Logf("API %v", allocationResponseItem.PersistentVolumes)
-						// t.Logf("%v", allocationResponseItem.PersistentVolumes)
-						t.Logf("Prometheus Response")
-						for pvname, _ := range containerPVs {
-							t.Logf("%v", pvname)
-							// t.Logf("%v", val.ByteHours)
-							// t.Logf("%v", val.Cost)
-						}
-						// t.Logf("Prometheus %v", containerPVs)
 					}
 				}
-
-
-				// withinRange, diff_percent := utils.AreWithinPercentage(nsPVBytes, allocationResponseItem.PVBytes, tolerance)
-				// if withinRange {
-				// 	t.Logf("    - PVBytes[Pass]: ~%.2f", nsPVBytes)
-				// } else {
-				// 	t.Errorf("    - PVBytes[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsPVBytes, allocationResponseItem.PVBytes)
-				// }
-				// withinRange, diff_percent = utils.AreWithinPercentage(nsPVBytesHours, allocationResponseItem.PVByteHours, tolerance)
-				// if withinRange {
-				// 	t.Logf("    - PVByteHours[Pass]: ~%.2f", nsPVBytesHours)
-				// } else {
-				// 	t.Errorf("    - PVByteHours[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsPVBytesHours, allocationResponseItem.PVByteHours)
-				// }
 			}
 		})
 	}
