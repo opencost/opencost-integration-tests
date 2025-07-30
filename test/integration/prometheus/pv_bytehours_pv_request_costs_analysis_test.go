@@ -17,10 +17,12 @@ import (
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 	"github.com/opencost/opencost-integration-tests/pkg/utils"
+	"fmt"
 	"regexp"
 	"testing"
 	"time"
 )
+
 
 const tolerance = 0.05
 const KiB = 1024.0
@@ -35,16 +37,18 @@ func TestPVCosts(t *testing.T) {
 
 	// test for more windows
 	testCases := []struct {
-		name       string
-		window     string
-		aggregate  string
-		accumulate string
+		name       	string
+		window     	string
+		aggregate  	string
+		accumulate 	string
+		includeIdle string
 	}{
 		{
-			name:       "Yesterday",
-			window:     "24h",
-			aggregate:  "pod,container",
-			accumulate: "false",
+			name:       	"Yesterday",
+			window:     	"24h",
+			aggregate:  	"pod,container",
+			accumulate: 	"False",
+			includeIdle: 	"True",
 		},
 	}
 
@@ -58,9 +62,10 @@ func TestPVCosts(t *testing.T) {
 			// ----------------------------------------------
 			// /compute/allocation: PV Costs for all namespaces
 			apiResponse, err := apiObj.GetAllocation(api.AllocationRequest{
-				Window:     tc.window,
-				Aggregate:  tc.aggregate,
-				Accumulate: tc.accumulate,
+				Window:     	tc.window,
+				Aggregate:  	tc.aggregate,
+				Accumulate: 	tc.accumulate,
+				IncludeIdle: 	tc.includeIdle,
 			})
 
 			if err != nil {
@@ -318,7 +323,7 @@ func TestPVCosts(t *testing.T) {
 				namespace := promPVCInfoItem.Metric.Namespace
 
 				if namespace == "" || persistentVolumeClaimName == "" || persistentVolumeName == "" || storageClass == "" {
-					t.Logf("CostModel.ComputeAllocation: pvc info query result missing field")
+					t.Logf("PV Test: pvc info query result missing field")
 					continue
 				}
 
@@ -389,23 +394,7 @@ func TestPVCosts(t *testing.T) {
 
 			podInfo, err := client.RunPromQLQuery(promPodInfoInput)
 
-			type PVAllocations struct {
-				ByteHours  float64
-				Cost       float64
-				ProviderID string
-			}
-
-			type PodData struct {
-				Pod        string
-				Namespace  string
-				Start      time.Time
-				End        time.Time
-				Minutes    float64
-				Containers map[string]map[string]*PVAllocations // One to Many Relationship for Each Container. Conatainer --> Multiple Persistent Volumes
-
-			}
-
-			podMap := make(map[prometheus.PodKey]*PodData)
+			podMap := make(map[prometheus.PodKey]*prometheus.PodData)
 			podUIDKeyMap := make(map[prometheus.PodKey][]prometheus.PodKey)
 
 			for _, podInfoResponseItem := range podInfo.Data.Result {
@@ -450,17 +439,17 @@ func TestPVCosts(t *testing.T) {
 					}
 
 				} else {
-					podMap[podKey] = &PodData{
+					podMap[podKey] = &prometheus.PodData{
 						// Key:        	newPodKey,
 						Namespace:  namespace,
 						Start:      s,
 						End:        e,
 						Minutes:    e.Sub(s).Minutes(),
-						Containers: make(map[string]map[string]*PVAllocations),
+						Containers: make(map[string]map[string]*prometheus.PVAllocations),
 					}
 
 				}
-				podMap[podKey].Containers[container] = make(map[string]*PVAllocations)
+				podMap[podKey].Containers[container] = make(map[string]*prometheus.PVAllocations)
 			}
 
 			// --------------------------------------
@@ -478,7 +467,7 @@ func TestPVCosts(t *testing.T) {
 				persistentVolumeClaimName := podPVCAllocationItem.Metric.PersistentVolumeClaim
 
 				if namespace == "" || pod == "" || persistentVolumeName == "" || persistentVolumeClaimName == "" {
-					t.Logf("CostModel.ComputeAllocation: pvc allocation query result missing field")
+					t.Logf("PV Test: pvc allocation query result missing field")
 					continue
 				}
 
@@ -494,15 +483,21 @@ func TestPVCosts(t *testing.T) {
 
 				for _, key := range podUIDKeyMap[podKey] {
 					// Add Error Checking Later
+					
+					if _, ok := PersistentVolumeMap[persistentVolumeName]; !ok {
+						t.Logf("PV Test: pv missing for pvc allocation query result: %s", persistentVolumeName)
+					}
+
+
 					pvc, ok := PersistentVolumeClaimMap[persistentVolumeClaimKey]
 					if !ok {
-						t.Logf("Persistent Volume Claim Missing.") // Expand on this, This is not the complete error message, stopgag measure
+						t.Logf("PV Test: pvc missing for from PVC alloctions prom query: %s", persistentVolumeClaimKey)
 						continue
 					}
+
 					pvc.Mounted = true
 
 					podPVCMap[key] = append(podPVCMap[key], pvc)
-
 				}
 			}
 
@@ -562,7 +557,17 @@ func TestPVCosts(t *testing.T) {
 
 				for thisPodKey, coeffComponents := range sharedPVCCostCoefficients {
 
-					pod, _ := podMap[thisPodKey]
+					pod, ok  := podMap[thisPodKey]
+					
+					if !ok || len(pod.Containers) == 0 {
+						// Get namespace unmounted pod, as pvc will have a namespace
+						window := api.Window{
+							Start: queryStart,
+							End: queryEnd,
+						}
+						t.Logf("Found Unmounted")
+						pod = getUnmountedPodForNamespace(window, podMap, pvc.Namespace)
+					}
 
 					// Alloc is pvs, the map of persistent volumes
 					for _, alloc := range pod.Containers {
@@ -581,7 +586,7 @@ func TestPVCosts(t *testing.T) {
 						// so that if all allocations with a given pv key are summed the result of those
 						// would be equal to the values of the original pv
 						count := float64(len(pod.Containers))
-						alloc[pvKey] = &PVAllocations{
+						alloc[pvKey] = &prometheus.PVAllocations{
 							ByteHours:  byteHours * coef / count,
 							Cost:       cost * coef / count,
 							ProviderID: pvc.PersistentVolume.ProviderID,
@@ -589,6 +594,34 @@ func TestPVCosts(t *testing.T) {
 					}
 				}
 			}
+
+			// ----------------------------------------------
+			// Unmounted PV Costs
+			// ----------------------------------------------
+
+			for _, pvc := range PersistentVolumeClaimMap {
+				if !pvc.Mounted && pvc.PersistentVolume != nil {
+					
+					// Get namespace unmounted pod, as pvc will have a namespace
+					window := api.Window{
+						Start: queryStart,
+						End: queryEnd,
+					}
+					t.Log("Hello")
+					pod := getUnmountedPodForNamespace(window, podMap, pvc.Namespace)
+					
+					// Use the Volume Bytes here because pvc bytes could be different,
+					// however the pv bytes are what are going to determine cost
+					gib := pvc.RequestedBytes / 1024 / 1024 / 1024
+					hrs := pvc.End.Sub(pvc.Start).Minutes() / 60
+					cost := pvc.PersistentVolume.CostPerGiBHour * gib * hrs
+					pod.Containers["__unmounted__"][pvc.PersistentVolume.Name] = &prometheus.PVAllocations{
+						ByteHours: pvc.RequestedBytes * hrs,
+						Cost:      cost,
+					}
+				}
+			}
+
 
 			// ----------------------------------------------
 			// Compare Results with Allocation
@@ -603,6 +636,8 @@ func TestPVCosts(t *testing.T) {
 					Namespace: namespace,
 					Pod:       pod,
 				}
+
+				// Check for unmounted containers
 
 				// Get Pods
 				podKeys := podUIDKeyMap[podUIDKey]
@@ -661,4 +696,32 @@ func TestPVCosts(t *testing.T) {
 			}
 		})
 	}
+}
+
+
+
+// getUnmountedPodForNamespace is as getUnmountedPodForCluster, but keys allocation property pod/namespace field off namespace
+// This creates or adds allocations to an unmounted pod in the specified namespace, rather than in __unmounted__
+func getUnmountedPodForNamespace(window api.Window, podMap map[prometheus.PodKey]*prometheus.PodData, namespace string) *prometheus.PodData {
+	container := "__unmounted__"
+	podName := fmt.Sprintf("%s-unmounted-pvcs", namespace)
+
+	thisPodKey := prometheus.PodKey{
+		Namespace: namespace, 
+		Pod: podName,
+	}
+
+	// Initialize pod and container if they do not already exist
+	thisPod, ok := podMap[thisPodKey]
+	if !ok {
+		thisPod = &prometheus.PodData{
+			Start:       window.Start,
+			End:         window.End,
+			Containers: make(map[string]map[string]*prometheus.PVAllocations),
+		}
+
+		thisPod.Containers[container] = make(map[string]*prometheus.PVAllocations)
+		podMap[thisPodKey] = thisPod
+	}
+	return thisPod
 }

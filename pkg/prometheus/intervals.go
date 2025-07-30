@@ -97,6 +97,10 @@ func GetPVCCostCoefficients(intervals IntervalPoints, thisPVC *PersistentVolumeC
 		return nil, fmt.Errorf("detected PVC with window of zero duration: %s/%s", thisPVC.Namespace, thisPVC.PersistentVolumeClaimName)
 	}
 
+	unmountedKey := PodKey{
+		Namespace: "__unmounted__",
+		Pod: "__unmounted__",
+	}
 
 	var void struct{}
 	activeKeys := map[PodKey]struct{}{}
@@ -117,8 +121,19 @@ func GetPVCCostCoefficients(intervals IntervalPoints, thisPVC *PersistentVolumeC
 						Proportion: 1.0 / float64(len(activeKeys)),
 					},
 				)
-
 			}
+
+			// If there are no active keys attribute all cost to the unmounted pv
+			if len(activeKeys) == 0 {
+				pvcCostCoefficientMap[unmountedKey] = append(
+					pvcCostCoefficientMap[unmountedKey],
+					CoefficientComponent{
+						Time:       point.Time.Sub(currentTime).Minutes() / pvcWindowDurationMinutes,
+						Proportion: 1.0,
+					},
+				)
+			}
+
 		}
 
 		// If the point was a start, increment and track
@@ -135,15 +150,15 @@ func GetPVCCostCoefficients(intervals IntervalPoints, thisPVC *PersistentVolumeC
 	}
 
 	// If all pod intervals end before the end of the PVC attribute the remaining cost to unmounted
-	// if currentTime.Before(thisPVC.End) {
-	// 	pvcCostCoefficientMap[unmountedKey] = append(
-	// 		pvcCostCoefficientMap[unmountedKey],
-	// 		CoefficientComponent{
-	// 			Time:       thisPVC.End.Sub(currentTime).Minutes() / pvcWindowDurationMinutes,
-	// 			Proportion: 1.0,
-	// 		},
-	// 	)
-	// }
+	if currentTime.Before(thisPVC.End) {
+		pvcCostCoefficientMap[unmountedKey] = append(
+			pvcCostCoefficientMap[unmountedKey],
+			CoefficientComponent{
+				Time:       thisPVC.End.Sub(currentTime).Minutes() / pvcWindowDurationMinutes,
+				Proportion: 1.0,
+			},
+		)
+	}
 	return pvcCostCoefficientMap, nil
 }
 

@@ -30,6 +30,23 @@ type PersistentVolumeClaim struct {
 	RequestedBytes					float64
 	Mounted							bool
 }
+
+type PVAllocations struct {
+	ByteHours  float64
+	Cost       float64
+	ProviderID string
+}
+
+type PodData struct {
+	Pod        string
+	Namespace  string
+	Start      time.Time
+	End        time.Time
+	Minutes    float64
+	Containers map[string]map[string]*PVAllocations // One to Many Relationship for Each Container. Conatainer --> Multiple Persistent Volumes
+
+}
+
 func CalculateStartAndEnd(result []DataPoint, resolution time.Duration, window api.Window) (time.Time, time.Time) {
 	// Start and end for a range vector are pulled from the timestamps of the
 	// first and final values in the range. There is no "offsetting" required
