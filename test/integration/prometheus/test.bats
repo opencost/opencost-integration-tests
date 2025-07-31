@@ -74,3 +74,12 @@ teardown() {
     go test ./test/integration/prometheus/load_balancer_costs_test.go
 }
 # ------------------------------------------------------
+
+
+
+# ------------------------------------------------------
+# Node Costs
+@test "prometheus: Node Hourly Cost" {
+    go test ./test/integration/prometheus/node_costs_test.go
+}
+# ------------------------------------------------------
