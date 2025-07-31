@@ -15,7 +15,7 @@ import (
 
 const tolerance = 0.05
 
-func TestGPUInfo(t *testing.T) {
+func TestNodeInfo(t *testing.T) {
 	apiObj := api.NewAPI()
 
 	testCases := []struct {
