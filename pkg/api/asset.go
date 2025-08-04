@@ -22,6 +22,7 @@ type AssetsRequest struct {
 	Window     string
 	Aggregate  string
 	Accumulate string
+	filter	   string
 }
 
 func (ar AssetsRequest) QueryString() string {
@@ -30,6 +31,7 @@ func (ar AssetsRequest) QueryString() string {
 	params = append(params, fmt.Sprintf("window=%s", ar.Window))
 	params = append(params, fmt.Sprintf("aggregate=%s", ar.Aggregate))
 	params = append(params, fmt.Sprintf("accumulate=%s", ar.Accumulate))
+	params = append(params, fmt.Sprintf("filter=assetType:\"%s\"", ar.Accumulate))
 
 	return fmt.Sprintf("?%s", strings.Join(params, "&"))
 }
