@@ -20,16 +20,16 @@ func (api *API) GetAssets(req AssetsRequest) (*AssetsResponse, error) {
 
 type AssetsRequest struct {
 	Window     string
-	Aggregate  string
-	Accumulate string
+	Filter	   string
 }
 
 func (ar AssetsRequest) QueryString() string {
 	params := []string{}
 
 	params = append(params, fmt.Sprintf("window=%s", ar.Window))
-	params = append(params, fmt.Sprintf("aggregate=%s", ar.Aggregate))
-	params = append(params, fmt.Sprintf("accumulate=%s", ar.Accumulate))
+	if ar.Filter != "" {
+		params = append(params, fmt.Sprintf("filter=assetType:\"%s\"", ar.Filter))
+	}
 
 	return fmt.Sprintf("?%s", strings.Join(params, "&"))
 }
@@ -48,15 +48,16 @@ type AssetsResponseItem struct {
 	Minutes    float64                       `json:"minutes"`
 	Adjustment float64                       `json:"adjustment"`
 	TotalCost  float64                       `json:"totalCost"`
+	Local	   float64						 `json:"local"`
 }
 
 type AssetsResponseItemProperties struct {
-	Category   string `json:"category"`
-	Provider   string `json:"provider"`
-	Account    string `json:"account"`
-	Project    string `json:"project"`
-	Service    string `json:"service"`
-	Cluster    string `json:"cluster"`
-	Name       string `json:"name"`
-	ProviderID string `json:"providerID"`
+	Category   string 		`json:"category"`
+	Provider   string 		`json:"provider"`
+	Account    string 		`json:"account"`
+	Project    string 		`json:"project"`
+	Service    string 		`json:"service"`
+	Cluster    string 		`json:"cluster"`
+	Name       string 		`json:"name"`
+	ProviderID string 		`json:"providerID"`
 }
