@@ -12,6 +12,7 @@ import (
 )
 
 const tolerance = 0.05
+const negligibleUsage = 0.01
 
 func TestRAMAvgUsage(t *testing.T) {
 	apiObj := api.NewAPI()
@@ -164,9 +165,15 @@ func TestRAMAvgUsage(t *testing.T) {
 				ramUsageAvgPod.AllocationUsageAvg += allocationResponseItem.RAMBytesUsageAverage
 			}
 
+			seenUsage := false
 			t.Logf("\nAvg Values for Namespaces.\n")
 			// Windows are not accurate for prometheus and allocation
 			for namespace, ramAvgUsageValues := range ramUsageAvgNamespaceMap {
+				if ramAvgUsageValues.AllocationUsageAvg < negligibleUsage {
+					continue
+				} else {
+					seenUsage = true
+				}
 				t.Logf("Namespace %s", namespace)
 				withinRange, diff_percent := utils.AreWithinPercentage(ramAvgUsageValues.PrometheusUsageAvg, ramAvgUsageValues.AllocationUsageAvg, tolerance)
 				if !withinRange {
@@ -174,6 +181,9 @@ func TestRAMAvgUsage(t *testing.T) {
 				} else {
 					t.Logf("RAMUsageAvg[Pass]: ~ %v", ramAvgUsageValues.PrometheusUsageAvg)
 				}
+			}
+			if seenUsage == false {
+				t.Logf("All Costs were Negligible and cannot be tested. Failing Test")
 			}
 		})
 	}

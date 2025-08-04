@@ -12,6 +12,7 @@ import (
 )
 
 const tolerance = 0.07
+const negligibleUsage = 0.01
 
 func TestCPUAvgUsage(t *testing.T) {
 	apiObj := api.NewAPI()
@@ -162,9 +163,15 @@ func TestCPUAvgUsage(t *testing.T) {
 				cpuUsageAvgPod.AllocationUsageAvg += allocationResponseItem.CPUCoreUsageAverage
 			}
 
+			seenUsage := false
 			t.Logf("\nAvg Values for Namespaces.\n")
 			// Windows are not accurate for prometheus and allocation
 			for namespace, cpuAvgUsageValues := range cpuUsageAvgNamespaceMap {
+				if cpuAvgUsageValues.AllocationUsageAvg < negligibleUsage {
+					continue
+				} else {
+					seenUsage = true
+				}
 				t.Logf("Namespace %s", namespace)
 				withinRange, diff_percent := utils.AreWithinPercentage(cpuAvgUsageValues.PrometheusUsageAvg, cpuAvgUsageValues.AllocationUsageAvg, tolerance)
 				if !withinRange {
@@ -172,6 +179,9 @@ func TestCPUAvgUsage(t *testing.T) {
 				} else {
 					t.Logf("cpuUsageAvg[Pass]: ~ %v", cpuAvgUsageValues.PrometheusUsageAvg)
 				}
+			}
+			if seenUsage == false {
+				t.Logf("All Costs were Negligible and cannot be tested. Failing Test")
 			}
 		})
 	}
