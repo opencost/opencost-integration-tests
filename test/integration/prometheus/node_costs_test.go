@@ -47,17 +47,8 @@ func TestNodeInfo(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
-			// Use this information to find start and end time of pod
+			client := prometheus.NewClient()
 			queryEnd := time.Now().UTC().Truncate(time.Hour).Add(time.Hour)
-			// Get Time Duration
-			timeMumericVal, _ := utils.ExtractNumericPrefix(tc.window)
-			// Assume the minumum unit is an hour
-			negativeDuration := time.Duration(timeMumericVal*float64(time.Hour)) * -1
-			queryStart := queryEnd.Add(negativeDuration)
-			window24h := api.Window{
-				Start: queryStart,
-				End:   queryEnd,
-			}
 			endTime := queryEnd.Unix()
 
 			////////////////////////////////////////////////////////////////////////////
