@@ -20,25 +20,25 @@ func TestNodeInfo(t *testing.T) {
 	apiObj := api.NewAPI()
 
 	testCases := []struct {
-		name       		string
-		window     		string
-		aggregate  		string
-		accumulate 	   	string
-		assetfilter	   	string
+		name        string
+		window      string
+		aggregate   string
+		accumulate  string
+		assetfilter string
 	}{
 		{
-			name:       		"Yesterday",
-			window:     		"24h",
-			aggregate:  		"pod",
-			accumulate: 		"false",
-			assetfilter:		"node",
+			name:        "Yesterday",
+			window:      "24h",
+			aggregate:   "pod",
+			accumulate:  "false",
+			assetfilter: "node",
 		},
 		{
-			name:       		"Last 2 Days",
-			window:     		"48h",
-			aggregate:  		"pod",
-			accumulate: 		"false",
-			assetfilter:		"node",
+			name:        "Last 2 Days",
+			window:      "48h",
+			aggregate:   "pod",
+			accumulate:  "false",
+			assetfilter: "node",
 		},
 	}
 
@@ -52,14 +52,14 @@ func TestNodeInfo(t *testing.T) {
 			// Get Time Duration
 			timeMumericVal, _ := utils.ExtractNumericPrefix(tc.window)
 			// Assume the minumum unit is an hour
-			negativeDuration := time.Duration(timeMumericVal * float64(time.Hour)) * -1
+			negativeDuration := time.Duration(timeMumericVal*float64(time.Hour)) * -1
 			queryStart := queryEnd.Add(negativeDuration)
 			window24h := api.Window{
 				Start: queryStart,
 				End:   queryEnd,
 			}
 			endTime := queryEnd.Unix()
-			
+
 			////////////////////////////////////////////////////////////////////////////
 			// Node CPU Hourly Cost
 			//
@@ -259,8 +259,8 @@ func TestNodeInfo(t *testing.T) {
 			t.Logf("\n\n")
 			t.Logf("Checking Node Costs from Assets API")
 			apiAssetResponse, err := apiObj.GetAssets(api.AssetsRequest{
-				Window:     tc.window,
-				Filter: 	tc.assetfilter,
+				Window: tc.window,
+				Filter: tc.assetfilter,
 			})
 
 			if err != nil {
@@ -282,13 +282,12 @@ func TestNodeInfo(t *testing.T) {
 				}
 
 				calculatedTotalCost := cpuCost + gpuCost + ramCost
-			
+
 				t.Logf("Node: %s", node)
 				withinRange, diff_percent := utils.AreWithinPercentage(calculatedTotalCost, totalCost, tolerance)
 				if withinRange {
 					t.Logf("  - TotalNodeCost[Pass]: ~ %0.2f", totalCost)
-				} else 
-				{
+				} else {
 					t.Errorf("  - TotalNodeCost[Fail]: DifferencePercent %0.2f, AssetValue: %0.4f, CalculatedValue: %0.4f", diff_percent, totalCost, calculatedTotalCost)
 				}
 			}
