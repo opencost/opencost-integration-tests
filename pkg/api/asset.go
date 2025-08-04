@@ -27,7 +27,9 @@ func (ar AssetsRequest) QueryString() string {
 	params := []string{}
 
 	params = append(params, fmt.Sprintf("window=%s", ar.Window))
-	params = append(params, fmt.Sprintf("filter=assetType:\"%s\"", ar.Filter))
+	if ar.Filter != "" {
+		params = append(params, fmt.Sprintf("filter=assetType:\"%s\"", ar.Filter))
+	}
 
 	return fmt.Sprintf("?%s", strings.Join(params, "&"))
 }
