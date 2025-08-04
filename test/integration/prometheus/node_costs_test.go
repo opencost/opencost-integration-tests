@@ -14,21 +14,31 @@ import (
 )
 
 const tolerance = 0.05
+const negligibleCost = 0.01
 
 func TestNodeInfo(t *testing.T) {
 	apiObj := api.NewAPI()
 
 	testCases := []struct {
-		name       string
-		window     string
-		aggregate  string
-		accumulate string
+		name       		string
+		window     		string
+		aggregate  		string
+		accumulate 	   	string
+		assetfilter	   	string
 	}{
 		{
-			name:       "Yesterday",
-			window:     "24h",
-			aggregate:  "pod",
-			accumulate: "false",
+			name:       		"Yesterday",
+			window:     		"24h",
+			aggregate:  		"pod",
+			accumulate: 		"false",
+			assetfilter:		"node",
+		},
+		{
+			name:       		"Last 2 Days",
+			window:     		"48h",
+			aggregate:  		"pod",
+			accumulate: 		"false",
+			assetfilter:		"node",
 		},
 	}
 
@@ -37,10 +47,19 @@ func TestNodeInfo(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
-			client := prometheus.NewClient()
+			// Use this information to find start and end time of pod
 			queryEnd := time.Now().UTC().Truncate(time.Hour).Add(time.Hour)
+			// Get Time Duration
+			timeMumericVal, _ := utils.ExtractNumericPrefix(tc.window)
+			// Assume the minumum unit is an hour
+			negativeDuration := time.Duration(timeMumericVal * float64(time.Hour)) * -1
+			queryStart := queryEnd.Add(negativeDuration)
+			window24h := api.Window{
+				Start: queryStart,
+				End:   queryEnd,
+			}
 			endTime := queryEnd.Unix()
-
+			
 			////////////////////////////////////////////////////////////////////////////
 			// Node CPU Hourly Cost
 			//
@@ -204,9 +223,10 @@ func TestNodeInfo(t *testing.T) {
 
 				t.Logf("Pod: %s", pod)
 
-				negligibleCost := 0.01
+				seenCost := false
 
 				if allocationResponseItem.RAMCost > negligibleCost {
+					seenCost = true
 					withinRange, diff_percent := utils.AreWithinPercentage(ramCost, allocationResponseItem.RAMCost, tolerance)
 					if !withinRange {
 						t.Errorf("  - RAMCost[Fail]: DifferencePercent %0.2f, Prometheus: %0.4f, /allocation: %0.4f", diff_percent, ramCost, allocationResponseItem.RAMCost)
@@ -215,6 +235,7 @@ func TestNodeInfo(t *testing.T) {
 					}
 				}
 				if allocationResponseItem.CPUCost > negligibleCost {
+					seenCost = true
 					withinRange, diff_percent := utils.AreWithinPercentage(cpuCost, allocationResponseItem.CPUCost, tolerance)
 					if !withinRange {
 						t.Errorf("  - CPUCost[Fail]: DifferencePercent %0.2f, Prometheus: %0.4f, /allocation: %0.4f", diff_percent, cpuCost, allocationResponseItem.CPUCost)
@@ -223,12 +244,52 @@ func TestNodeInfo(t *testing.T) {
 					}
 				}
 				if allocationResponseItem.GPUCost > negligibleCost {
+					seenCost = true
 					withinRange, diff_percent := utils.AreWithinPercentage(gpuCost, allocationResponseItem.GPUCost, tolerance)
 					if !withinRange {
 						t.Errorf("  - GPUCost[Fail]: DifferencePercent %0.2f, Prometheus: %0.4f, /allocation: %0.4f", diff_percent, gpuCost, allocationResponseItem.GPUCost)
 					} else {
 						t.Logf("  - GPUCost[Pass]: ~ %0.2f", gpuCost)
 					}
+				}
+				if seenCost == false {
+					t.Logf("  - No Costs Found[Skipped]")
+				}
+			}
+			t.Logf("\n\n")
+			t.Logf("Checking Node Costs from Assets API")
+			apiAssetResponse, err := apiObj.GetAssets(api.AssetsRequest{
+				Window:     tc.window,
+				Filter: 	tc.assetfilter,
+			})
+
+			if err != nil {
+				t.Fatalf("Error while calling Allocation API %v", err)
+			}
+			if apiAssetResponse.Code != 200 {
+				t.Errorf("API returned non-200 code")
+			}
+
+			for _, assetsResponseItem := range apiAssetResponse.Data {
+				node := assetsResponseItem.Properties.Node
+				cpuCost := assetsResponseItem.CPUCost
+				gpuCost := assetsResponseItem.GPUCost
+				ramCost := assetsResponseItem.RAMCost
+				totalCost := assetsResponseItem.TotalCost
+
+				if totalCost < negligibleCost {
+					continue
+				}
+
+				calculatedTotalCost := cpuCost + gpuCost + ramCost
+			
+				t.Logf("Node: %s", node)
+				withinRange, diff_percent := utils.AreWithinPercentage(calculatedTotalCost, totalCost, tolerance)
+				if withinRange {
+					t.Logf("  - TotalNodeCost[Pass]: ~ %0.2f", totalCost)
+				} else 
+				{
+					t.Errorf("  - TotalNodeCost[Fail]: DifferencePercent %0.2f, AssetValue: %0.4f, CalculatedValue: %0.4f", diff_percent, totalCost, calculatedTotalCost)
 				}
 			}
 		})

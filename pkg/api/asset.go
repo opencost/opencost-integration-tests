@@ -20,16 +20,14 @@ func (api *API) GetAssets(req AssetsRequest) (*AssetsResponse, error) {
 
 type AssetsRequest struct {
 	Window     string
-	Aggregate  string
-	Accumulate string
+	Filter	   string
 }
 
 func (ar AssetsRequest) QueryString() string {
 	params := []string{}
 
 	params = append(params, fmt.Sprintf("window=%s", ar.Window))
-	params = append(params, fmt.Sprintf("aggregate=%s", ar.Aggregate))
-	params = append(params, fmt.Sprintf("accumulate=%s", ar.Accumulate))
+	params = append(params, fmt.Sprintf("filter=assetType:\"%s\"", ar.Filter))
 
 	return fmt.Sprintf("?%s", strings.Join(params, "&"))
 }
@@ -47,6 +45,9 @@ type AssetsResponseItem struct {
 	End        time.Time                     `json:"end"`
 	Minutes    float64                       `json:"minutes"`
 	Adjustment float64                       `json:"adjustment"`
+	RAMCost	   float64						 `json:"ramCost"`
+	CPUCost	   float64						 `json:"cpuCost"`
+	GPUCost	   float64						 `json:"gpuCost"`
 	TotalCost  float64                       `json:"totalCost"`
 }
 
@@ -59,4 +60,5 @@ type AssetsResponseItemProperties struct {
 	Cluster    string `json:"cluster"`
 	Name       string `json:"name"`
 	ProviderID string `json:"providerID"`
+	Node	   string `json:"node"`
 }
