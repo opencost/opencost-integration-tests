@@ -65,9 +65,7 @@ func TestRAMAvgUsage(t *testing.T) {
 			type PodData struct {
 				Pod       string
 				Namespace string
-				RunTime   float64
-				StartTime time.Time
-				EndTime   time.Time
+				Window 	  *api.Window
 			}
 
 			podMap := make(map[string]*PodData)
@@ -78,17 +76,17 @@ func TestRAMAvgUsage(t *testing.T) {
 				podMap[podInfoResponseItem.Metric.Pod] = &PodData{
 					Pod:       podInfoResponseItem.Metric.Pod,
 					Namespace: podInfoResponseItem.Metric.Namespace,
-					RunTime:   e.Sub(s).Minutes(),
-					StartTime: s,
-					EndTime: e,
+					Window: &api.Window{
+						Start: s,
+						End: e,
+					},
 				}
 			}
 
 			type RAMUsageAvgAggregate struct {
 				AllocationUsageAvg float64
 				PrometheusUsageAvg float64
-				StartTime		   time.Time
-				EndTime			   time.Time
+				Window 	  		   *api.Window
 			}
 			ramUsageAvgNamespaceMap := make(map[string]*RAMUsageAvgAggregate)
 
@@ -129,30 +127,27 @@ func TestRAMAvgUsage(t *testing.T) {
 				if !ok {
 					continue
 				}
-				containerRunTime := pod.RunTime
+				containerRunTime := pod.Window.RunTime()
 				
 				ramUsageAvgPod, ok := ramUsageAvgNamespaceMap[promResponseItem.Metric.Namespace]
 				if !ok {
 					ramUsageAvgNamespaceMap[promResponseItem.Metric.Namespace] = &RAMUsageAvgAggregate{
 						PrometheusUsageAvg: promResponseItem.Value.Value * containerRunTime,
 						AllocationUsageAvg: 0.0,
-						StartTime: pod.StartTime,
-						EndTime: pod.EndTime,
+						Window: &api.Window{
+							Start: pod.Window.Start,
+							End: pod.Window.End,
+						},
 					}
 					continue
 				}
 				ramUsageAvgPod.PrometheusUsageAvg += promResponseItem.Value.Value * containerRunTime
-				if pod.StartTime.Before(ramUsageAvgPod.StartTime) {
-					ramUsageAvgPod.StartTime = pod.StartTime
-				}
-				if pod.EndTime.After(ramUsageAvgPod.EndTime) {
-					ramUsageAvgPod.EndTime = pod.EndTime
-				}
+				ramUsageAvgPod.Window = api.ExpandTimeRange(ramUsageAvgPod.Window, pod.Window)
 			}
 
 			// windowRunTime := queryEnd.Sub(queryStart).Minutes()
 			for _, ramUsageAvgProm := range ramUsageAvgNamespaceMap {
-				ramUsageAvgProm.PrometheusUsageAvg = ramUsageAvgProm.PrometheusUsageAvg / ramUsageAvgProm.EndTime.Sub(ramUsageAvgProm.StartTime).Minutes()
+				ramUsageAvgProm.PrometheusUsageAvg = ramUsageAvgProm.PrometheusUsageAvg / ramUsageAvgProm.Window.RunTime()
 			}
 			/////////////////////////////////////////////
 			// API Client
