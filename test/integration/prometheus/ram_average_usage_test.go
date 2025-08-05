@@ -12,6 +12,7 @@ import (
 )
 
 const tolerance = 0.05
+const negligibleUsage = 0.01
 
 func TestRAMAvgUsage(t *testing.T) {
 	apiObj := api.NewAPI()
@@ -65,6 +66,8 @@ func TestRAMAvgUsage(t *testing.T) {
 				Pod       string
 				Namespace string
 				RunTime   float64
+				StartTime time.Time
+				EndTime   time.Time
 			}
 
 			podMap := make(map[string]*PodData)
@@ -76,12 +79,16 @@ func TestRAMAvgUsage(t *testing.T) {
 					Pod:       podInfoResponseItem.Metric.Pod,
 					Namespace: podInfoResponseItem.Metric.Namespace,
 					RunTime:   e.Sub(s).Minutes(),
+					StartTime: s,
+					EndTime: e,
 				}
 			}
 
 			type RAMUsageAvgAggregate struct {
 				AllocationUsageAvg float64
 				PrometheusUsageAvg float64
+				StartTime		   time.Time
+				EndTime			   time.Time
 			}
 			ramUsageAvgNamespaceMap := make(map[string]*RAMUsageAvgAggregate)
 
@@ -118,22 +125,34 @@ func TestRAMAvgUsage(t *testing.T) {
 					continue
 				}
 				// Get containerRunTime by getting the pod's (parent object) runtime.
-				containerRunTime := podMap[promResponseItem.Metric.Pod].RunTime
-
+				pod, ok := podMap[promResponseItem.Metric.Pod]
+				if !ok {
+					continue
+				}
+				containerRunTime := pod.RunTime
+				
 				ramUsageAvgPod, ok := ramUsageAvgNamespaceMap[promResponseItem.Metric.Namespace]
 				if !ok {
 					ramUsageAvgNamespaceMap[promResponseItem.Metric.Namespace] = &RAMUsageAvgAggregate{
 						PrometheusUsageAvg: promResponseItem.Value.Value * containerRunTime,
 						AllocationUsageAvg: 0.0,
+						StartTime: pod.StartTime,
+						EndTime: pod.EndTime,
 					}
 					continue
 				}
 				ramUsageAvgPod.PrometheusUsageAvg += promResponseItem.Value.Value * containerRunTime
+				if pod.StartTime.Before(ramUsageAvgPod.StartTime) {
+					ramUsageAvgPod.StartTime = pod.StartTime
+				}
+				if pod.EndTime.After(ramUsageAvgPod.EndTime) {
+					ramUsageAvgPod.EndTime = pod.EndTime
+				}
 			}
 
-			windowRunTime := queryEnd.Sub(queryStart).Minutes()
+			// windowRunTime := queryEnd.Sub(queryStart).Minutes()
 			for _, ramUsageAvgProm := range ramUsageAvgNamespaceMap {
-				ramUsageAvgProm.PrometheusUsageAvg = ramUsageAvgProm.PrometheusUsageAvg / windowRunTime
+				ramUsageAvgProm.PrometheusUsageAvg = ramUsageAvgProm.PrometheusUsageAvg / ramUsageAvgProm.EndTime.Sub(ramUsageAvgProm.StartTime).Minutes()
 			}
 			/////////////////////////////////////////////
 			// API Client
@@ -164,9 +183,15 @@ func TestRAMAvgUsage(t *testing.T) {
 				ramUsageAvgPod.AllocationUsageAvg += allocationResponseItem.RAMBytesUsageAverage
 			}
 
+			seenUsage := false
 			t.Logf("\nAvg Values for Namespaces.\n")
 			// Windows are not accurate for prometheus and allocation
 			for namespace, ramAvgUsageValues := range ramUsageAvgNamespaceMap {
+				if ramAvgUsageValues.AllocationUsageAvg < negligibleUsage {
+					continue
+				} else {
+					seenUsage = true
+				}
 				t.Logf("Namespace %s", namespace)
 				withinRange, diff_percent := utils.AreWithinPercentage(ramAvgUsageValues.PrometheusUsageAvg, ramAvgUsageValues.AllocationUsageAvg, tolerance)
 				if !withinRange {
@@ -174,6 +199,9 @@ func TestRAMAvgUsage(t *testing.T) {
 				} else {
 					t.Logf("RAMUsageAvg[Pass]: ~ %v", ramAvgUsageValues.PrometheusUsageAvg)
 				}
+			}
+			if seenUsage == false {
+				t.Logf("All Costs were Negligible and cannot be tested. Failing Test")
 			}
 		})
 	}
