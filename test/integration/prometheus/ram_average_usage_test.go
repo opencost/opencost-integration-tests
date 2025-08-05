@@ -66,6 +66,8 @@ func TestRAMAvgUsage(t *testing.T) {
 				Pod       string
 				Namespace string
 				RunTime   float64
+				StartTime time.Time
+				EndTime   time.Time
 			}
 
 			podMap := make(map[string]*PodData)
@@ -77,12 +79,16 @@ func TestRAMAvgUsage(t *testing.T) {
 					Pod:       podInfoResponseItem.Metric.Pod,
 					Namespace: podInfoResponseItem.Metric.Namespace,
 					RunTime:   e.Sub(s).Minutes(),
+					StartTime: s,
+					EndTime: e,
 				}
 			}
 
 			type RAMUsageAvgAggregate struct {
 				AllocationUsageAvg float64
 				PrometheusUsageAvg float64
+				StartTime		   time.Time
+				EndTime			   time.Time
 			}
 			ramUsageAvgNamespaceMap := make(map[string]*RAMUsageAvgAggregate)
 
@@ -124,21 +130,29 @@ func TestRAMAvgUsage(t *testing.T) {
 					continue
 				}
 				containerRunTime := pod.RunTime
-
+				
 				ramUsageAvgPod, ok := ramUsageAvgNamespaceMap[promResponseItem.Metric.Namespace]
 				if !ok {
 					ramUsageAvgNamespaceMap[promResponseItem.Metric.Namespace] = &RAMUsageAvgAggregate{
 						PrometheusUsageAvg: promResponseItem.Value.Value * containerRunTime,
 						AllocationUsageAvg: 0.0,
+						StartTime: pod.StartTime,
+						EndTime: pod.EndTime,
 					}
 					continue
 				}
 				ramUsageAvgPod.PrometheusUsageAvg += promResponseItem.Value.Value * containerRunTime
+				if pod.StartTime.Before(ramUsageAvgPod.StartTime) {
+					ramUsageAvgPod.StartTime = pod.StartTime
+				}
+				if pod.EndTime.After(ramUsageAvgPod.EndTime) {
+					ramUsageAvgPod.EndTime = pod.EndTime
+				}
 			}
 
-			windowRunTime := queryEnd.Sub(queryStart).Minutes()
+			// windowRunTime := queryEnd.Sub(queryStart).Minutes()
 			for _, ramUsageAvgProm := range ramUsageAvgNamespaceMap {
-				ramUsageAvgProm.PrometheusUsageAvg = ramUsageAvgProm.PrometheusUsageAvg / windowRunTime
+				ramUsageAvgProm.PrometheusUsageAvg = ramUsageAvgProm.PrometheusUsageAvg / ramUsageAvgProm.EndTime.Sub(ramUsageAvgProm.StartTime).Minutes()
 			}
 			/////////////////////////////////////////////
 			// API Client
