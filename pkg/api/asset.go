@@ -20,16 +20,16 @@ func (api *API) GetAssets(req AssetsRequest) (*AssetsResponse, error) {
 
 type AssetsRequest struct {
 	Window     string
-	Aggregate  string
-	Accumulate string
+	Filter	   string
 }
 
 func (ar AssetsRequest) QueryString() string {
 	params := []string{}
 
 	params = append(params, fmt.Sprintf("window=%s", ar.Window))
-	params = append(params, fmt.Sprintf("aggregate=%s", ar.Aggregate))
-	params = append(params, fmt.Sprintf("accumulate=%s", ar.Accumulate))
+	if ar.Filter != "" {
+		params = append(params, fmt.Sprintf("filter=assetType:\"%s\"", ar.Filter))
+	}
 
 	return fmt.Sprintf("?%s", strings.Join(params, "&"))
 }
