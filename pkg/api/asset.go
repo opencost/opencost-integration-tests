@@ -48,15 +48,16 @@ type AssetsResponseItem struct {
 	Minutes    float64                       `json:"minutes"`
 	Adjustment float64                       `json:"adjustment"`
 	TotalCost  float64                       `json:"totalCost"`
+	Local	   float64						 `json:"local"`
 }
 
 type AssetsResponseItemProperties struct {
-	Category   string `json:"category"`
-	Provider   string `json:"provider"`
-	Account    string `json:"account"`
-	Project    string `json:"project"`
-	Service    string `json:"service"`
-	Cluster    string `json:"cluster"`
-	Name       string `json:"name"`
-	ProviderID string `json:"providerID"`
+	Category   string 		`json:"category"`
+	Provider   string 		`json:"provider"`
+	Account    string 		`json:"account"`
+	Project    string 		`json:"project"`
+	Service    string 		`json:"service"`
+	Cluster    string 		`json:"cluster"`
+	Name       string 		`json:"name"`
+	ProviderID string 		`json:"providerID"`
 }
