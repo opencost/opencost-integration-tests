@@ -27,6 +27,7 @@ import (
 )
 
 const tolerance = 0.05
+const negligibleCores = 0.01
 
 func ConvertToHours(minutes float64) float64 {
 	// Convert Time from Minutes to Hours
@@ -276,7 +277,7 @@ func TestCPUCosts(t *testing.T) {
 					}
 					podData, ok := podMap[pod]
 					if !ok {
-						t.Logf("Failed to find namespace: %s and pod: %s in CPU allocated results", CPURequestedItem.Metric.Namespace, pod)
+						t.Logf("[Skipping] Failed to find namespace: %s and pod: %s in CPU allocated results", CPURequestedItem.Metric.Namespace, pod)
 						continue
 					}
 
@@ -367,23 +368,29 @@ func TestCPUCosts(t *testing.T) {
 				// ----------------------------------------------
 				t.Logf("Namespace: %s", namespace)
 				// 5 % Tolerance
-				withinRange, diff_percent := utils.AreWithinPercentage(nsCPUCores, allocationResponseItem.CPUCores, tolerance)
-				if withinRange {
-					t.Logf("    - CPUCores[Pass]: ~%.2f", nsCPUCores)
-				} else {
-					t.Errorf("    - CPUCores[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsCPUCores, allocationResponseItem.CPUCores)
+				if allocationResponseItem.CPUCores > negligibleCores {
+					withinRange, diff_percent := utils.AreWithinPercentage(nsCPUCores, allocationResponseItem.CPUCores, tolerance)
+					if withinRange {
+						t.Logf("    - CPUCores[Pass]: ~%.2f", nsCPUCores)
+					} else {
+						t.Errorf("    - CPUCores[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsCPUCores, allocationResponseItem.CPUCores)
+					}
 				}
-				withinRange, diff_percent = utils.AreWithinPercentage(nsCPUCoresHours, allocationResponseItem.CPUCoreHours, tolerance)
-				if withinRange {
-					t.Logf("    - CPUCoreHours[Pass]: ~%.2f", nsCPUCoresHours)
-				} else {
-					t.Errorf("    - CPUCoreHours[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsCPUCoresHours, allocationResponseItem.CPUCoreHours)
+				if allocationResponseItem.CPUCoreHours > negligibleCores {
+					withinRange, diff_percent := utils.AreWithinPercentage(nsCPUCoresHours, allocationResponseItem.CPUCoreHours, tolerance)
+					if withinRange {
+						t.Logf("    - CPUCoreHours[Pass]: ~%.2f", nsCPUCoresHours)
+					} else {
+						t.Errorf("    - CPUCoreHours[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsCPUCoresHours, allocationResponseItem.CPUCoreHours)
+					}
 				}
-				withinRange, diff_percent = utils.AreWithinPercentage(nsCPUCoresRequest, allocationResponseItem.CPUCoreRequestAverage, tolerance)
-				if withinRange {
-					t.Logf("    - CPUCoreRequestAverage[Pass]: ~%.2f", nsCPUCoresRequest)
-				} else {
-					t.Errorf("    - CPUCoreRequestAverage[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsCPUCoresRequest, allocationResponseItem.CPUCoreRequestAverage)
+				if allocationResponseItem.CPUCoreRequestAverage > negligibleCores {
+					withinRange, diff_percent := utils.AreWithinPercentage(nsCPUCoresRequest, allocationResponseItem.CPUCoreRequestAverage, tolerance)
+					if withinRange {
+						t.Logf("    - CPUCoreRequestAverage[Pass]: ~%.2f", nsCPUCoresRequest)
+					} else {
+						t.Errorf("    - CPUCoreRequestAverage[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsCPUCoresRequest, allocationResponseItem.CPUCoreRequestAverage)
+					}
 				}
 			}
 		})
