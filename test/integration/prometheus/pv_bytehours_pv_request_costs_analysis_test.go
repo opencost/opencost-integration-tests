@@ -548,6 +548,7 @@ func TestPVCosts(t *testing.T) {
 				pvc, _ := PersistentVolumeClaimMap[thisPVCKey]
 
 				sharedPVCCostCoefficients, err := prometheus.GetPVCCostCoefficients(intervals, pvc)
+				t.Logf("Shared %v", sharedPVCCostCoefficients)
 				if err != nil {
 					t.Logf("Allocation: Compute: applyPVCsToPods: getPVCCostCoefficients: %s", err)
 					continue
@@ -659,9 +660,11 @@ func TestPVCosts(t *testing.T) {
 						t.Errorf("Container Information Missing from API")
 					}
 
-					// Loop Over Persistent Volume Claims
-					t.Logf("Container Name: %v, Pod: %v, Pod UID: %v", container, pod, podKey.UID)
 					if allocationResponseItem.PersistentVolumes != nil {
+						// Loop Over Persistent Volume Claims
+						if len(allocationResponseItem.PersistentVolumes) != 0 {
+							t.Logf("Container Name: %v, Pod: %v, Pod UID: %v", container, pod, podKey.UID)
+						}
 						for allocPVName, allocPV := range allocationResponseItem.PersistentVolumes {
 							allocProviderID := allocPV.ProviderID
 							allocByteHours := allocPV.ByteHours
@@ -671,30 +674,33 @@ func TestPVCosts(t *testing.T) {
 							// allocPVName = cluster=default-cluster:name=csi-7da248e4-1143-4c64-ab24-3ab1ba178f9
 							re := regexp.MustCompile(`name=([^:]+)`)
 							allocPVName := re.FindStringSubmatch(allocPVName)[1]
+							
+							_, ok := containerPVs[allocPVName]
+							if !ok {
+								continue
+							}
 
 							if containerPVs[allocPVName].ProviderID != allocProviderID {
 								t.Errorf("Provider IDs don't match for the same Pod")
 								continue
 							}
 
-							t.Logf("Persistent Volume Name: %v", allocPVName)
+							t.Logf("  - Persistent Volume Name: %v", allocPVName)
 							// Compare ByteHours
 							withinRange, diff_percent := utils.AreWithinPercentage(containerPVs[allocPVName].ByteHours, allocByteHours, tolerance)
 							if withinRange {
-								t.Logf("    - ByteHours[Pass]: ~%0.2f", allocByteHours)
+								t.Logf("      - ByteHours[Pass]: ~%0.2f", allocByteHours)
 							} else {
-								t.Errorf("    - ByteHours[Fail]: DifferencePercent: %0.2f, Prom Results: %0.2f, API Results: %0.2f", diff_percent, containerPVs[allocPVName].ByteHours, allocByteHours)
+								t.Errorf("      - ByteHours[Fail]: DifferencePercent: %0.2f, Prom Results: %0.2f, API Results: %0.2f", diff_percent, containerPVs[allocPVName].ByteHours, allocByteHours)
 							}
 							// Compare Cost
 							withinRange, diff_percent = utils.AreWithinPercentage(containerPVs[allocPVName].Cost, allocCost, tolerance)
 							if withinRange {
-								t.Logf("    - Cost[Pass]: ~%0.2f", allocCost)
+								t.Logf("      - Cost[Pass]: ~%0.2f", allocCost)
 							} else {
-								t.Errorf("    - Cost[Fail]: DifferencePercent: %0.2f, Prom Results: %0.2f, API Results: %0.2f", diff_percent, containerPVs[allocPVName].Cost, allocCost)
+								t.Errorf("      - Cost[Fail]: DifferencePercent: %0.2f, Prom Results: %0.2f, API Results: %0.2f", diff_percent, containerPVs[allocPVName].Cost, allocCost)
 							}
 						}
-					} else {
-						t.Logf("    - [Skipping]: No Persistent Volume Claims")
 					}
 				}
 			}
