@@ -65,7 +65,7 @@ func TestGPUAvgUsage(t *testing.T) {
 			type PodData struct {
 				Pod       string
 				Namespace string
-				RunTime   float64
+				Window 	  *api.Window
 			}
 
 			podMap := make(map[string]*PodData)
@@ -76,13 +76,17 @@ func TestGPUAvgUsage(t *testing.T) {
 				podMap[podInfoResponseItem.Metric.Pod] = &PodData{
 					Pod:       podInfoResponseItem.Metric.Pod,
 					Namespace: podInfoResponseItem.Metric.Namespace,
-					RunTime:   e.Sub(s).Minutes(),
+					Window: &api.Window{
+						Start: s,
+						End: e,
+					},
 				}
 			}
 
 			type GPUUsageAvgAggregate struct {
 				AllocationUsageAvg float64
 				PrometheusUsageAvg float64
+				Window			   *api.Window
 			}
 			GPUUsageAvgNamespaceMap := make(map[string]*GPUUsageAvgAggregate)
 
@@ -119,22 +123,26 @@ func TestGPUAvgUsage(t *testing.T) {
 				if !ok {
 					continue
 				}
-				containerRunTime := pod.RunTime
+				containerRunTime := pod.Window.RunTime()
 
 				GPUUsageAvgPod, ok := GPUUsageAvgNamespaceMap[promResponseItem.Metric.Namespace]
 				if !ok {
 					GPUUsageAvgNamespaceMap[promResponseItem.Metric.Namespace] = &GPUUsageAvgAggregate{
 						PrometheusUsageAvg: promResponseItem.Value.Value * containerRunTime,
 						AllocationUsageAvg: 0.0,
+						Window: &api.Window{
+							Start: pod.Window.Start,
+							End: pod.Window.End,
+						},
 					}
 					continue
 				}
 				GPUUsageAvgPod.PrometheusUsageAvg += promResponseItem.Value.Value * containerRunTime
+				GPUUsageAvgPod.Window = api.ExpandTimeRange(GPUUsageAvgPod.Window, pod.Window)
 			}
 
-			windowRunTime := queryEnd.Sub(queryStart).Minutes()
 			for _, GPUUsageAvgProm := range GPUUsageAvgNamespaceMap {
-				GPUUsageAvgProm.PrometheusUsageAvg = GPUUsageAvgProm.PrometheusUsageAvg / windowRunTime
+				GPUUsageAvgProm.PrometheusUsageAvg = GPUUsageAvgProm.PrometheusUsageAvg / GPUUsageAvgProm.Window.RunTime()
 			}
 			/////////////////////////////////////////////
 			// API Client
