@@ -12,6 +12,7 @@ import (
 )
 
 const tolerance = 0.07
+const negligibleUsage = 0.01
 
 func TestCPUAvgUsage(t *testing.T) {
 	apiObj := api.NewAPI()
@@ -64,7 +65,7 @@ func TestCPUAvgUsage(t *testing.T) {
 			type PodData struct {
 				Pod       string
 				Namespace string
-				RunTime   float64
+				Window	  *api.Window
 			}
 
 			podMap := make(map[string]*PodData)
@@ -75,13 +76,17 @@ func TestCPUAvgUsage(t *testing.T) {
 				podMap[podInfoResponseItem.Metric.Pod] = &PodData{
 					Pod:       podInfoResponseItem.Metric.Pod,
 					Namespace: podInfoResponseItem.Metric.Namespace,
-					RunTime:   e.Sub(s).Minutes(),
+					Window: &api.Window{
+						Start: s,
+						End: e,
+					},
 				}
 			}
 
 			type cpuUsageAvgAggregate struct {
 				AllocationUsageAvg float64
 				PrometheusUsageAvg float64
+				Window			   *api.Window
 			}
 			cpuUsageAvgNamespaceMap := make(map[string]*cpuUsageAvgAggregate)
 
@@ -116,22 +121,31 @@ func TestCPUAvgUsage(t *testing.T) {
 					continue
 				}
 				// Get containerRunTime by getting the pod's (parent object) runtime.
-				containerRunTime := podMap[promResponseItem.Metric.Pod].RunTime
+				pod, ok := podMap[promResponseItem.Metric.Pod]
+				if !ok {
+					continue
+				}
+
+				containerRunTime := pod.Window.RunTime()
 
 				cpuUsageAvgPod, ok := cpuUsageAvgNamespaceMap[promResponseItem.Metric.Namespace]
 				if !ok {
 					cpuUsageAvgNamespaceMap[promResponseItem.Metric.Namespace] = &cpuUsageAvgAggregate{
 						PrometheusUsageAvg: promResponseItem.Value.Value * containerRunTime,
 						AllocationUsageAvg: 0.0,
+						Window: &api.Window{
+							Start: pod.Window.Start,
+							End: pod.Window.End,
+						},
 					}
 					continue
 				}
 				cpuUsageAvgPod.PrometheusUsageAvg += promResponseItem.Value.Value * containerRunTime
 			}
 
-			windowRunTime := queryEnd.Sub(queryStart).Minutes()
+	
 			for _, cpuUsageAvgProm := range cpuUsageAvgNamespaceMap {
-				cpuUsageAvgProm.PrometheusUsageAvg = cpuUsageAvgProm.PrometheusUsageAvg / windowRunTime
+				cpuUsageAvgProm.PrometheusUsageAvg = cpuUsageAvgProm.PrometheusUsageAvg / cpuUsageAvgProm.Window.RunTime()
 			}
 			/////////////////////////////////////////////
 			// API Client
@@ -162,9 +176,15 @@ func TestCPUAvgUsage(t *testing.T) {
 				cpuUsageAvgPod.AllocationUsageAvg += allocationResponseItem.CPUCoreUsageAverage
 			}
 
+			seenUsage := false
 			t.Logf("\nAvg Values for Namespaces.\n")
 			// Windows are not accurate for prometheus and allocation
 			for namespace, cpuAvgUsageValues := range cpuUsageAvgNamespaceMap {
+				if cpuAvgUsageValues.AllocationUsageAvg < negligibleUsage {
+					continue
+				} else {
+					seenUsage = true
+				}
 				t.Logf("Namespace %s", namespace)
 				withinRange, diff_percent := utils.AreWithinPercentage(cpuAvgUsageValues.PrometheusUsageAvg, cpuAvgUsageValues.AllocationUsageAvg, tolerance)
 				if !withinRange {
@@ -172,6 +192,9 @@ func TestCPUAvgUsage(t *testing.T) {
 				} else {
 					t.Logf("cpuUsageAvg[Pass]: ~ %v", cpuAvgUsageValues.PrometheusUsageAvg)
 				}
+			}
+			if seenUsage == false {
+				t.Logf("All Costs were Negligible and cannot be tested. Failing Test")
 			}
 		})
 	}

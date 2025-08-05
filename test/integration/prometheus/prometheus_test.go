@@ -51,7 +51,6 @@ func TestDatasourceStartAndEndTime(t *testing.T) {
 
 			resp, err := a.GetAssets(api.AssetsRequest{
 				Window:     window,
-				Accumulate: "true",
 			})
 			if err != nil {
 				t.Fatalf("Failed to get assets: %v", err)
