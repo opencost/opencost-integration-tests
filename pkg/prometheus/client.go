@@ -52,11 +52,12 @@ type PrometheusResponse struct {
 		ResultType string `json:"resultType"`
 		Result     []struct {
 			Metric struct {
+
 				Pod       string `json:"pod"`
 				Namespace string `json:"namespace"`
 				Container string `json:"container"`
 				Node      string `json:"node"`
-
+        
 				// Load Balancer Specific Costs
 				ServiceName string `json:"service_name"`
 				IngressIP   string `json:"ingress_ip"`
@@ -64,10 +65,13 @@ type PrometheusResponse struct {
 				// GPU Specific Fields (Optional Result)
 				Device    string `json:"device`
 				ModelName string `json:"modelName`
-				UUID      string `json:UUID`
 
+				UUID      string `json:UUID`
 				ProviderID   string `json:"provider_id"`
 				InstanceType string `json:"instance_type"`
+
+				// PersistentVolume Specific
+				VolumeName	string	`json:"volumename"`
 			} `json:"metric"`
 			Value  DataPoint   `json:"value"`
 			Values []DataPoint `json:"values"`
