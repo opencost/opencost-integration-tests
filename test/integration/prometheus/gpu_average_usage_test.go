@@ -123,6 +123,7 @@ func TestGPUAvgUsage(t *testing.T) {
 				if !ok {
 					continue
 				}
+
 				containerRunTime := pod.Window.RunTime()
 
 				GPUUsageAvgPod, ok := GPUUsageAvgNamespaceMap[promResponseItem.Metric.Namespace]

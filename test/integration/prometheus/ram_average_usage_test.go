@@ -127,8 +127,9 @@ func TestRAMAvgUsage(t *testing.T) {
 				if !ok {
 					continue
 				}
+
 				containerRunTime := pod.Window.RunTime()
-				
+        
 				ramUsageAvgPod, ok := ramUsageAvgNamespaceMap[promResponseItem.Metric.Namespace]
 				if !ok {
 					ramUsageAvgNamespaceMap[promResponseItem.Metric.Namespace] = &RAMUsageAvgAggregate{
@@ -145,8 +146,9 @@ func TestRAMAvgUsage(t *testing.T) {
 				ramUsageAvgPod.Window = api.ExpandTimeRange(ramUsageAvgPod.Window, pod.Window)
 			}
 
+			// windowRunTime := queryEnd.Sub(queryStart).Minutes()
 			for _, ramUsageAvgProm := range ramUsageAvgNamespaceMap {
-				ramUsageAvgProm.PrometheusUsageAvg = ramUsageAvgProm.PrometheusUsageAvg / ramUsageAvgProm.Window.RunTime()
+				ramUsageAvgProm.PrometheusUsageAvg = ramUsageAvgProm.PrometheusUsageAvg / ramUsageAvgProm.EndTime.Sub(ramUsageAvgProm.StartTime).Minutes()
 			}
 			/////////////////////////////////////////////
 			// API Client

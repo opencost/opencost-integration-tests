@@ -125,6 +125,7 @@ func TestCPUAvgUsage(t *testing.T) {
 				if !ok {
 					continue
 				}
+
 				containerRunTime := pod.Window.RunTime()
 
 				cpuUsageAvgPod, ok := cpuUsageAvgNamespaceMap[promResponseItem.Metric.Namespace]
