@@ -47,11 +47,11 @@ type AssetsResponseItem struct {
 	End        time.Time                     `json:"end"`
 	Minutes    float64                       `json:"minutes"`
 	Adjustment float64                       `json:"adjustment"`
-	RAMCost	   float64						 `json:"ramCost"`
-	CPUCost	   float64						 `json:"cpuCost"`
-	GPUCost	   float64						 `json:"gpuCost"`
+	RAMCost	   float64			 `json:"ramCost"`
+	CPUCost	   float64			 `json:"cpuCost"`
+	GPUCost	   float64			 `json:"gpuCost"`
 	TotalCost  float64                       `json:"totalCost"`
-	Local	   float64						 `json:"local"`
+	Local	   float64			 `json:"local"`
 }
 
 type AssetsResponseItemProperties struct {
@@ -63,5 +63,5 @@ type AssetsResponseItemProperties struct {
 	Cluster    string   `json:"cluster"`
 	Name       string   `json:"name"`
 	ProviderID string   `json:"providerID"`
-	Node	     string   `json:"node"`
+	Node	   string   `json:"node"`
 }
