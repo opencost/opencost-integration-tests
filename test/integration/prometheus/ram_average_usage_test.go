@@ -148,7 +148,7 @@ func TestRAMAvgUsage(t *testing.T) {
 
 			// windowRunTime := queryEnd.Sub(queryStart).Minutes()
 			for _, ramUsageAvgProm := range ramUsageAvgNamespaceMap {
-				ramUsageAvgProm.PrometheusUsageAvg = ramUsageAvgProm.PrometheusUsageAvg / ramUsageAvgProm.Window.Minutes()
+				ramUsageAvgProm.PrometheusUsageAvg = ramUsageAvgProm.PrometheusUsageAvg / ramUsageAvgProm.Window.RunTime()
 			}
 			/////////////////////////////////////////////
 			// API Client
