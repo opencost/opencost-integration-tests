@@ -141,6 +141,7 @@ func TestCPUAvgUsage(t *testing.T) {
 					continue
 				}
 				cpuUsageAvgPod.PrometheusUsageAvg += promResponseItem.Value.Value * containerRunTime
+				cpuUsageAvgPod.Window = api.ExpandTimeRange(cpuUsageAvgPod.Window, pod.Window)
 			}
 
 	
