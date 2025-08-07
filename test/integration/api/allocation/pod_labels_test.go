@@ -1,0 +1,119 @@
+package allocation
+
+// Description
+// Check Pod Labels from API Match results from Promethues
+
+import (
+	"github.com/opencost/opencost-integration-tests/pkg/api"
+	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
+	"time"
+	"testing"
+)
+
+func TestLabels(t *testing.T) {
+	apiObj := api.NewAPI()
+
+	testCases := []struct {
+		name        string
+		window      string
+		aggregate   string
+		accumulate  string
+	}{
+		{
+			name:        "Today",
+			window:      "24h",
+			aggregate:   "pod",
+			accumulate:  "false",
+		},
+	}
+
+	t.Logf("testCases: %v", testCases)
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+	
+			queryEnd := time.Now().UTC().Truncate(time.Hour).Add(time.Hour)
+			endTime := queryEnd.Unix()
+
+			// -------------------------------
+			// Pod Labels
+			// avg_over_time(kube_pod_labels{%s}[%s])
+			// -------------------------------
+			client := prometheus.NewClient()
+			promLabelInfoInput := prometheus.PrometheusInput{}
+			promLabelInfoInput.Metric = "kube_pod_labels"
+			promLabelInfoInput.Function = []string{"avg_over_time"}
+			promLabelInfoInput.QueryWindow = tc.window
+			promLabelInfoInput.Time = &endTime
+
+			promlabelInfo, err := client.RunPromQLQuery(promLabelInfoInput)
+			if err != nil {
+				t.Fatalf("Error while calling Prometheus API %v", err)
+			}
+
+			// Store Results in a Pod Map
+			type PodData struct {
+				Pod		string
+				PromLabels	map[string]string
+				AllocLabels	map[string]string
+			}
+
+			podMap := make(map[string]*PodData)
+
+			// Store Prometheus Pod Prometheus Results
+			for _, promlabel := range promlabelInfo.Data.Result {
+				pod := promlabel.Metric.Pod
+				labels := promlabel.Metric.Labels
+
+				podMap[pod] = &PodData{
+					Pod: pod,
+					PromLabels: labels,
+				}
+			}
+
+			// API Response
+			apiResponse, err := apiObj.GetAllocation(api.AllocationRequest{
+				Window:     tc.window,
+				Aggregate:  tc.aggregate,
+				Accumulate: tc.accumulate,
+			})
+
+			if err != nil {
+				t.Fatalf("Error while calling Allocation API %v", err)
+			}
+			if apiResponse.Code != 200 {
+				t.Errorf("API returned non-200 code")
+			}
+
+			// Store Allocation Pod Label Results
+			for pod, allocationResponseItem := range apiResponse.Data[0] {
+				podLabels, ok := podMap[pod]
+				if !ok {
+					t.Logf("Pod Information Missing from Prometheus %s", pod)
+					continue
+				}
+				podLabels.AllocLabels = allocationResponseItem.Properties.Labels
+			}
+
+			// Compare Results
+			for pod, podLabels := range podMap{
+				t.Logf("Pod: %s", pod)
+
+				// Prometheus Result will have fewer labels.
+				// Allocation has oracle and feature related labels
+				for promLabel, promLabelValue := range podLabels.PromLabels {
+					allocLabelValue, ok := podLabels.AllocLabels[promLabel]
+					if !ok {
+						t.Errorf("  - [Fail]: Prometheus Label %s not found in Allocation", promLabel)
+						continue
+					}
+					if allocLabelValue != promLabelValue {
+						t.Logf("  - [Fail]: Alloc %s != Prom %s", allocLabelValue, promLabelValue)
+					} else {
+						t.Logf("  - [Pass]: Label: %s", promLabel)
+					}
+				}
+			}
+		})
+	}
+}
