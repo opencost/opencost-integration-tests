@@ -51,7 +51,7 @@ type PrometheusResponse struct {
 	Data   struct {
 		ResultType string `json:"resultType"`
 		Result     []struct {
-			Metric Metric `json:"metric"`
+			Metric Metric      `json:"metric"`
 			Value  DataPoint   `json:"value"`
 			Values []DataPoint `json:"values"`
 		} `json:"result"`
@@ -62,6 +62,7 @@ type Metric struct {
 	Pod         string    	`json:"pod"`
 	Namespace   string    	`json:"namespace"`
 	Container   string    	`json:"container"`
+	Node		string		`json:"node"`
 
 	// Load Balancer Specific Costs
 	ServiceName string    		`json:"service_name"`
@@ -112,6 +113,8 @@ func (m *Metric) UnmarshalJSON(data []byte) error {
 			m.Namespace = strVal
 		case "container":
 			m.Container = strVal
+		case "node":
+			m.Node = strVal
 		case "service_name":
 			m.ServiceName = strVal
 		case "ingress_ip":
