@@ -6,24 +6,26 @@ package allocation
 import (
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
-	"time"
 	"testing"
+	"time"
 )
 
 func TestLabels(t *testing.T) {
 	apiObj := api.NewAPI()
 
 	testCases := []struct {
-		name        string
-		window      string
-		aggregate   string
-		accumulate  string
+		name                      string
+		window                    string
+		aggregate                 string
+		accumulate                string
+		includeAggregatedMetadata string
 	}{
 		{
-			name:        "Today",
-			window:      "24h",
-			aggregate:   "pod",
-			accumulate:  "false",
+			name:                      "Today",
+			window:                    "24h",
+			aggregate:                 "pod",
+			accumulate:                "true",
+			includeAggregatedMetadata: "true",
 		},
 	}
 
@@ -31,7 +33,7 @@ func TestLabels(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-	
+
 			queryEnd := time.Now().UTC().Truncate(time.Hour).Add(time.Hour)
 			endTime := queryEnd.Unix()
 
@@ -53,9 +55,9 @@ func TestLabels(t *testing.T) {
 
 			// Store Results in a Pod Map
 			type PodData struct {
-				Pod		string
-				PromLabels	map[string]string
-				AllocLabels	map[string]string
+				Pod         string
+				PromLabels  map[string]string
+				AllocLabels map[string]string
 			}
 
 			podMap := make(map[string]*PodData)
@@ -66,16 +68,17 @@ func TestLabels(t *testing.T) {
 				labels := promlabel.Metric.Labels
 
 				podMap[pod] = &PodData{
-					Pod: pod,
+					Pod:        pod,
 					PromLabels: labels,
 				}
 			}
 
 			// API Response
 			apiResponse, err := apiObj.GetAllocation(api.AllocationRequest{
-				Window:     tc.window,
-				Aggregate:  tc.aggregate,
-				Accumulate: tc.accumulate,
+				Window:                    tc.window,
+				Aggregate:                 tc.aggregate,
+				Accumulate:                tc.accumulate,
+				IncludeAggregatedMetadata: tc.includeAggregatedMetadata,
 			})
 
 			if err != nil {
@@ -96,7 +99,7 @@ func TestLabels(t *testing.T) {
 			}
 
 			// Compare Results
-			for pod, podLabels := range podMap{
+			for pod, podLabels := range podMap {
 				t.Logf("Pod: %s", pod)
 
 				// Prometheus Result will have fewer labels.

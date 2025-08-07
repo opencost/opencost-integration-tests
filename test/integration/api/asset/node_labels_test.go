@@ -14,9 +14,9 @@ func TestLabels(t *testing.T) {
 	apiObj := api.NewAPI()
 
 	testCases := []struct {
-		name        string
-		window      string
-		assetType	string
+		name        				string
+		window      				string
+		assetType					string
 	}{
 		{
 			name:        "Today",
