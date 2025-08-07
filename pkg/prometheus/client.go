@@ -71,7 +71,10 @@ type Metric struct {
 	// GPU Specific Fields (Optional Result)
 	Device    string 	  		`json:"device`
 	ModelName string 	  		`json:"modelName`
-	UUID 	  string 	  		`json:UUID`
+	UUID 	  string 	  		`json:"UUID"`
+
+	// PersistentVolume Specific
+	VolumeName	string	`json:"volumename"`
 
 	// Labels will capture all fields that start with "label_" from the Prometheus metric.
 	// The `label_` prefix will be removed from the key when stored here.
@@ -125,6 +128,8 @@ func (m *Metric) UnmarshalJSON(data []byte) error {
 			m.ModelName = strVal
 		case "UUID": // Case-sensitive match for "UUID"
 			m.UUID = strVal
+		case "volumename": // Case-sensitive match for "UUID"
+			m.VolumeName = strVal
 		default:
 			// If the key is not one of the explicitly defined fields,
 			// check if it starts with "label_"
