@@ -28,6 +28,7 @@ type AllocationRequest struct {
 	IdleByNode                 string
 	IncludeIdle				   string
 	IncludeSharedCostBreakdown string
+	IncludeAggregatedMetadata  string
 	ShareCost                  string
 	ShareIdle                  string
 	ShareLabels                string
@@ -63,6 +64,9 @@ func (ar AllocationRequest) QueryString() string {
 	}
 	if ar.IncludeSharedCostBreakdown != "" {
 		params = append(params, fmt.Sprintf("includeSharedCostBreakdown=%s", ar.IncludeSharedCostBreakdown))
+	}
+	if ar.IncludeAggregatedMetadata != "" {
+		params = append(params, fmt.Sprintf("includeAggregatedMetadata=%s", ar.IncludeAggregatedMetadata))
 	}
 	if ar.ShareCost != "" {
 		params = append(params, fmt.Sprintf("shareCost=%s", ar.ShareCost))
