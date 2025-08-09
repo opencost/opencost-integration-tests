@@ -8,14 +8,14 @@ type Window struct {
 }
 
 func (window *Window) RunTime() float64 {
-	
+
 	runTime := window.End.Sub(window.Start).Minutes()
 
 	return runTime
 }
 
 func ExpandTimeRange(current *Window, other *Window) *Window {
-	
+
 	if current == nil || other == nil {
 		return current
 	}
@@ -23,7 +23,7 @@ func ExpandTimeRange(current *Window, other *Window) *Window {
 	if other.Start.Before(current.Start) {
 		current.Start = other.Start
 	}
-	
+
 	if other.End.After(current.End) {
 		current.End = other.End
 	}
