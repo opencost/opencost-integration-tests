@@ -52,27 +52,26 @@ type PrometheusResponse struct {
 		ResultType string `json:"resultType"`
 		Result     []struct {
 			Metric struct {
-				Pod         string    `json:"pod"`
-				Namespace   string    `json:"namespace"`
-				Container   string    `json:"container"`
+				Pod       string `json:"pod"`
+				Namespace string `json:"namespace"`
+				Container string `json:"container"`
 
 				// Node Specific Information
-				Node			string	  	`json:"node"`
-				Instance		string	  	`json:"instance"`
-				InstanceType	string		`json:"instance_type"`
-        
+				Node         string `json:"node"`
+				Instance     string `json:"instance"`
+				InstanceType string `json:"instance_type"`
+
 				// Load Balancer Specific Costs
-				ServiceName string    `json:"service_name"`
-				IngressIP   string    `json:"ingress_ip"`
+				ServiceName string `json:"service_name"`
+				IngressIP   string `json:"ingress_ip"`
 
 				// GPU Specific Fields (Optional Result)
 				Device    string `json:"device`
 				ModelName string `json:"modelName`
-				UUID 	  string `json:UUID`
+				UUID      string `json:UUID`
 
 				// PersistentVolume Specific
-				VolumeName	string	`json:"volumename"`
-
+				VolumeName string `json:"volumename"`
 			} `json:"metric"`
 			Value  DataPoint   `json:"value"`
 			Values []DataPoint `json:"values"`
@@ -188,7 +187,7 @@ func (c *Client) ConstructPromQLQueryURL(promQLArgs PrometheusInput) string {
 		return strings.ToLower(ignoreFilterParts[i]) < strings.ToLower(ignoreFilterParts[j])
 	})
 	ignoreFiltersString := strings.Join(ignoreFilterParts, ", ")
-	
+
 	allFilters := ""
 	if filtersString != "" {
 		allFilters = filtersString

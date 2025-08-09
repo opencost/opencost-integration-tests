@@ -3,23 +3,23 @@ package assert
 // Description - Check Promethues Node Pricing Information matches Oracle Billing API Details
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 	"github.com/opencost/opencost-integration-tests/pkg/utils"
-	"encoding/json"
-	"fmt"
 	"io/ioutil"
-	"time"
 	"testing"
+	"time"
 )
 
 const tolerance = 0.05
 
 type ProductPartNumber struct {
-	OCPU		string		`json:"OCPU"`
-	Memory		string		`json:"Memory"`
-	GPU			string		`json:"GPU"`
-	Disk		string		`json:"Disk"`
+	OCPU   string `json:"OCPU"`
+	Memory string `json:"Memory"`
+	GPU    string `json:"GPU"`
+	Disk   string `json:"Disk"`
 }
 
 // Represents partnumbers.json structure
@@ -43,9 +43,9 @@ func loadJSONFile(filePath string, target interface{}) error {
 }
 
 type OracleCosts struct {
-	CPU		float64
-	Memory	float64
-	GPU		float64
+	CPU    float64
+	Memory float64
+	GPU    float64
 }
 
 func OracleNodeCosts(SKU ProductPartNumber) (OracleCosts, error) {
@@ -62,7 +62,7 @@ func OracleNodeCosts(SKU ProductPartNumber) (OracleCosts, error) {
 	if SKU.OCPU != "" {
 		cpureq := api.OracleRequest{
 			CurrencyCode: "USD",
-			PartNumber: SKU.OCPU,
+			PartNumber:   SKU.OCPU,
 		}
 		// CPU Costs
 		cpuresp, err := oracleAPIObj.GetOracleBillingInformation(cpureq)
@@ -78,7 +78,7 @@ func OracleNodeCosts(SKU ProductPartNumber) (OracleCosts, error) {
 	if SKU.Memory != "" {
 		memreq := api.OracleRequest{
 			CurrencyCode: "USD",
-			PartNumber: SKU.Memory,
+			PartNumber:   SKU.Memory,
 		}
 		// Memory Costs
 		memresp, err := oracleAPIObj.GetOracleBillingInformation(memreq)
@@ -91,10 +91,10 @@ func OracleNodeCosts(SKU ProductPartNumber) (OracleCosts, error) {
 		OracleNodeCost.Memory = 0.0
 	}
 
-	if SKU.GPU != "" {	
+	if SKU.GPU != "" {
 		gpureq := api.OracleRequest{
 			CurrencyCode: "USD",
-			PartNumber: SKU.GPU,
+			PartNumber:   SKU.GPU,
 		}
 		// GPU Costs
 		gpuresp, err := oracleAPIObj.GetOracleBillingInformation(gpureq)
@@ -105,22 +105,22 @@ func OracleNodeCosts(SKU ProductPartNumber) (OracleCosts, error) {
 		OracleNodeCost.GPU = gpuresp.Items[0].CurrencyCodeLocalizations[0].Prices[0].Value / 31 / 24
 	} else {
 		OracleNodeCost.GPU = 0.0
-	}	
+	}
 
 	return OracleNodeCost, err
 
 }
 func TestOracleNodePricing(t *testing.T) {
-	
+
 	testCases := []struct {
-		name        				string
-		window      				string
-		assetType					string
+		name      string
+		window    string
+		assetType string
 	}{
 		{
-			name:        "Today",
-			window:      "24h",
-			assetType:   "node",
+			name:      "Today",
+			window:    "24h",
+			assetType: "node",
 		},
 		// {
 		// 	name:        "Last Two Days",
@@ -133,7 +133,7 @@ func TestOracleNodePricing(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			
+
 			// ----------------------------
 			// Load Local JSON File
 			// ----------------------------
@@ -166,10 +166,10 @@ func TestOracleNodePricing(t *testing.T) {
 
 			// Store Results in a Node Map
 			type NodeData struct {
-				NodePartNumber			string
-				PromNodeCost			float64
-				OracleNodeCost		float64
-				AssetNodeTotalCost	float64
+				NodePartNumber     string
+				PromNodeCost       float64
+				OracleNodeCost     float64
+				AssetNodeTotalCost float64
 			}
 
 			nodeMap := make(map[string]*NodeData)
@@ -179,21 +179,21 @@ func TestOracleNodePricing(t *testing.T) {
 				node := promNodeTotalCostHrItem.Metric.Instance
 				instanceType := promNodeTotalCostHrItem.Metric.InstanceType
 				cost := promNodeTotalCostHrItem.Value.Value
-				
+
 				queryWindow, _ := utils.ExtractNumericPrefix(tc.window)
 				promCost := cost * queryWindow
 
 				nodeMap[node] = &NodeData{
 					NodePartNumber: instanceType,
-					PromNodeCost: promCost,
+					PromNodeCost:   promCost,
 				}
 			}
 
 			// API Response
 			apiObj := api.NewAPI()
 			apiResponse, err := apiObj.GetAssets(api.AssetsRequest{
-				Window:     tc.window,
-				Filter:		tc.assetType,
+				Window: tc.window,
+				Filter: tc.assetType,
 			})
 
 			if err != nil {
@@ -234,7 +234,7 @@ func TestOracleNodePricing(t *testing.T) {
 			}
 
 			// Compare Results
-			for node, nodeInfo := range nodeMap{
+			for node, nodeInfo := range nodeMap {
 				t.Logf("Node: %s", node)
 				t.Logf("Details: %s", nodeInfo.NodePartNumber)
 
@@ -245,7 +245,7 @@ func TestOracleNodePricing(t *testing.T) {
 				} else {
 					t.Errorf("    - NodeTotalPromCost[Fail]: DifferencePercent: %0.2f, Prom Results: %0.4f, API Results: %0.4f", diff_percent, nodeInfo.AssetNodeTotalCost, nodeInfo.PromNodeCost)
 				}
-				
+
 				// Verify Assets API with Oracle API
 				withinRange, diff_percent = utils.AreWithinPercentage(nodeInfo.AssetNodeTotalCost, nodeInfo.OracleNodeCost, tolerance)
 				if withinRange {

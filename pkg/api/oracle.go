@@ -30,25 +30,24 @@ import (
 // }
 
 type OracleResponse struct {
-	Items				[]struct{
-		PartNumber			string 		`json:"partNumber"`
-		DisplayName			string		`json:"displayName"`
-		MetricName			string		`json:"metricName"`
-		ServiceCategory		string		`json:"serviceCategory"`
-		CurrencyCodeLocalizations	[]struct {	
-			CurrencyCode	string		`json:"currencyCode"`
-			Prices			[]struct{	
-				Model       string		`json:"model"`
-				Value       float64		`json:"value"`
-			}							`json:"prices"`
-		}								`json:"currencyCodeLocalizations"`
-	}									`json:"items`
+	Items []struct {
+		PartNumber                string `json:"partNumber"`
+		DisplayName               string `json:"displayName"`
+		MetricName                string `json:"metricName"`
+		ServiceCategory           string `json:"serviceCategory"`
+		CurrencyCodeLocalizations []struct {
+			CurrencyCode string `json:"currencyCode"`
+			Prices       []struct {
+				Model string  `json:"model"`
+				Value float64 `json:"value"`
+			} `json:"prices"`
+		} `json:"currencyCodeLocalizations"`
+	} `json:"items`
 }
 
-
 type OracleRequest struct {
-	CurrencyCode	string
-	PartNumber		string
+	CurrencyCode string
+	PartNumber   string
 }
 
 func (or OracleRequest) QueryString() string {

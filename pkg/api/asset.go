@@ -19,8 +19,8 @@ func (api *API) GetAssets(req AssetsRequest) (*AssetsResponse, error) {
 }
 
 type AssetsRequest struct {
-	Window     string
-	Filter	   string
+	Window string
+	Filter string
 }
 
 func (ar AssetsRequest) QueryString() string {
@@ -40,30 +40,31 @@ type AssetsResponse struct {
 }
 
 type AssetsResponseItem struct {
-	Properties *AssetsResponseItemProperties `json:"properties"`
-	Labels     map[string]string             `json:"labels"`
-	Window     Window                        `json:"window"`
-	Start      time.Time                     `json:"start"`
-	End        time.Time                     `json:"end"`
-	Minutes    float64                       `json:"minutes"`
-	Adjustment float64                       `json:"adjustment"`
-	CPUCoreHours	   float64						 `json:"cpuCoreHours`
-	RAMByteHours	   float64						 `json:"ramByteHours`
-	GPUHours	   float64						 `json:"GPUHours`
-	CPUCores	   float64						 `json:"cpuCores`
-	RAMBytes	   float64						 `json:"ramBytes`
-	TotalCost  float64                       `json:"totalCost"`
-	Local	   float64						 `json:"local"`
-	NodeType	string						`json:"nodeType"`
+	Properties   *AssetsResponseItemProperties `json:"properties"`
+	Labels       map[string]string             `json:"labels"`
+	Window       Window                        `json:"window"`
+	Start        time.Time                     `json:"start"`
+	End          time.Time                     `json:"end"`
+	Minutes      float64                       `json:"minutes"`
+	Adjustment   float64                       `json:"adjustment"`
+	CPUCoreHours float64                       `json:"cpuCoreHours`
+	RAMByteHours float64                       `json:"ramByteHours`
+	GPUHours     float64                       `json:"GPUHours`
+	CPUCores     float64                       `json:"cpuCores`
+	RAMBytes     float64                       `json:"ramBytes`
+	TotalCost    float64                       `json:"totalCost"`
+	Local        float64                       `json:"local"`
+	ByteHours    float64                       `json:"byteHours"`
+	NodeType     string                        `json:"nodeType"`
 }
 
 type AssetsResponseItemProperties struct {
-	Category   string 		`json:"category"`
-	Provider   string 		`json:"provider"`
-	Account    string 		`json:"account"`
-	Project    string 		`json:"project"`
-	Service    string 		`json:"service"`
-	Cluster    string 		`json:"cluster"`
-	Name       string 		`json:"name"`
-	ProviderID string 		`json:"providerID"`
+	Category   string `json:"category"`
+	Provider   string `json:"provider"`
+	Account    string `json:"account"`
+	Project    string `json:"project"`
+	Service    string `json:"service"`
+	Cluster    string `json:"cluster"`
+	Name       string `json:"name"`
+	ProviderID string `json:"providerID"`
 }
