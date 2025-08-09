@@ -55,7 +55,11 @@ type PrometheusResponse struct {
 				Pod         string    `json:"pod"`
 				Namespace   string    `json:"namespace"`
 				Container   string    `json:"container"`
-				Node		string	  `json:"Node"`
+
+				// Node Specific Information
+				Node			string	  	`json:"node"`
+				Instance		string	  	`json:"instance"`
+				InstanceType	string		`json:"instance_type"`
         
 				// Load Balancer Specific Costs
 				ServiceName string    `json:"service_name"`
@@ -68,6 +72,7 @@ type PrometheusResponse struct {
 
 				// PersistentVolume Specific
 				VolumeName	string	`json:"volumename"`
+
 			} `json:"metric"`
 			Value  DataPoint   `json:"value"`
 			Values []DataPoint `json:"values"`
