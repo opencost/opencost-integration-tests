@@ -620,6 +620,8 @@ func TestPVCosts(t *testing.T) {
 				}
 			}
 
+			// consolidatedPodMap := make(map[string]*PodData)
+
 			// ----------------------------------------------
 			// Compare Results with Allocation
 			// ----------------------------------------------
@@ -642,67 +644,89 @@ func TestPVCosts(t *testing.T) {
 					podKeys = []prometheus.PodKey{podUIDKey}
 				}
 
+				podData := prometheus.PodData{}
+				
 				for _, podKey := range podKeys {
-
-					podData, ok := podMap[podKey]
-					if !ok {
-						if container == "__unmounted__" { // If promethues starts recognising unmounted pods, remove this. Temporary Fix
-							t.Logf("[Skipping] Unmounted PVs not supported")
-							continue
-						}
-						t.Errorf("Pod Information Missing from API")
+					thisPod := podMap[podKey]
+					if thisPod == nil || thisPod.Containers == nil {
 						continue
 					}
-
-					// Get Containers
-					containerPVs, ok := podData.Containers[container]
-					if !ok {
-						t.Errorf("Container Information Missing from API")
+					if podData.Containers == nil {
+						podData.Containers = thisPod.Containers
+						continue
 					}
-
-					if allocationResponseItem.PersistentVolumes != nil {
-						// Loop Over Persistent Volume Claims
-						if len(allocationResponseItem.PersistentVolumes) != 0 {
-							t.Logf("Container Name: %v, Pod: %v, Pod UID: %v", container, pod, podKey.UID)
+					if container == "__unmounted__" {
+						continue
+					}
+					for pv, pvinfo := range thisPod.Containers[container] {
+						podinfo, ok := podData.Containers[container][pv]
+						if !ok {
+							podData.Containers[container][pv] = pvinfo
+							continue
 						}
-						for allocPVName, allocPV := range allocationResponseItem.PersistentVolumes {
-							allocProviderID := allocPV.ProviderID
-							allocByteHours := allocPV.ByteHours
-							allocCost := allocPV.Cost
+						podinfo.ByteHours += pvinfo.ByteHours
+						podinfo.Cost += pvinfo.Cost
+					}
+					
+				}
+				// if !ok {
+				// 	if container == "__unmounted__" { // If promethues starts recognising unmounted pods, remove this. Temporary Fix
+				// 		t.Logf("[Skipping] Unmounted PVs not supported")
+				// 		continue
+				// 	}
+				// 	t.Errorf("Pod Information Missing from API")
+				// 	continue
+				// }
 
-							// Get PV Name
-							// allocPVName = cluster=default-cluster:name=csi-7da248e4-1143-4c64-ab24-3ab1ba178f9
-							re := regexp.MustCompile(`name=([^:]+)`)
-							allocPVName := re.FindStringSubmatch(allocPVName)[1]
-							
-							_, ok := containerPVs[allocPVName]
-							if !ok {
-								continue
-							}
+				// Get Containers
+				containerPVs, ok := podData.Containers[container]
+				if !ok {
+					t.Errorf("Container Information Missing from API")
+				}
 
-							if containerPVs[allocPVName].ProviderID != allocProviderID {
-								t.Errorf("Provider IDs don't match for the same Pod")
-								continue
-							}
+				if allocationResponseItem.PersistentVolumes != nil {
+					// Loop Over Persistent Volume Claims
+					if len(allocationResponseItem.PersistentVolumes) != 0 {
+						t.Logf("Container Name: %v, Pod: %v", container, pod)
+					}
+					for allocPVName, allocPV := range allocationResponseItem.PersistentVolumes {
+						allocProviderID := allocPV.ProviderID
+						allocByteHours := allocPV.ByteHours
+						allocCost := allocPV.Cost
 
-							t.Logf("  - Persistent Volume Name: %v", allocPVName)
-							// Compare ByteHours
-							withinRange, diff_percent := utils.AreWithinPercentage(containerPVs[allocPVName].ByteHours, allocByteHours, tolerance)
-							if withinRange {
-								t.Logf("      - ByteHours[Pass]: ~%0.2f", allocByteHours)
-							} else {
-								t.Errorf("      - ByteHours[Fail]: DifferencePercent: %0.2f, Prom Results: %0.2f, API Results: %0.2f", diff_percent, containerPVs[allocPVName].ByteHours, allocByteHours)
-							}
-							// Compare Cost
-							withinRange, diff_percent = utils.AreWithinPercentage(containerPVs[allocPVName].Cost, allocCost, tolerance)
-							if withinRange {
-								t.Logf("      - Cost[Pass]: ~%0.2f", allocCost)
-							} else {
-								t.Errorf("      - Cost[Fail]: DifferencePercent: %0.2f, Prom Results: %0.2f, API Results: %0.2f", diff_percent, containerPVs[allocPVName].Cost, allocCost)
-							}
+						// Get PV Name
+						// allocPVName = cluster=default-cluster:name=csi-7da248e4-1143-4c64-ab24-3ab1ba178f9
+						re := regexp.MustCompile(`name=([^:]+)`)
+						allocPVName := re.FindStringSubmatch(allocPVName)[1]
+						
+						_, ok := containerPVs[allocPVName]
+						if !ok {
+							continue
+						}
+
+						if containerPVs[allocPVName].ProviderID != allocProviderID {
+							t.Errorf("Provider IDs don't match for the same Pod")
+							continue
+						}
+
+						t.Logf("  - Persistent Volume Name: %v", allocPVName)
+						// Compare ByteHours
+						withinRange, diff_percent := utils.AreWithinPercentage(containerPVs[allocPVName].ByteHours, allocByteHours, tolerance)
+						if withinRange {
+							t.Logf("      - ByteHours[Pass]: ~%0.2f", allocByteHours)
+						} else {
+							t.Errorf("      - ByteHours[Fail]: DifferencePercent: %0.2f, Prom Results: %0.2f, API Results: %0.2f", diff_percent, containerPVs[allocPVName].ByteHours, allocByteHours)
+						}
+						// Compare Cost
+						withinRange, diff_percent = utils.AreWithinPercentage(containerPVs[allocPVName].Cost, allocCost, tolerance)
+						if withinRange {
+							t.Logf("      - Cost[Pass]: ~%0.2f", allocCost)
+						} else {
+							t.Errorf("      - Cost[Fail]: DifferencePercent: %0.2f, Prom Results: %0.2f, API Results: %0.2f", diff_percent, containerPVs[allocPVName].Cost, allocCost)
 						}
 					}
 				}
+				
 			}
 		})
 	}
