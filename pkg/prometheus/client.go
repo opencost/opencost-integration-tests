@@ -80,6 +80,7 @@ type Metric struct {
 	// The `label_` prefix will be removed from the key when stored here.
 	Labels map[string]string `json:"labels"` // This field will be populated manually
 
+	Annotations map[string]string	`json:"annotations"`
 	// UnhandledFields will capture any other fields that are not explicitly defined
 	// and do not start with "label_".
 	UnhandledFields map[string]string `json:"-"` // Use json:"-" to prevent default unmarshaling
@@ -95,6 +96,7 @@ func (m *Metric) UnmarshalJSON(data []byte) error {
 	}
 
 	m.Labels = make(map[string]string)
+	m.Annotations = make(map[string]string)
 	m.UnhandledFields = make(map[string]string)
 
 	// Iterate over all fields found in the JSON payload for "metric"
@@ -137,6 +139,10 @@ func (m *Metric) UnmarshalJSON(data []byte) error {
 				// Extract the part of the key after "label_"
 				newKey := strings.TrimPrefix(key, "label_")
 				m.Labels[newKey] = strVal
+			} else if strings.HasPrefix(key, "annotation_") {
+				// If it does not start with "label_" and is not explicitly defined,
+				newKey := strings.TrimPrefix(key, "annotation_")
+				m.Annotations[newKey] = strVal
 			} else {
 				// If it does not start with "label_" and is not explicitly defined,
 				m.UnhandledFields[key] = strVal
