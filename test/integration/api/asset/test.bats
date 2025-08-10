@@ -10,3 +10,7 @@ teardown() {
 @test "asset: Node Labels" {
     go test node_labels_test.go
 }
+
+@test "asset: Node Annotations" {
+    go test node_annotations_test.go
+}

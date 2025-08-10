@@ -18,6 +18,14 @@ teardown() {
     go test namespace_labels_test.gp
 }
 
+@test "allocation: Pod Annotations" {
+    go test pod_annotations_test.go
+}
+
+@test "allocation: Namespace Annotations" {
+    go test namespace_annotations_test.go
+}
+
 @test "validate_api: negative idle cost values" {
     go test idle_cost_negative_test.go
 }
