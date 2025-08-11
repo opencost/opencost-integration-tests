@@ -9,6 +9,7 @@ import (
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 	"github.com/opencost/opencost-integration-tests/pkg/utils"
 	"io/ioutil"
+	"strings"
 	"testing"
 	"time"
 )
@@ -48,6 +49,15 @@ type OracleCosts struct {
 	GPU    float64
 }
 
+func CalCulateTimeCoeff(MetricName string) float64 {
+	if strings.Contains(MetricName, "Per Hour") {
+		return 1.0
+	} else if strings.Contains(MetricName, "Per Month") {
+		return 24 * 31
+	}
+	return 1
+}
+
 func OracleNodeCosts(SKU ProductPartNumber) (OracleCosts, error) {
 
 	oracleAPIObj := api.NewOracleBillingAPI()
@@ -55,7 +65,7 @@ func OracleNodeCosts(SKU ProductPartNumber) (OracleCosts, error) {
 	// Get Oracle Billing Information
 	// -------------------------------------
 
-	// Oracle by default returns a node cost assuming the product was used 24hrs, 31 days.
+	// Oracle can return a instance cost by monthly or hourly usage
 	var OracleNodeCost OracleCosts
 	var err error
 
@@ -70,7 +80,10 @@ func OracleNodeCosts(SKU ProductPartNumber) (OracleCosts, error) {
 			fmt.Sprintf("Error while calling Oracle API %v", err)
 			return OracleNodeCost, err
 		}
-		OracleNodeCost.CPU = cpuresp.Items[0].CurrencyCodeLocalizations[0].Prices[0].Value / 31 / 24
+		// In Oracle, 1 Oracle-CPU = 2 Virtual-CPU
+		// We want to calculate costs per V-CPU
+		OracleNodeCost.CPU = ( cpuresp.Items[0].CurrencyCodeLocalizations[0].Prices[0].Value / CalCulateTimeCoeff(cpuresp.Items[0].MetricName) ) / 2
+		
 	} else {
 		OracleNodeCost.CPU = 0.0
 	}
@@ -86,7 +99,7 @@ func OracleNodeCosts(SKU ProductPartNumber) (OracleCosts, error) {
 			fmt.Sprintf("Error while calling Oracle API %v", err)
 			return OracleNodeCost, err
 		}
-		OracleNodeCost.Memory = memresp.Items[0].CurrencyCodeLocalizations[0].Prices[0].Value / 31 / 24
+		OracleNodeCost.Memory = memresp.Items[0].CurrencyCodeLocalizations[0].Prices[0].Value / CalCulateTimeCoeff(memresp.Items[0].MetricName)
 	} else {
 		OracleNodeCost.Memory = 0.0
 	}
@@ -102,7 +115,7 @@ func OracleNodeCosts(SKU ProductPartNumber) (OracleCosts, error) {
 			fmt.Sprintf("Error while calling Oracle API %v", err)
 			return OracleNodeCost, err
 		}
-		OracleNodeCost.GPU = gpuresp.Items[0].CurrencyCodeLocalizations[0].Prices[0].Value / 31 / 24
+		OracleNodeCost.GPU = gpuresp.Items[0].CurrencyCodeLocalizations[0].Prices[0].Value / CalCulateTimeCoeff(gpuresp.Items[0].MetricName)
 	} else {
 		OracleNodeCost.GPU = 0.0
 	}
@@ -228,7 +241,6 @@ func TestOracleNodePricing(t *testing.T) {
 				// GPU
 				oracleTotalCosts += OracleCostPerHr.GPU * assetResponseItem.GPUHours
 
-				t.Logf("oracleTotalCosts: %v", oracleTotalCosts)
 				nodeInfo.AssetNodeTotalCost = assetResponseItem.TotalCost
 				nodeInfo.OracleNodeCost = oracleTotalCosts
 			}

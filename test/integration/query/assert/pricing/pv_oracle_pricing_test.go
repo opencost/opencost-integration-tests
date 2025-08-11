@@ -19,7 +19,7 @@ func OraclePVCost(partNumber string) (float64, error) {
 	// -------------------------------------
 	oracleCost := 0.0
 
-	// Oracle by default returns a node cost assuming the product was used 24hrs, 31 days.
+	// Oracle can return a instance cost by monthly or hourly usage
 	pvreq := api.OracleRequest{
 		CurrencyCode: "USD",
 		PartNumber:   partNumber,
@@ -27,7 +27,7 @@ func OraclePVCost(partNumber string) (float64, error) {
 	// PV Costs
 	pvresp, err := oracleAPIObj.GetOracleBillingInformation(pvreq)
 
-	oracleCost = pvresp.Items[0].CurrencyCodeLocalizations[0].Prices[0].Value / 31 / 24
+	oracleCost = pvresp.Items[0].CurrencyCodeLocalizations[0].Prices[0].Value
 	return oracleCost, err
 
 }
@@ -94,6 +94,7 @@ func TestOracleNodePricing(t *testing.T) {
 
 				// Get Oracle Prices
 				// Resolve this to depend on Disk Information when there are different disk types
+				// Disk Cost is monthlt
 				pvPartNumber := "B91961" // The only disk type used
 				OracleCostPerHr, err := OraclePVCost(pvPartNumber)
 				if err != nil {
@@ -101,7 +102,7 @@ func TestOracleNodePricing(t *testing.T) {
 					continue
 				}
 
-				oracleTotalCosts := (byteHours / 1024 / 1024 / 1024) * OracleCostPerHr
+				oracleTotalCosts := (byteHours / 1024 / 1024 / 1024) * (OracleCostPerHr / 24 / 31)
 
 				pvMap[pv] = &PVData{
 					PVPartNumber:     pvPartNumber,
