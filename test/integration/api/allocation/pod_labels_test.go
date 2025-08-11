@@ -38,10 +38,38 @@ func TestLabels(t *testing.T) {
 			endTime := queryEnd.Unix()
 
 			// -------------------------------
+			// Pod Running Time
+			// avg_over_time(kube_pod_container_status_running{%s}[%s]) by (pod)
+			// -------------------------------
+			client := prometheus.NewClient()
+			promPodRunningInfoInput := prometheus.PrometheusInput{}
+			promPodRunningInfoInput.Metric = "kube_pod_container_status_running"
+			promPodRunningInfoInput.Function = []string{"avg_over_time", "avg"}
+			promPodRunningInfoInput.QueryWindow = tc.window
+			promPodRunningInfoInput.AggregateBy = []string{"pod"}
+			promPodRunningInfoInput.Time = &endTime
+
+			promPodRunningInfo, err := client.RunPromQLQuery(promPodRunningInfoInput)
+			if err != nil {
+				t.Fatalf("Error while calling Prometheus API %v", err)
+			}
+
+			podRunningStatus := make(map[string]int)
+
+			for _, promPodRunningInfoItem := range promPodRunningInfo.Data.Result {
+				pod := promPodRunningInfoItem.Metric.Pod
+				runningStatus := int(promPodRunningInfoItem.Value.Value)
+
+				// kube_pod_labels and kube_nodespace_labels might hold labels for dead pods as well
+				// filter the ones that are running because allocation filters for that
+				podRunningStatus[pod] = runningStatus
+			}
+
+
+			// -------------------------------
 			// Pod Labels
 			// avg_over_time(kube_pod_labels{%s}[%s])
 			// -------------------------------
-			client := prometheus.NewClient()
 			promLabelInfoInput := prometheus.PrometheusInput{}
 			promLabelInfoInput.Metric = "kube_pod_labels"
 			promLabelInfoInput.Function = []string{"avg_over_time"}
@@ -66,6 +94,11 @@ func TestLabels(t *testing.T) {
 			for _, promlabel := range promlabelInfo.Data.Result {
 				pod := promlabel.Metric.Pod
 				labels := promlabel.Metric.Labels
+
+				// Skip Dead Pods
+				if podRunningStatus[pod] == 0 {
+					continue
+				}
 
 				podMap[pod] = &PodData{
 					Pod:        pod,
