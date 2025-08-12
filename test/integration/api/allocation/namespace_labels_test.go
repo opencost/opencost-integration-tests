@@ -38,10 +38,39 @@ func TestLabels(t *testing.T) {
 			endTime := queryEnd.Unix()
 
 			// -------------------------------
+			// Pod Running Time
+			// avg(avg_over_time(kube_pod_container_status_running{%s}[%s])) by (namespace)
+			// -------------------------------
+
+			client := prometheus.NewClient()
+			promPodRunningInfoInput := prometheus.PrometheusInput{}
+			promPodRunningInfoInput.Metric = "kube_pod_container_status_running"
+			promPodRunningInfoInput.Function = []string{"avg_over_time", "avg"}
+			promPodRunningInfoInput.QueryWindow = tc.window
+			promPodRunningInfoInput.AggregateBy = []string{"namespace"}
+			promPodRunningInfoInput.Time = &endTime
+
+			promPodRunningInfo, err := client.RunPromQLQuery(promPodRunningInfoInput)
+			if err != nil {
+				t.Fatalf("Error while calling Prometheus API %v", err)
+			}
+
+			// To check if there is at least one running pod in a namespace
+			anyNamespacePodRunningStatus := make(map[string]int)
+
+			for _, promPodRunningInfoItem := range promPodRunningInfo.Data.Result {
+				namespace := promPodRunningInfoItem.Metric.Namespace
+				runningStatus := int(promPodRunningInfoItem.Value.Value)
+
+				// kube_pod_labels and kube_nodespace_labels might hold labels for dead pods as well
+				// filter the ones that are running because allocation filters for that
+				anyNamespacePodRunningStatus[namespace] = runningStatus
+			}
+
+			// -------------------------------
 			// namespace Labels
 			// avg_over_time(kube_namespace_labels{%s}[%s])
 			// -------------------------------
-			client := prometheus.NewClient()
 			promLabelInfoInput := prometheus.PrometheusInput{}
 			promLabelInfoInput.Metric = "kube_namespace_labels"
 			promLabelInfoInput.Function = []string{"avg_over_time"}
@@ -67,6 +96,13 @@ func TestLabels(t *testing.T) {
 				namespace := promlabel.Metric.Namespace
 				labels := promlabel.Metric.Labels
 
+				if namespace == "default" {
+					continue
+				}
+				
+				if _, ok := anyNamespacePodRunningStatus[namespace]; !ok || !(anyNamespacePodRunningStatus[namespace] > 0) {
+					continue
+				}
 				namespaceMap[namespace] = &NamespaceData{
 					Namespace:  namespace,
 					PromLabels: labels,
