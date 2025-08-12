@@ -254,7 +254,7 @@ func (c *Client) ConstructPromQLQueryURL(promQLArgs PrometheusInput) string {
 		return strings.ToLower(ignoreFilterParts[i]) < strings.ToLower(ignoreFilterParts[j])
 	})
 	ignoreFiltersString := strings.Join(ignoreFilterParts, ", ")
-	
+
 	allFilters := ""
 	if filtersString != "" {
 		allFilters = filtersString
