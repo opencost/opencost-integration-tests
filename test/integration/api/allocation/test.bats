@@ -15,7 +15,7 @@ teardown() {
 }
 
 @test "allocation: Namespace Labels" {
-    go test namespace_labels_test.gp
+    go test namespace_labels_test.go
 }
 
 @test "allocation: Pod Annotations" {
