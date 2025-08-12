@@ -91,8 +91,10 @@ func TestAnnotations(t *testing.T) {
 			// Store Allocation Pod Annotation Results
 			for pod, allocationResponseItem := range apiResponse.Data[0] {
 				podAnnotations, ok := podMap[pod]
+				// No Annotations for this pod.
+				// Not all pods have annotations
 				if !ok {
-					t.Logf("Pod Information Missing from Prometheus %s", pod)
+					t.Logf("[Skipped] - No Annotations for Pod: %s", pod)
 					continue
 				}
 				podAnnotations.AllocAnnotations = allocationResponseItem.Properties.Annotations
