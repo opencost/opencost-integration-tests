@@ -63,9 +63,11 @@ teardown() {
 
 @test "prometheus: GPU Info" {
     go test ./test/integration/prometheus/gpu_info_test.go
-
 }
 
+@test "prometheus: GPU Count" {
+    go test ./test/integration/prometheus/gpu_count_test.go
+}
 # ------------------------------------------------------
 
 # ------------------------------------------------------

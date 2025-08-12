@@ -47,6 +47,7 @@ type AssetsResponseItem struct {
 	End        time.Time                     `json:"end"`
 	Minutes    float64                       `json:"minutes"`
 	Adjustment float64                       `json:"adjustment"`
+	GPUCount   float64						 `json:"gpuCount"`
 	TotalCost  float64                       `json:"totalCost"`
 	Local	   float64						 `json:"local"`
 }
