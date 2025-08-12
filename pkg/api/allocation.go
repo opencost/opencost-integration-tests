@@ -114,6 +114,7 @@ type AllocationResponseItem struct {
 	GPUCost                        float64                                 `json:"gpuCost"`
 	GPUCostAdjustment              float64                                 `json:"gpuCostAdjustment"`
 	GPUCostIdle                    float64                                 `json:"gpuCostIdle"`
+	GPUCount 					   float64								   `json:"gpuCount"`
 	NetworkTransferBytes           float64                                 `json:"networkTransferBytes"`
 	NetworkReceiveBytes            float64                                 `json:"networkReceiveBytes"`
 	NetworkCost                    float64                                 `json:"networkCost"`

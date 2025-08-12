@@ -49,9 +49,13 @@ type AssetsResponseItem struct {
 	Adjustment   float64                       `json:"adjustment"`
 	CPUCoreHours float64                       `json:"cpuCoreHours`
 	RAMByteHours float64                       `json:"ramByteHours`
+  GPUCount     float64						           `json:"gpuCount"`
 	GPUHours     float64                       `json:"GPUHours`
 	CPUCores     float64                       `json:"cpuCores`
 	RAMBytes     float64                       `json:"ramBytes`
+  RAMCost	     float64			                 `json:"ramCost"`
+	CPUCost	     float64			                 `json:"cpuCost"`
+	GPUCost	     float64			                 `json:"gpuCost"`
 	TotalCost    float64                       `json:"totalCost"`
 	Local        float64                       `json:"local"`
 	ByteHours    float64                       `json:"byteHours"`
@@ -67,4 +71,5 @@ type AssetsResponseItemProperties struct {
 	Cluster    string `json:"cluster"`
 	Name       string `json:"name"`
 	ProviderID string `json:"providerID"`
+  Node	     string `json:"node"`
 }

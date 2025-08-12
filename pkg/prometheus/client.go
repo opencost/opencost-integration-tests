@@ -69,6 +69,7 @@ type PrometheusResponse struct {
 				Device    string `json:"device`
 				ModelName string `json:"modelName`
 				UUID      string `json:UUID`
+        ProviderID   string 	`json:"provider_id"`
 
 				// PersistentVolume Specific
 				VolumeName string `json:"volumename"`
