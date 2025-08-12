@@ -39,7 +39,7 @@ func TestLabels(t *testing.T) {
 
 			// -------------------------------
 			// Pod Running Time
-			// avg_over_time(kube_pod_container_status_running{%s}[%s]) by (pod)
+			// avg(avg_over_time(kube_pod_container_status_running{%s}[%s])) by (pod)
 			// -------------------------------
 			client := prometheus.NewClient()
 			promPodRunningInfoInput := prometheus.PrometheusInput{}
