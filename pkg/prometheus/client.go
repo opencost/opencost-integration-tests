@@ -62,16 +62,19 @@ type Metric struct {
 	Pod         string    	`json:"pod"`
 	Namespace   string    	`json:"namespace"`
 	Container   string    	`json:"container"`
-	Node		string		`json:"node"`
+  
+	Node		     string		`json:"node"`
+  InstanceType string   `json:"instance_type"`
 
 	// Load Balancer Specific Costs
 	ServiceName string    		`json:"service_name"`
 	IngressIP   string    		`json:"ingress_ip"`
 
 	// GPU Specific Fields (Optional Result)
-	Device    string 	  		`json:"device`
-	ModelName string 	  		`json:"modelName`
-	UUID 	  string 	  		`json:"UUID"`
+	Device     string 	  		`json:"device`
+	ModelName  string 	  		`json:"modelName`
+	UUID 	     string 	  		`json:"UUID"`
+  ProviderID string         `json:"provider_id"`
 
 	// PersistentVolume Specific
 	VolumeName	string	`json:"volumename"`
@@ -96,7 +99,9 @@ func (m *Metric) UnmarshalJSON(data []byte) error {
 	}
 
 	m.Labels = make(map[string]string)
+  
 	m.Annotations = make(map[string]string)
+
 	m.UnhandledFields = make(map[string]string)
 
 	// Iterate over all fields found in the JSON payload for "metric"
@@ -139,10 +144,12 @@ func (m *Metric) UnmarshalJSON(data []byte) error {
 				// Extract the part of the key after "label_"
 				newKey := strings.TrimPrefix(key, "label_")
 				m.Labels[newKey] = strVal
+
 			} else if strings.HasPrefix(key, "annotation_") {
 				// If it does not start with "label_" and is not explicitly defined,
 				newKey := strings.TrimPrefix(key, "annotation_")
 				m.Annotations[newKey] = strVal
+        
 			} else {
 				// If it does not start with "label_" and is not explicitly defined,
 				m.UnhandledFields[key] = strVal
@@ -260,7 +267,7 @@ func (c *Client) ConstructPromQLQueryURL(promQLArgs PrometheusInput) string {
 		return strings.ToLower(ignoreFilterParts[i]) < strings.ToLower(ignoreFilterParts[j])
 	})
 	ignoreFiltersString := strings.Join(ignoreFilterParts, ", ")
-	
+
 	allFilters := ""
 	if filtersString != "" {
 		allFilters = filtersString
