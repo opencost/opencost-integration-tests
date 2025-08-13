@@ -27,6 +27,13 @@ func TestAnnotations(t *testing.T) {
 			accumulate:                "true",
 			includeAggregatedMetadata: "true",
 		},
+		{
+			name:                      "Last Two Days",
+			window:                    "48h",
+			aggregate:                 "pod",
+			accumulate:                "true",
+			includeAggregatedMetadata: "true",
+		},
 	}
 
 	t.Logf("testCases: %v", testCases)
@@ -100,10 +107,11 @@ func TestAnnotations(t *testing.T) {
 				podAnnotations.AllocAnnotations = allocationResponseItem.Properties.Annotations
 			}
 
+			seenAnnotations := false
+
 			// Compare Results
 			for pod, podAnnotations := range podMap {
 				t.Logf("Pod: %s", pod)
-
 				// Prometheus Result will have fewer Annotations.
 				// Allocation has oracle and feature related Annotations
 				for promAnnotation, promAnnotationValue := range podAnnotations.promAnnotations {
@@ -112,12 +120,16 @@ func TestAnnotations(t *testing.T) {
 						t.Errorf("  - [Fail]: Prometheus Annotation %s not found in Allocation", promAnnotation)
 						continue
 					}
+					seenAnnotations = true
 					if allocAnnotationValue != promAnnotationValue {
-						t.Logf("  - [Fail]: Alloc %s != Prom %s", allocAnnotationValue, promAnnotationValue)
+						t.Errorf("  - [Fail]: Alloc %s != Prom %s", allocAnnotationValue, promAnnotationValue)
 					} else {
 						t.Logf("  - [Pass]: Annotation: %s", promAnnotation)
 					}
 				}
+			}
+			if ! seenAnnotations {
+				t.Fatalf("No Pod Annotations")
 			}
 		})
 	}

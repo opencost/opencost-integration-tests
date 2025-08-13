@@ -27,6 +27,13 @@ func TestAnnotations(t *testing.T) {
 			accumulate:                "true",
 			includeAggregatedMetadata: "true",
 		},
+		{
+			name:                      "Last Two Days",
+			window:                    "48h",
+			aggregate:                 "namespace",
+			accumulate:                "true",
+			includeAggregatedMetadata: "true",
+		},
 	}
 
 	t.Logf("testCases: %v", testCases)
@@ -98,6 +105,8 @@ func TestAnnotations(t *testing.T) {
 				namespaceAnnotations.AllocAnnotations = allocationResponseItem.Properties.NamespaceAnnotations
 			}
 
+			seenAnnotations := false
+
 			// Compare Results
 			for namespace, namespaceAnnotations := range namespaceMap {
 				t.Logf("namespace: %s", namespace)
@@ -110,12 +119,18 @@ func TestAnnotations(t *testing.T) {
 						t.Errorf("  - [Fail]: Prometheus Annotation %s not found in Allocation", promAnnotation)
 						continue
 					}
+
+					seenAnnotations = true
+
 					if allocAnnotationValue != promAnnotationValue {
-						t.Logf("  - [Fail]: Alloc %s != Prom %s", allocAnnotationValue, promAnnotationValue)
+						t.Errorf("  - [Fail]: Alloc %s != Prom %s", allocAnnotationValue, promAnnotationValue)
 					} else {
 						t.Logf("  - [Pass]: Annotation: %s", promAnnotation)
 					}
 				}
+			}
+			if ! seenAnnotations {
+				t.Fatalf("No Namespace Annotations")
 			}
 		})
 	}
