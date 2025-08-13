@@ -192,6 +192,11 @@ func TestOracleNodePricing(t *testing.T) {
 				node := promNodeTotalCostHrItem.Metric.Instance
 				instanceType := promNodeTotalCostHrItem.Metric.InstanceType
 				cost := promNodeTotalCostHrItem.Value.Value
+				
+				// Default Node
+				if node == "" {
+					continue
+				}
 
 				queryWindow, _ := utils.ExtractNumericPrefix(tc.window)
 				promCost := cost * queryWindow
