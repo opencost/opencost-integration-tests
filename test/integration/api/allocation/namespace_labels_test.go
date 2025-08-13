@@ -147,7 +147,7 @@ func TestLabels(t *testing.T) {
 						continue
 					}
 					if allocLabelValue != promLabelValue {
-						t.Logf("  - [Fail]: Alloc %s != Prom %s", allocLabelValue, promLabelValue)
+						t.Errorf("  - [Fail]: Alloc %s != Prom %s", allocLabelValue, promLabelValue)
 					} else {
 						t.Logf("  - [Pass]: Label: %s", promLabel)
 					}
