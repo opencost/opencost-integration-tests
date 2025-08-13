@@ -135,11 +135,11 @@ func TestOracleNodePricing(t *testing.T) {
 			window:    "24h",
 			assetType: "node",
 		},
-		// {
-		// 	name:        "Last Two Days",
-		// 	window:      "48h",
-		// 	assetType:   "node",
-		// },
+		{
+			name:        "Last Two Days",
+			window:      "48h",
+			assetType:   "node",
+		},
 	}
 
 	t.Logf("testCases: %v", testCases)
@@ -189,7 +189,7 @@ func TestOracleNodePricing(t *testing.T) {
 
 			// Store Prometheus Pod Prometheus Results
 			for _, promNodeTotalCostHrItem := range promNodeTotalCostHr.Data.Result {
-				node := promNodeTotalCostHrItem.Metric.Instance
+				node := promNodeTotalCostHrItem.Metric.Node
 				instanceType := promNodeTotalCostHrItem.Metric.InstanceType
 				cost := promNodeTotalCostHrItem.Value.Value
 				
@@ -245,7 +245,7 @@ func TestOracleNodePricing(t *testing.T) {
 				oracleTotalCosts += OracleCostPerHr.Memory * (assetResponseItem.RAMByteHours / 1024 / 1024 / 1024)
 				// GPU
 				oracleTotalCosts += OracleCostPerHr.GPU * assetResponseItem.GPUHours
-
+				
 				nodeInfo.AssetNodeTotalCost = assetResponseItem.TotalCost
 				nodeInfo.OracleNodeCost = oracleTotalCosts
 			}
