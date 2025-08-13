@@ -51,32 +51,106 @@ type PrometheusResponse struct {
 	Data   struct {
 		ResultType string `json:"resultType"`
 		Result     []struct {
-			Metric struct {
-
-				Pod          string 	`json:"pod"`
-				Namespace    string 	`json:"namespace"`
-				Container    string 	`json:"container"`
-				Node         string 	`json:"node"`
-        
-				// Load Balancer Specific Costs
-				ServiceName  string 	`json:"service_name"`
-				IngressIP    string 	`json:"ingress_ip"`
-
-				// GPU Specific Fields (Optional Result)
-				Device       string 	`json:"device`
-				ModelName    string 	`json:"modelName`
-
-				UUID         string 	`json:UUID`
-				ProviderID   string 	`json:"provider_id"`
-				InstanceType string 	`json:"instance_type"`
-
-				// PersistentVolume Specific
-				VolumeName   string	`json:"volumename"`
-			} `json:"metric"`
+			Metric Metric      `json:"metric"`
 			Value  DataPoint   `json:"value"`
 			Values []DataPoint `json:"values"`
 		} `json:"result"`
 	} `json:"data"`
+}
+
+type Metric struct {
+	Pod       string `json:"pod"`
+	Namespace string `json:"namespace"`
+	Container string `json:"container"`
+	Node      string `json:"node"`
+
+	InstanceType string `json:"instance_type"`
+
+	// Load Balancer Specific Costs
+	ServiceName string `json:"service_name"`
+	IngressIP   string `json:"ingress_ip"`
+
+	// GPU Specific Fields (Optional Result)
+	Device     string `json:"device`
+	ModelName  string `json:"modelName`
+	ProviderID string `json:"provider_id"`
+
+	// Pod Specific
+	UUID string `json:"UUID"`
+
+	// PersistentVolume Specific
+	VolumeName string `json:"volumename"`
+
+	// Labels will capture all fields that start with "label_" from the Prometheus metric.
+	// The `label_` prefix will be removed from the key when stored here.
+	// This field will be populated manually
+	Labels map[string]string `json:"labels"`
+
+	// UnhandledFields will capture any other fields that are not explicitly defined
+	// and do not start with "label_".
+	// Use json:"-" to prevent default unmarshaling
+	UnhandledFields map[string]string `json:"-"`
+}
+
+// This allows us to parse known fields directly and dynamic 'label_' fields into a map.
+func (m *Metric) UnmarshalJSON(data []byte) error {
+	// Create a temporary map to hold all raw JSON fields.
+
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return fmt.Errorf("failed to unmarshal raw metric data into map: %w", err)
+	}
+
+	m.Labels = make(map[string]string)
+	m.UnhandledFields = make(map[string]string)
+
+	// Iterate over all fields found in the JSON payload for "metric"
+	for key, value := range raw {
+		var strVal string
+		// Attempt to unmarshal every value as a string.
+		// Prometheus labels are typically strings. If a value is not a string,
+		// it's unexpected for a label, so we'll skip it with a warning.
+		if err := json.Unmarshal(value, &strVal); err != nil {
+			fmt.Printf("Warning: Value for key '%s' is not a string (%T), skipping. Raw: %s\n", key, value, string(value))
+			continue // Skip this field if its value cannot be unmarshaled as a string
+		}
+
+		// Use a switch statement to handle explicitly defined fields
+		switch key {
+		case "pod":
+			m.Pod = strVal
+		case "namespace":
+			m.Namespace = strVal
+		case "container":
+			m.Container = strVal
+		case "node":
+			m.Node = strVal
+		case "service_name":
+			m.ServiceName = strVal
+		case "ingress_ip":
+			m.IngressIP = strVal
+		case "device":
+			m.Device = strVal
+		case "modelName": // Case-sensitive match for "modelName"
+			m.ModelName = strVal
+		case "UUID": // Case-sensitive match for "UUID"
+			m.UUID = strVal
+		case "volumename": // Case-sensitive match for "UUID"
+			m.VolumeName = strVal
+		default:
+			// If the key is not one of the explicitly defined fields,
+			// check if it starts with "label_"
+			if strings.HasPrefix(key, "label_") {
+				// Extract the part of the key after "label_"
+				newKey := strings.TrimPrefix(key, "label_")
+				m.Labels[newKey] = strVal
+			} else {
+				// If it does not start with "label_" and is not explicitly defined,
+				m.UnhandledFields[key] = strVal
+			}
+		}
+	}
+	return nil
 }
 
 // NewClient creates a new Prometheus client
