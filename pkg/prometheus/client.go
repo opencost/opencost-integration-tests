@@ -59,37 +59,34 @@ type PrometheusResponse struct {
 }
 
 type Metric struct {
-	Pod       string `json:"pod"`
-	Namespace string `json:"namespace"`
-	Container string `json:"container"`
-	Node      string `json:"node"`
-
-	InstanceType string `json:"instance_type"`
+	Pod         string    	`json:"pod"`
+	Namespace   string    	`json:"namespace"`
+	Container   string    	`json:"container"`
+  
+	Node		     string		`json:"node"`
+  InstanceType string   `json:"instance_type"`
 
 	// Load Balancer Specific Costs
-	ServiceName string `json:"service_name"`
-	IngressIP   string `json:"ingress_ip"`
+	ServiceName string    		`json:"service_name"`
+	IngressIP   string    		`json:"ingress_ip"`
 
 	// GPU Specific Fields (Optional Result)
-	Device     string `json:"device`
-	ModelName  string `json:"modelName`
-	ProviderID string `json:"provider_id"`
-
-	// Pod Specific
-	UUID string `json:"UUID"`
+	Device     string 	  		`json:"device`
+	ModelName  string 	  		`json:"modelName`
+	UUID 	     string 	  		`json:"UUID"`
+  ProviderID string         `json:"provider_id"`
 
 	// PersistentVolume Specific
-	VolumeName string `json:"volumename"`
+	VolumeName	string	`json:"volumename"`
 
 	// Labels will capture all fields that start with "label_" from the Prometheus metric.
 	// The `label_` prefix will be removed from the key when stored here.
-	// This field will be populated manually
-	Labels map[string]string `json:"labels"`
+	Labels map[string]string `json:"labels"` // This field will be populated manually
 
+	Annotations map[string]string	`json:"annotations"`
 	// UnhandledFields will capture any other fields that are not explicitly defined
 	// and do not start with "label_".
-	// Use json:"-" to prevent default unmarshaling
-	UnhandledFields map[string]string `json:"-"`
+	UnhandledFields map[string]string `json:"-"` // Use json:"-" to prevent default unmarshaling
 }
 
 // This allows us to parse known fields directly and dynamic 'label_' fields into a map.
@@ -102,6 +99,9 @@ func (m *Metric) UnmarshalJSON(data []byte) error {
 	}
 
 	m.Labels = make(map[string]string)
+  
+	m.Annotations = make(map[string]string)
+
 	m.UnhandledFields = make(map[string]string)
 
 	// Iterate over all fields found in the JSON payload for "metric"
@@ -144,6 +144,12 @@ func (m *Metric) UnmarshalJSON(data []byte) error {
 				// Extract the part of the key after "label_"
 				newKey := strings.TrimPrefix(key, "label_")
 				m.Labels[newKey] = strVal
+
+			} else if strings.HasPrefix(key, "annotation_") {
+				// If it does not start with "label_" and is not explicitly defined,
+				newKey := strings.TrimPrefix(key, "annotation_")
+				m.Annotations[newKey] = strVal
+        
 			} else {
 				// If it does not start with "label_" and is not explicitly defined,
 				m.UnhandledFields[key] = strVal
