@@ -411,13 +411,16 @@ func TestPVCosts(t *testing.T) {
 				// This is to account for pod replicas
 				if uid == "" {
 					t.Logf("Query Result missing UID for Pod %s", pod)
+					continue
 				} else {
 					newPodKey := prometheus.PodKey{
 						Namespace: namespace,
 						Pod:       pod,
 						UID:       uid,
 					}
-					podUIDKeyMap[podKey] = append(podUIDKeyMap[podKey], newPodKey)
+					if !contains(podUIDKeyMap[podKey], newPodKey) {
+						podUIDKeyMap[podKey] = append(podUIDKeyMap[podKey], newPodKey)
+					}
 					podKey = newPodKey
 
 				}
@@ -440,6 +443,7 @@ func TestPVCosts(t *testing.T) {
 				} else {
 					podMap[podKey] = &prometheus.PodData{
 						// Key:        	newPodKey,
+						Pod: 		pod,
 						Namespace:  namespace,
 						Start:      s,
 						End:        e,
@@ -450,7 +454,11 @@ func TestPVCosts(t *testing.T) {
 				}
 				podMap[podKey].Containers[container] = make(map[string]*prometheus.PVAllocations)
 			}
-
+			// newPodKey := prometheus.PodKey{
+			// 	Namespace: "network-load-gen",
+			// 	Pod:       "test-install-speedtest-tracker-cnpg-main-2",
+			// }
+			// t.Logf("UID Results: %v:", len(podUIDKeyMap[newPodKey]))
 			// --------------------------------------
 			// Populate Pod to PersistentVolumeClaim Map
 			// --------------------------------------
@@ -494,7 +502,9 @@ func TestPVCosts(t *testing.T) {
 					}
 
 					pvc.Mounted = true
-
+					// if pod == "test-install-speedtest-tracker-cnpg-main-2" {
+					// 	t.Logf(" PVC %v", pvc)
+					// }
 					podPVCMap[key] = append(podPVCMap[key], pvc)
 				}
 			}
@@ -548,7 +558,7 @@ func TestPVCosts(t *testing.T) {
 				pvc, _ := PersistentVolumeClaimMap[thisPVCKey]
 
 				sharedPVCCostCoefficients, err := prometheus.GetPVCCostCoefficients(intervals, pvc)
-				t.Logf("Shared %v", sharedPVCCostCoefficients)
+				// t.Logf("Shared %v", sharedPVCCostCoefficients)
 				if err != nil {
 					t.Logf("Allocation: Compute: applyPVCsToPods: getPVCCostCoefficients: %s", err)
 					continue
@@ -557,7 +567,7 @@ func TestPVCosts(t *testing.T) {
 				for thisPodKey, coeffComponents := range sharedPVCCostCoefficients {
 
 					pod, ok := podMap[thisPodKey]
-
+				
 					if !ok || len(pod.Containers) == 0 {
 						// Get namespace unmounted pod, as pvc will have a namespace
 						window := api.Window{
@@ -580,19 +590,32 @@ func TestPVCosts(t *testing.T) {
 						coef := prometheus.GetCoefficientFromComponents(coeffComponents)
 						pvKey := pvc.PersistentVolume.Name
 
+						if pod.Pod == "test-install-speedtest-tracker-cnpg-main-2" {
+							t.Logf("Pod Bythours %v", byteHours)
+							t.Logf("PVC %v", pvc.PersistentVolumeClaimName)
+							t.Logf("Pod Bythours coeff %v", byteHours * coef)
+							t.Logf("Coeff %v", coef)
+						}
 						// Both Cost and byteHours should be multiplied by the coef and divided by count
 						// so that if all allocations with a given pv key are summed the result of those
 						// would be equal to the values of the original pv
+						// t.Logf("Pod: %v", pod.Pod)
+						// if pod.Pod == "prometheus-prometheus-kube-prometheus-prometheus-0" {
+						// 	t.Logf("%v", pod.Pod)
+						// 	t.Logf("ByteHours: %v", byteHours)
+						// 	t.Logf("Count: %v", float64(len(pod.Containers)))
+						// 	t.Logf("Coef: %v", coef)
+						// }
 						count := float64(len(pod.Containers))
 						alloc[pvKey] = &prometheus.PVAllocations{
-							ByteHours:  byteHours * coef / count,
-							Cost:       cost * coef / count,
+							ByteHours:  (byteHours * coef) / count,
+							Cost:       (cost * coef) / count,
 							ProviderID: pvc.PersistentVolume.ProviderID,
 						}
 					}
 				}
 			}
-
+	
 			// ----------------------------------------------
 			// Unmounted PV Costs
 			// ----------------------------------------------
@@ -642,26 +665,38 @@ func TestPVCosts(t *testing.T) {
 				// In the case of unmounted pods
 				if container == "__unmounted__" {
 					podKeys = []prometheus.PodKey{podUIDKey}
+					continue
 				}
 
-				podData := prometheus.PodData{}
-				
+				podData1 := &prometheus.PodData{}
+				podData1.Containers = make(map[string]map[string]*prometheus.PVAllocations)
 				for _, podKey := range podKeys {
 					thisPod := podMap[podKey]
+					// if thisPod.Pod == "prometheus-prometheus-kube-prometheus-prometheus-0" {
+					// 	t.Logf("PodKeys Loop%v", thisPod.Pod)
+					// 	t.Logf("PodKey %v", podKeys)
+					// 		// t.Logf("PV %v", pv)
+					// 		// t.Logf("ByteHours: %v", thisPod.Containers[container][pv].ByteHours)
+					// }
 					if thisPod == nil || thisPod.Containers == nil {
 						continue
 					}
-					if podData.Containers == nil {
-						podData.Containers = thisPod.Containers
+					if _, ok := podData1.Containers[container]; !ok {
+						podData1.Containers[container] = thisPod.Containers[container]
 						continue
 					}
 					if container == "__unmounted__" {
 						continue
 					}
 					for pv, pvinfo := range thisPod.Containers[container] {
-						podinfo, ok := podData.Containers[container][pv]
+						podinfo, ok := podData1.Containers[container][pv]
+						if thisPod.Pod == "prometheus-prometheus-kube-prometheus-prometheus-0" {
+							t.Logf("%v", thisPod.Pod)
+							t.Logf("PV %v", pv)
+							t.Logf("ByteHours: %v", thisPod.Containers[container][pv].ByteHours)
+						}
 						if !ok {
-							podData.Containers[container][pv] = pvinfo
+							podData1.Containers[container][pv] = pvinfo
 							continue
 						}
 						podinfo.ByteHours += pvinfo.ByteHours
@@ -679,10 +714,14 @@ func TestPVCosts(t *testing.T) {
 				// }
 
 				// Get Containers
-				containerPVs, ok := podData.Containers[container]
+				containerPVs, ok := podData1.Containers[container]
 				if !ok {
 					t.Errorf("Container Information Missing from API")
 				}
+				if pod == "prometheus-prometheus-kube-prometheus-prometheus-0" {
+					t.Logf("Pod Containers: %v", containerPVs["csi-a3d01919-8004-420b-9ecc-5c94c29222e3"].ByteHours)
+				}
+
 
 				if allocationResponseItem.PersistentVolumes != nil {
 					// Loop Over Persistent Volume Claims
@@ -757,3 +796,13 @@ func getUnmountedPodForNamespace(window api.Window, podMap map[prometheus.PodKey
 	}
 	return thisPod
 }
+
+func contains(s []prometheus.PodKey, str prometheus.PodKey) bool {
+    for _, v := range s {
+        if v == str {
+            return true
+        }
+    }
+    return false
+}
+
