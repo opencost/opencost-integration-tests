@@ -89,7 +89,7 @@ func TestRAMCosts(t *testing.T) {
 					End:   queryEnd,
 				}
 				// Note that in the Pod Query, we use a 5m resolution [THIS IS THE DEFAULT VALUE IN OPENCOST]
-				resolution := 5 * time.Minute
+				resolution := 1 * time.Minute
 
 				// Query End Time for all Queries
 				endTime := queryEnd.Unix()
