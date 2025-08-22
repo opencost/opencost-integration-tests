@@ -103,6 +103,7 @@ type AllocationResponseItem struct {
 	Window                         Window                                  `json:"window"`
 	Start                          time.Time                               `json:"start"`
 	End                            time.Time                               `json:"end"`
+	Minutes						   float64								   `json:"minutes"`		
 	CPUCores                       float64                                 `json:"cpuCores"`
 	CPUCoreHours                   float64                                 `json:"cpuCoreHours"`
 	CPUCoreRequestAverage          float64                                 `json:"cpuCoreRequestAverage"`
