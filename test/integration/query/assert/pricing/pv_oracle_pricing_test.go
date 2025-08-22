@@ -43,11 +43,11 @@ func TestOracleNodePricing(t *testing.T) {
 			window:    "24h",
 			assetType: "disk",
 		},
-		// {
-		// 	name:        "Last Two Days",
-		// 	window:      "48h",
-		// 	assetType:   "node",
-		// },
+		{
+			name:        "Last Two Days",
+			window:      "48h",
+			assetType:   "disk",
+		},
 	}
 
 	t.Logf("testCases: %v", testCases)

@@ -9,6 +9,7 @@ import (
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 	"github.com/opencost/opencost-integration-tests/pkg/utils"
 	"io/ioutil"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -123,6 +124,53 @@ func OracleNodeCosts(SKU ProductPartNumber) (OracleCosts, error) {
 	return OracleNodeCost, err
 
 }
+
+
+func loadRemoteJSON(t *testing.T, url string, target interface{}) (error) {
+	// Create an HTTP client with a timeout
+	client := &http.Client{
+		Timeout: 30 * time.Second, // Increased timeout for network requests
+	}
+
+	// Create a new GET request
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		t.Errorf("Error creating request for URL %s: %v", url, err)
+		return fmt.Errorf("error creating request: %w", err)
+	}
+
+	// Perform the request
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Errorf("Error performing request to %s: %v", url, err)
+		return fmt.Errorf("error performing request: %w", err)
+	}
+	defer resp.Body.Close() // Ensure the response body is closed
+
+	// Check for a successful HTTP status code
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Received non-OK HTTP status from %s: %s", url, resp.Status)
+		return fmt.Errorf("received non-OK HTTP status: %s", resp.Status)
+	}
+
+	// Read the response body
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Errorf("Error reading response body from %s: %v", url, err)
+		return fmt.Errorf("error reading response body: %w", err)
+	}
+
+	// Unmarshal the JSON response into the target struct
+	err = json.Unmarshal(body, target)
+	if err != nil {
+		t.Errorf("Error unmarshaling JSON from %s: %v", url, err)
+		return fmt.Errorf("error unmarshaling JSON: %w", err)
+	}
+
+	return nil
+}
+
+
 func TestOracleNodePricing(t *testing.T) {
 
 	testCases := []struct {
@@ -151,10 +199,12 @@ func TestOracleNodePricing(t *testing.T) {
 			// Load Local JSON File
 			// ----------------------------
 			var instanceSKUs InstanceSKU
-			err := loadJSONFile("partnumbers.json", &instanceSKUs)
+			
+			remoteJSONURL := "https://raw.githubusercontent.com/opencost/opencost/develop/pkg/cloud/oracle/partnumbers/shape_part_numbers.json"
+			err := loadRemoteJSON(t, remoteJSONURL, &instanceSKUs)
 
 			if err != nil {
-				t.Errorf("Failed to load file partnumbers.json: %v\n", err)
+				t.Errorf("Failed to GET file partnumbers.json: %v\n", err)
 				return
 			}
 

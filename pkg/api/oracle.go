@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"strings"
+	"github.com/opencost/opencost-integration-tests/pkg/env"
 )
 
 // -----------------------------------------------------
@@ -65,19 +66,15 @@ func (or OracleRequest) QueryString() string {
 	return fmt.Sprintf("?%s", strings.Join(params, "&"))
 }
 
-// Billing URL
-// https://apexapps.oracle.com/pls/apex/cetools/api/v1/products/
-func GetOracleBillingDefaultURL() string {
-	url := "https://apexapps.oracle.com/"
-	return url
-}
 
 func NewOracleBillingAPI() *API {
 	return &API{
-		url: strings.TrimRight(GetOracleBillingDefaultURL(), "/"),
+		url: env.GetDefaultOracleBillingURL(),
 	}
 }
 
+// Billing URL
+// https://apexapps.oracle.com/pls/apex/cetools/api/v1/products/
 func (api *API) GetOracleBillingInformation(req OracleRequest) (*OracleResponse, error) {
 	resp := &OracleResponse{}
 
