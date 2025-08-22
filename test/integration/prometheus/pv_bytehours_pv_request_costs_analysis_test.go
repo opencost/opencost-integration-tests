@@ -591,7 +591,7 @@ func buildPodPVCMap(window string, endTime int64, podMap map[PodKey]*PodData, pe
 	return podPVCMap
 }
 
-func applyPodPVCCosts(window string, endTime int64, podMap map[PodKey]*PodData, podPVCMap map[PodKey][]*PersistentVolumeClaim, persistentVolumeClaimMap map[PersistentVolumeClaimKey]*PersistentVolumeClaim, t *testing.T) () {
+func applyPodPVCCosts(queryWindow api.Window, podMap map[PodKey]*PodData, podPVCMap map[PodKey][]*PersistentVolumeClaim, persistentVolumeClaimMap map[PersistentVolumeClaimKey]*PersistentVolumeClaim, t *testing.T) () {
 
 	// For each persistent volume
 	// Attach the pod along with a modified run time based on the persistent volume.
@@ -646,19 +646,15 @@ func applyPodPVCCosts(window string, endTime int64, podMap map[PodKey]*PodData, 
 		}
 
 		for thisPodKey, coeffComponents := range sharedPVCCostCoefficients {
-			if thisPodKey.Pod == "__unmounted__"  {
-				continue
+
+			pod, ok := podMap[thisPodKey]
+			
+			// for __unmounted__
+			if !ok {
+				// Get namespace unmounted pod, as pvc will have a namespace
+				t.Logf("Calling Once")
+				pod = getUnmountedPodForNamespace(queryWindow, podMap, pvc.Namespace)
 			}
-			pod, _ := podMap[thisPodKey]
-		
-			// if !ok || len(pod.Containers) == 0 {
-			// 	// Get namespace unmounted pod, as pvc will have a namespace
-			// 	window := api.Window{
-			// 		Start: queryStart,
-			// 		End:   queryEnd,
-			// 	}
-			// 	pod = getUnmountedPodForNamespace(window, podMap, pvc.Namespace)
-			// }
 
 			// Alloc is pvs, the map of persistent volumes
 
@@ -689,13 +685,13 @@ func applyPodPVCCosts(window string, endTime int64, podMap map[PodKey]*PodData, 
 			coef := GetCoefficientFromComponents(coeffComponents)
 			pvKey := pvc.PersistentVolume.Name
 
-			// if pod.Pod == "test-install-speedtest-tracker-56944bbf5b-h76q7" {
-			// 	t.Logf("Bytehours: %v", pvc.RequestedBytes)
-			// 	t.Logf("Pod RunTime %v", pod.Window.RunTime())
-			// 	t.Logf("PV Run Time: %v", pvc.Window.RunTime())
-			// 	t.Logf("PV Name: %v", pvc.PersistentVolume.Name)
-			// 	t.Logf("Coeff %v", coef)
-			// }
+			if pod.Pod ==  "" {
+				t.Logf("Bytehours: %v", pvc.RequestedBytes)
+				t.Logf("Pod RunTime %v", pod.Window.RunTime())
+				t.Logf("PV Run Time: %v", pvc.Window.RunTime())
+				t.Logf("PV Name: %v", pvc.PersistentVolume.Name)
+				t.Logf("Coeff %v", coef)
+			}
 
 			pod.Allocations[pvKey] = &PersistentVolumeAllocations{
 				ByteHours:  (byteHours * coef),
@@ -706,30 +702,27 @@ func applyPodPVCCosts(window string, endTime int64, podMap map[PodKey]*PodData, 
 	}
 }
 
-// func applyPVUnmountedCosts(podMap map[PodKey]*PodData, persistentVolumeClaimMap map[PersistentVolumeClaimKey]*PersistentVolumeClaim) () {
-// 	for _, pvc := range persistentVolumeClaimMap {
-// 		if !pvc.Mounted && pvc.PersistentVolume != nil {
+func applyPVUnmountedCosts(queryWindow api.Window, podMap map[PodKey]*PodData, persistentVolumeClaimMap map[PersistentVolumeClaimKey]*PersistentVolumeClaim, t *testing.T) () {
 
-// 			// Get namespace unmounted pod, as pvc will have a namespace
-// 			window := api.Window{
-// 				Start: queryStart,
-// 				End:   queryEnd,
-// 			}
+	for _, pvc := range persistentVolumeClaimMap {
 
-// 			pod := getUnmountedPodForNamespace(window, podMap, pvc.Namespace)
+		if !pvc.Mounted && pvc.PersistentVolume != nil {
 
-// 			// Use the Volume Bytes here because pvc bytes could be different,
-// 			// however the pv bytes are what are going to determine cost
-// 			gib := pvc.RequestedBytes / 1024 / 1024 / 1024
-// 			hrs := utils.ConvertToHours(pvc.Window.RunTime())
-// 			cost := pvc.PersistentVolume.CostPerGiBHour * gib * hrs
-// 			pod.Containers["__unmounted__"][pvc.PersistentVolume.Name] = &PersistentVolumeAllocations{
-// 				ByteHours: pvc.RequestedBytes * hrs,
-// 				Cost:      cost,
-// 			}
-// 		}
-// 	}
-// }
+			// Get namespace unmounted pod, as pvc will have a namespace
+			pod := getUnmountedPodForNamespace(queryWindow, podMap, pvc.Namespace)
+
+			// Use the Volume Bytes here because pvc bytes could be different,
+			// however the pv bytes are what are going to determine cost
+			gib := pvc.RequestedBytes / 1024 / 1024 / 1024
+			hrs := utils.ConvertToHours(pvc.Window.RunTime())
+			cost := pvc.PersistentVolume.CostPerGiBHour * gib * hrs
+			pod.Allocations[pvc.PersistentVolume.Name] = &PersistentVolumeAllocations{
+				ByteHours: pvc.RequestedBytes * hrs,
+				Cost:      cost,
+			}
+		}
+	}
+}
 
 func TestPVCosts(t *testing.T) {
 	apiObj := api.NewAPI()
@@ -784,12 +777,12 @@ func TestPVCosts(t *testing.T) {
 			// --------------------------------------
 			// Apply PVCs to Pod
 			// --------------------------------------
-			applyPodPVCCosts(tc.window, endTime, podMap, podPVCMap, persistentVolumeClaimMap, t)
+			applyPodPVCCosts(queryWindow, podMap, podPVCMap, persistentVolumeClaimMap, t)
 
 			// ----------------------------------------------
 			// Unmounted PV Costs
 			// ----------------------------------------------
-			// applyPVUnmountedCosts(persistentVolumeClaimMap)
+			applyPVUnmountedCosts(queryWindow, podMap, persistentVolumeClaimMap, t)
 
 			
 			// ----------------------------------------------
@@ -821,8 +814,9 @@ func TestPVCosts(t *testing.T) {
 
 				
 				if strings.Contains(pod, "pvcs") {
-					continue
+					t.Logf("Unmounted Pod")
 				}
+
 				// container := allocationResponseItem.Properties.Container
 
 				podKey := PodKey{
@@ -1131,7 +1125,7 @@ func GetPVCCostCoefficients(intervals IntervalPoints, thisPVC *PersistentVolumeC
 		pvcCostCoefficientMap[unmountedKey] = append(
 			pvcCostCoefficientMap[unmountedKey],
 			CoefficientComponent{
-				Time:       thisPVC.Window.RunTime() / pvcWindowDurationMinutes,
+				Time:       thisPVC.Window.End.Sub(currentTime).Minutes() / pvcWindowDurationMinutes,
 				Proportion: 1.0,
 			},
 		)
