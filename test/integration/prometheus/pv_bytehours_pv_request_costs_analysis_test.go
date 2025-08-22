@@ -102,7 +102,7 @@ func queryPods(window string, endTime int64) (prometheus.PrometheusResponse, err
 	promPodInfoInput.MetricNotEqualTo = "0"
 	promPodInfoInput.AggregateBy = []string{"pod", "namespace"}
 	promPodInfoInput.Function = []string{"avg"}
-	promPodInfoInput.AggregateWindow = window
+	promPodInfoInput.AggregateWindow = "1441m"
 	promPodInfoInput.AggregateResolution = "1m"
 	promPodInfoInput.Time = &endTime
 
@@ -128,7 +128,7 @@ func queryPodsUID(window string, endTime int64) (prometheus.PrometheusResponse, 
 	promPodInfoInput.MetricNotEqualTo = "0"
 	promPodInfoInput.AggregateBy = []string{"pod", "namespace", "uid"}
 	promPodInfoInput.Function = []string{"avg"}
-	promPodInfoInput.AggregateWindow = window
+	promPodInfoInput.AggregateWindow = "1441m"
 	promPodInfoInput.AggregateResolution = "1m"
 	promPodInfoInput.Time = &endTime
 
@@ -151,7 +151,7 @@ func queryPVActiveMins(window string, endTime int64) (prometheus.PrometheusRespo
 	promPVRunTime.Metric = "kube_persistentvolume_capacity_bytes"
 	promPVRunTime.AggregateBy = []string{"persistentvolume"}
 	promPVRunTime.Function = []string{"avg"}
-	promPVRunTime.AggregateWindow = window
+	promPVRunTime.AggregateWindow = "1441m"
 	promPVRunTime.AggregateResolution = "1m"
 	promPVRunTime.Time = &endTime
 
@@ -176,7 +176,7 @@ func queryPVCapacityBytes(window string, endTime int64) (prometheus.PrometheusRe
 	promPVBytes.Metric = "kube_persistentvolume_capacity_bytes"
 	promPVBytes.AggregateBy = []string{"persistentvolume"}
 	promPVBytes.Function = []string{"avg_over_time", "avg"}
-	promPVBytes.QueryWindow = window
+	promPVBytes.QueryWindow = "1441m"
 	promPVBytes.Time = &endTime
 
 	pvBytes, err := client.RunPromQLQuery(promPVBytes)
@@ -200,7 +200,7 @@ func queryPVCostPerGibHour(window string, endTime int64) (prometheus.PrometheusR
 	promCostPerGiBHour.Metric = "pv_hourly_cost"
 	promCostPerGiBHour.AggregateBy = []string{"persistentvolume", "volumename", "provider_id"}
 	promCostPerGiBHour.Function = []string{"avg_over_time", "avg"}
-	promCostPerGiBHour.QueryWindow = window
+	promCostPerGiBHour.QueryWindow = "1441m"
 	promCostPerGiBHour.Time = &endTime
 
 	pvCostPerGiBHour, err := client.RunPromQLQuery(promCostPerGiBHour)
@@ -224,7 +224,7 @@ func queryPVMeta(window string, endTime int64) (prometheus.PrometheusResponse, e
 	promPVMeta.Metric = "kubecost_pv_info"
 	promPVMeta.AggregateBy = []string{"storageclass", "persistentvolume", "provider_id"}
 	promPVMeta.Function = []string{"avg_over_time", "avg"}
-	promPVMeta.QueryWindow = window
+	promPVMeta.QueryWindow = "1441m"
 	promPVMeta.Time = &endTime
 
 	pvMeta, err := client.RunPromQLQuery(promPVMeta)
@@ -252,7 +252,7 @@ func queryPVCInfo(window string, endTime int64) (prometheus.PrometheusResponse, 
 	}
 	promPVCInfo.AggregateBy = []string{"persistentvolumeclaim", "storageclass", "volumename", "namespace"}
 	promPVCInfo.Function = []string{"avg"}
-	promPVCInfo.AggregateWindow = window
+	promPVCInfo.AggregateWindow = "1441m"
 	promPVCInfo.AggregateResolution = "1m"
 	promPVCInfo.Time = &endTime
 
@@ -277,7 +277,7 @@ func queryPVCRequestedBytes(window string, endTime int64) (prometheus.Prometheus
 	promPVCRequestedBytes.Metric = "kube_persistentvolumeclaim_resource_requests_storage_bytes"
 	promPVCRequestedBytes.AggregateBy = []string{"persistentvolumeclaim", "namespace"}
 	promPVCRequestedBytes.Function = []string{"avg_over_time", "avg"}
-	promPVCRequestedBytes.QueryWindow = window
+	promPVCRequestedBytes.QueryWindow = "1441m"
 	promPVCRequestedBytes.Time = &endTime
 
 	pvcRequestedBytes, err := client.RunPromQLQuery(promPVCRequestedBytes)
@@ -301,7 +301,7 @@ func queryPodPVCAllocation(window string, endTime int64) (prometheus.PrometheusR
 	promPodPVCAllocation.Metric = "pod_pvc_allocation"
 	promPodPVCAllocation.AggregateBy = []string{"persistentvolume", "persistentvolumeclaim", "pod", "namespace"}
 	promPodPVCAllocation.Function = []string{"avg_over_time", "avg"}
-	promPodPVCAllocation.QueryWindow = window
+	promPodPVCAllocation.QueryWindow = "1441m"
 	promPodPVCAllocation.Time = &endTime
 
 	podPVCAllocation, err := client.RunPromQLQuery(promPodPVCAllocation)
@@ -739,8 +739,7 @@ func TestPVCosts(t *testing.T) {
 			name:        "Yesterday",
 			window:      "24h",
 			aggregate:   "pod",
-			accumulate:  "False",
-			includeIdle: "True",
+			accumulate:  "true",
 		},
 	}
 
@@ -793,7 +792,6 @@ func TestPVCosts(t *testing.T) {
 				Window:      tc.window,
 				Aggregate:   tc.aggregate,
 				Accumulate:  tc.accumulate,
-				IncludeIdle: tc.includeIdle,
 			})
 
 			if err != nil {
@@ -905,6 +903,7 @@ func TestPVCosts(t *testing.T) {
 						re := regexp.MustCompile(`name=([^:]+)`)
 						allocPVName := re.FindStringSubmatch(allocPVName)[1]
 						
+						t.Logf("%v", allocPVName)
 						allocPVItem, ok := podItem.Allocations[allocPVName]
 						if !ok {
 							continue
