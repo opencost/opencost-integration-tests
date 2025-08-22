@@ -59,12 +59,15 @@ type PrometheusResponse struct {
 }
 
 type Metric struct {
-	Pod         string    	`json:"pod"`
-	Namespace   string    	`json:"namespace"`
-	Container   string    	`json:"container"`
-  
-	Node		     string		`json:"node"`
-  InstanceType string   `json:"instance_type"`
+
+	Pod       string `json:"pod"`
+	Namespace string `json:"namespace"`
+	Container string `json:"container"`
+	
+  Node          string `json:"node"`
+  Instance      string `json:"instance"`
+	InstanceType  string `json:"instance_type"`
+
 
 	// Load Balancer Specific Costs
 	ServiceName string    		`json:"service_name"`
@@ -125,6 +128,10 @@ func (m *Metric) UnmarshalJSON(data []byte) error {
 			m.Container = strVal
 		case "node":
 			m.Node = strVal
+		case "instance":
+			m.Instance = strVal
+		case "instance_type":
+			m.InstanceType = strVal
 		case "service_name":
 			m.ServiceName = strVal
 		case "ingress_ip":
@@ -133,6 +140,8 @@ func (m *Metric) UnmarshalJSON(data []byte) error {
 			m.Device = strVal
 		case "modelName": // Case-sensitive match for "modelName"
 			m.ModelName = strVal
+		case "provider_id":
+			m.ProviderID = strVal
 		case "UUID": // Case-sensitive match for "UUID"
 			m.UUID = strVal
 		case "volumename": // Case-sensitive match for "UUID"
