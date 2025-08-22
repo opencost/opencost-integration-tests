@@ -25,7 +25,7 @@ import (
 	"time"
 )
 
-const IngestUID = false
+const IngestUID = true
 const ConsiderContainerCosts = false
 const Resolution = "1m"
 
@@ -314,7 +314,7 @@ func buildPodMap(IngestUID bool, window string, endTime int64, resolution time.D
 	var podInfo prometheus.PrometheusResponse
 	var err error
 
-	if IngestUID {
+	if !IngestUID {
 		podInfo, err = queryPods(window, endTime)
 	} else {
 		podInfo, err = queryPodsUID(window, endTime)
@@ -822,13 +822,21 @@ func TestPVCosts(t *testing.T) {
 					Pod:       pod,
 				}
 
-				podItem := podMap[podKey]
+				// podItem := podMap[podKey]
 
 				
 
-				// // Get Pods
-				// podKeys := podUIDKeyMap[podUIDKey]
-
+				// Get Pods
+				if IngestUID {
+					podKeys := podUIDKeyMap[podKey]
+					
+					podMap[podKey] = &PodData{
+						Pod: pod,
+						Namespace: namespace,
+						Allocations: make(map[string]*PersistentVolumeAllocations),
+					}
+					
+					podItem := podMap[podKey]
 				// // In the case of unmounted pods
 				// if container == "__unmounted__" {
 				// 	podKeys = []prometheus.PodKey{podUIDKey}
@@ -837,40 +845,47 @@ func TestPVCosts(t *testing.T) {
 
 				// podData1 := &prometheus.PodData{}
 				// podData1.Containers = make(map[string]map[string]*prometheus.PVAllocations)
-				// for _, podKey := range podKeys {
-				// 	thisPod := podMap[podKey]
-				// 	// if thisPod.Pod == "prometheus-prometheus-kube-prometheus-prometheus-0" {
-				// 	// 	t.Logf("PodKeys Loop%v", thisPod.Pod)
-				// 	// 	t.Logf("PodKey %v", podKeys)
-				// 	// 		// t.Logf("PV %v", pv)
-				// 	// 		// t.Logf("ByteHours: %v", thisPod.Containers[container][pv].ByteHours)
-				// 	// }
-				// 	if thisPod == nil || thisPod.Containers == nil {
-				// 		continue
-				// 	}
-				// 	if _, ok := podData1.Containers[container]; !ok {
-				// 		podData1.Containers[container] = thisPod.Containers[container]
-				// 		continue
-				// 	}
-				// 	if container == "__unmounted__" {
-				// 		continue
-				// 	}
-				// 	for pv, pvinfo := range thisPod.Containers[container] {
-				// 		podinfo, ok := podData1.Containers[container][pv]
-				// 		if thisPod.Pod == "prometheus-prometheus-kube-prometheus-prometheus-0" {
-				// 			t.Logf("%v", thisPod.Pod)
-				// 			t.Logf("PV %v", pv)
-				// 			t.Logf("ByteHours: %v", thisPod.Containers[container][pv].ByteHours)
-				// 		}
-				// 		if !ok {
-				// 			podData1.Containers[container][pv] = pvinfo
-				// 			continue
-				// 		}
-				// 		podinfo.ByteHours += pvinfo.ByteHours
-				// 		podinfo.Cost += pvinfo.Cost
-				// 	}
-					
-				// }
+					for _, key := range podKeys {
+						thisPod := podMap[key]
+						// if thisPod.Pod == "prometheus-prometheus-kube-prometheus-prometheus-0" {
+						// 	t.Logf("PodKeys Loop%v", thisPod.Pod)
+						// 	t.Logf("PodKey %v", podKeys)
+						// 		// t.Logf("PV %v", pv)
+						// 		// t.Logf("ByteHours: %v", thisPod.Containers[container][pv].ByteHours)
+						// }
+						if thisPod == nil {
+							continue
+						}
+						// if _, ok := podData1.Containers[container]; !ok {
+						// 	podData1.Containers[container] = thisPod.Containers[container]
+						// 	continue
+						// }
+						// if container == "__unmounted__" {
+						// 	continue
+						// }
+						for pv, pvinfo := range thisPod.Allocations {
+							podinfo, ok := podItem.Allocations[pv]
+							// if thisPod.Pod == "prometheus-prometheus-kube-prometheus-prometheus-0" {
+							// 	t.Logf("%v", thisPod.Pod)
+							// 	t.Logf("PV %v", pv)
+							// 	t.Logf("ByteHours: %v", thisPod.Containers[container][pv].ByteHours)
+							// }
+							if !ok {
+								podItem.Allocations[pv] = &PersistentVolumeAllocations{
+									ByteHours: pvinfo.ByteHours,
+									Cost: pvinfo.Cost,
+									ProviderID: pvinfo.ProviderID,
+								}
+								continue
+							}
+							podinfo.ByteHours += pvinfo.ByteHours
+							podinfo.Cost += pvinfo.Cost
+						}
+						
+					}
+				}
+
+				podItem := podMap[podKey]
 				// if !ok {
 				// 	if container == "__unmounted__" { // If promethues starts recognising unmounted pods, remove this. Temporary Fix
 				// 		t.Logf("[Skipping] Unmounted PVs not supported")
