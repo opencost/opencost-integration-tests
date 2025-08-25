@@ -26,6 +26,7 @@ import (
 	"time"
 )
 
+const Resolution = "1m"
 const tolerance = 0.05
 
 func ConvertToHours(minutes float64) float64 {
@@ -46,6 +47,12 @@ func TestRAMCosts(t *testing.T) {
 		{
 			name:       "Yesterday",
 			window:     "24h",
+			aggregate:  "namespace",
+			accumulate: "false",
+		},
+		{
+			name:       "Last Two Days",
+			window:     "48h",
 			aggregate:  "namespace",
 			accumulate: "false",
 		},
@@ -83,7 +90,11 @@ func TestRAMCosts(t *testing.T) {
 
 				// Use this information to find start and end time of pod
 				queryEnd := time.Now().UTC().Truncate(time.Hour).Add(time.Hour)
-				queryStart := queryEnd.Add(-24 * time.Hour)
+				// Get Time Duration
+				timeMumericVal, _ := utils.ExtractNumericPrefix(tc.window)
+				// Assume the minumum unit is an hour
+				negativeDuration := time.Duration(timeMumericVal*float64(time.Hour)) * -1
+				queryStart := queryEnd.Add(negativeDuration)
 				window24h := api.Window{
 					Start: queryStart,
 					End:   queryEnd,
@@ -93,6 +104,8 @@ func TestRAMCosts(t *testing.T) {
 
 				// Query End Time for all Queries
 				endTime := queryEnd.Unix()
+
+				windowRange := prometheus.GetOffsetAdjustedQueryWindow(tc.window, Resolution)
 
 				// Metric: RAMRequests
 				// avg(avg_over_time(
@@ -119,7 +132,7 @@ func TestRAMCosts(t *testing.T) {
 				}
 				promRAMRequestedInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
 				promRAMRequestedInput.Function = []string{"avg_over_time", "avg"}
-				promRAMRequestedInput.QueryWindow = tc.window
+				promRAMRequestedInput.QueryWindow = windowRange
 				promRAMRequestedInput.Time = &endTime
 
 				requestedRAM, err := client.RunPromQLQuery(promRAMRequestedInput)
@@ -150,7 +163,7 @@ func TestRAMCosts(t *testing.T) {
 				}
 				promRAMAllocatedInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
 				promRAMAllocatedInput.Function = []string{"avg_over_time", "avg"}
-				promRAMAllocatedInput.QueryWindow = tc.window
+				promRAMAllocatedInput.QueryWindow = windowRange
 				promRAMAllocatedInput.Time = &endTime
 
 				allocatedRAM, err := client.RunPromQLQuery(promRAMAllocatedInput)
@@ -173,8 +186,8 @@ func TestRAMCosts(t *testing.T) {
 				promPodInfoInput.MetricNotEqualTo = "0"
 				promPodInfoInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
 				promPodInfoInput.Function = []string{"avg"}
-				promPodInfoInput.AggregateWindow = tc.window
-				promPodInfoInput.AggregateResolution = "1m"
+				promPodInfoInput.AggregateWindow = windowRange
+				promPodInfoInput.AggregateResolution = Resolution
 				promPodInfoInput.Time = &endTime
 
 				podInfo, err := client.RunPromQLQuery(promPodInfoInput)

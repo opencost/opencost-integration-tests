@@ -89,7 +89,7 @@ func TestCPUCosts(t *testing.T) {
 				// Get Time Duration
 				timeMumericVal, _ := utils.ExtractNumericPrefix(tc.window)
 				// Assume the minumum unit is an hour
-				negativeDuration := time.Duration(timeMumericVal * float64(time.Hour)) * -1
+				negativeDuration := time.Duration(timeMumericVal*float64(time.Hour)) * -1
 				queryStart := queryEnd.Add(negativeDuration)
 				window24h := api.Window{
 					Start: queryStart,
