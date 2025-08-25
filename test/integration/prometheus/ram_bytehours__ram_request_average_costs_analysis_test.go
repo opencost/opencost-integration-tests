@@ -89,7 +89,7 @@ func TestRAMCosts(t *testing.T) {
 					End:   queryEnd,
 				}
 				// Note that in the Pod Query, we use a 5m resolution [THIS IS THE DEFAULT VALUE IN OPENCOST]
-				resolution := 5 * time.Minute
+				resolution := 1 * time.Minute
 
 				// Query End Time for all Queries
 				endTime := queryEnd.Unix()
@@ -174,7 +174,7 @@ func TestRAMCosts(t *testing.T) {
 				promPodInfoInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
 				promPodInfoInput.Function = []string{"avg"}
 				promPodInfoInput.AggregateWindow = tc.window
-				promPodInfoInput.AggregateResolution = "5m"
+				promPodInfoInput.AggregateResolution = "1m"
 				promPodInfoInput.Time = &endTime
 
 				podInfo, err := client.RunPromQLQuery(promPodInfoInput)
@@ -206,7 +206,7 @@ func TestRAMCosts(t *testing.T) {
 				// Create a map of PodData for each pod, and calculate the runtime.
 				// The query we make for pods is _NOT_ an average over time "range" vector. Instead, it's a range vector
 				// that returns _ALL_ samples for the pod over the last 24 hours. So, when you see <metric>[24h:5m] the
-				// number after the ':' (5m) is the resolution of the samples. So for the pod query, we get 24h / 5m
+				// number after the ':' (1m) is the resolution of the samples. So for the pod query, we get 24h / 1m
 				// ----------------------------------------------
 
 				// Pointers to modify in place

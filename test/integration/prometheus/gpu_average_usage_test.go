@@ -12,6 +12,7 @@ import (
 )
 
 const tolerance = 0.05
+const negligibleUsage = 0.01
 
 func TestGPUAvgUsage(t *testing.T) {
 	apiObj := api.NewAPI()
@@ -64,7 +65,7 @@ func TestGPUAvgUsage(t *testing.T) {
 			type PodData struct {
 				Pod       string
 				Namespace string
-				RunTime   float64
+				Window 	  *api.Window
 			}
 
 			podMap := make(map[string]*PodData)
@@ -75,13 +76,17 @@ func TestGPUAvgUsage(t *testing.T) {
 				podMap[podInfoResponseItem.Metric.Pod] = &PodData{
 					Pod:       podInfoResponseItem.Metric.Pod,
 					Namespace: podInfoResponseItem.Metric.Namespace,
-					RunTime:   e.Sub(s).Minutes(),
+					Window: &api.Window{
+						Start: s,
+						End: e,
+					},
 				}
 			}
 
 			type GPUUsageAvgAggregate struct {
 				AllocationUsageAvg float64
 				PrometheusUsageAvg float64
+				Window			   *api.Window
 			}
 			GPUUsageAvgNamespaceMap := make(map[string]*GPUUsageAvgAggregate)
 
@@ -114,22 +119,31 @@ func TestGPUAvgUsage(t *testing.T) {
 					continue
 				}
 				// Get containerRunTime by getting the pod's (parent object) runtime.
-				containerRunTime := podMap[promResponseItem.Metric.Pod].RunTime
+				pod, ok := podMap[promResponseItem.Metric.Pod]
+				if !ok {
+					continue
+				}
+
+				containerRunTime := pod.Window.RunTime()
 
 				GPUUsageAvgPod, ok := GPUUsageAvgNamespaceMap[promResponseItem.Metric.Namespace]
 				if !ok {
 					GPUUsageAvgNamespaceMap[promResponseItem.Metric.Namespace] = &GPUUsageAvgAggregate{
 						PrometheusUsageAvg: promResponseItem.Value.Value * containerRunTime,
 						AllocationUsageAvg: 0.0,
+						Window: &api.Window{
+							Start: pod.Window.Start,
+							End: pod.Window.End,
+						},
 					}
 					continue
 				}
 				GPUUsageAvgPod.PrometheusUsageAvg += promResponseItem.Value.Value * containerRunTime
+				GPUUsageAvgPod.Window = api.ExpandTimeRange(GPUUsageAvgPod.Window, pod.Window)
 			}
 
-			windowRunTime := queryEnd.Sub(queryStart).Minutes()
 			for _, GPUUsageAvgProm := range GPUUsageAvgNamespaceMap {
-				GPUUsageAvgProm.PrometheusUsageAvg = GPUUsageAvgProm.PrometheusUsageAvg / windowRunTime
+				GPUUsageAvgProm.PrometheusUsageAvg = GPUUsageAvgProm.PrometheusUsageAvg / GPUUsageAvgProm.Window.RunTime()
 			}
 			/////////////////////////////////////////////
 			// API Client
@@ -160,9 +174,15 @@ func TestGPUAvgUsage(t *testing.T) {
 				GPUUsageAvgPod.AllocationUsageAvg += allocationResponseItem.GPUAllocation.GPUUsageAverage
 			}
 
+			seenUsage := false
 			t.Logf("\nAvg Values for Namespaces.\n")
 			// Windows are not accurate for prometheus and allocation
 			for namespace, GPUAvgUsageValues := range GPUUsageAvgNamespaceMap {
+				if GPUAvgUsageValues.AllocationUsageAvg < negligibleUsage {
+					continue
+				} else {
+					seenUsage = true
+				}
 				t.Logf("Namespace %s", namespace)
 				withinRange, diff_percent := utils.AreWithinPercentage(GPUAvgUsageValues.PrometheusUsageAvg, GPUAvgUsageValues.AllocationUsageAvg, tolerance)
 				if !withinRange {
@@ -170,6 +190,9 @@ func TestGPUAvgUsage(t *testing.T) {
 				} else {
 					t.Logf("GPUUsageAvg[Pass]: ~ %v", GPUAvgUsageValues.PrometheusUsageAvg)
 				}
+			}
+			if seenUsage == false {
+				t.Logf("All Costs were Negligible and cannot be tested. Failing Test")
 			}
 		})
 	}

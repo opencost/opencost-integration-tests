@@ -34,7 +34,6 @@ func RoundUpToTwoDecimals(num float64) float64 {
 	return roundedTemp / 100
 }
 
-
 // extractNumericPrefix extracts the leading numeric part from a string.
 // It handles both integers and floating-point numbers.
 func ExtractNumericPrefix(s string) (float64, error) {
