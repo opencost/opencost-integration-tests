@@ -27,7 +27,7 @@ import (
 )
 
 const Resolution = "1m"
-const tolerance = 0.07
+const Tolerance = 0.07
 const negligibleCores = 0.01
 
 func TestCPUCosts(t *testing.T) {
@@ -377,7 +377,7 @@ func TestCPUCosts(t *testing.T) {
 				t.Logf("Namespace: %s", namespace)
 				// 5 % Tolerance
 				if allocationResponseItem.CPUCores > negligibleCores {
-					withinRange, diff_percent := utils.AreWithinPercentage(nsCPUCores, allocationResponseItem.CPUCores, tolerance)
+					withinRange, diff_percent := utils.AreWithinPercentage(nsCPUCores, allocationResponseItem.CPUCores, Tolerance)
 					if withinRange {
 						t.Logf("    - CPUCores[Pass]: ~%.2f", nsCPUCores)
 					} else {
@@ -385,7 +385,7 @@ func TestCPUCosts(t *testing.T) {
 					}
 				}
 				if allocationResponseItem.CPUCoreHours > negligibleCores {
-					withinRange, diff_percent := utils.AreWithinPercentage(nsCPUCoresHours, allocationResponseItem.CPUCoreHours, tolerance)
+					withinRange, diff_percent := utils.AreWithinPercentage(nsCPUCoresHours, allocationResponseItem.CPUCoreHours, Tolerance)
 					if withinRange {
 						t.Logf("    - CPUCoreHours[Pass]: ~%.2f", nsCPUCoresHours)
 					} else {
@@ -393,7 +393,7 @@ func TestCPUCosts(t *testing.T) {
 					}
 				}
 				if allocationResponseItem.CPUCoreRequestAverage > negligibleCores {
-					withinRange, diff_percent := utils.AreWithinPercentage(nsCPUCoresRequest, allocationResponseItem.CPUCoreRequestAverage, tolerance)
+					withinRange, diff_percent := utils.AreWithinPercentage(nsCPUCoresRequest, allocationResponseItem.CPUCoreRequestAverage, Tolerance)
 					if withinRange {
 						t.Logf("    - CPUCoreRequestAverage[Pass]: ~%.2f", nsCPUCoresRequest)
 					} else {
