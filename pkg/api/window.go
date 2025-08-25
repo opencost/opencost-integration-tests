@@ -8,7 +8,7 @@ type Window struct {
 }
 
 func (window *Window) RunTime() float64 {
-
+  
 	runTime := window.End.Sub(window.Start).Minutes()
 
 	return runTime
