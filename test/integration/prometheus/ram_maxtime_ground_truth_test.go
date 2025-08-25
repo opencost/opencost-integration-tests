@@ -53,6 +53,12 @@ func TestRAMMax(t *testing.T) {
 			aggregate:  "container,pod",
 			accumulate: "false",
 		},
+		{
+			name:       "Last Two Days",
+			window:     "48h",
+			aggregate:  "container,pod",
+			accumulate: "false",
+		},
 	}
 
 	t.Logf("testCases: %v", testCases)

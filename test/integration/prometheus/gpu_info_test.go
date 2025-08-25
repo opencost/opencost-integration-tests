@@ -34,13 +34,12 @@ func TestGPUInfo(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
-			
 			type PodGPUData struct {
-				Pod 	  			string
-				Namespace 			string
-				Device    			string
-				ModelName 			string
-				UUID      			string
+				Pod       string
+				Namespace string
+				Device    string
+				ModelName string
+				UUID      string
 				// PCIBusID  			string
 				// DCGMFIDriverVersion string
 			}
@@ -79,12 +78,11 @@ func TestGPUInfo(t *testing.T) {
 			for _, promResponseItem := range promResponse.Data.Result {
 
 				podPromGPUMap[promResponseItem.Metric.Container] = &PodGPUData{
-					Pod: promResponseItem.Metric.Pod,
+					Pod:       promResponseItem.Metric.Pod,
 					Namespace: promResponseItem.Metric.Namespace,
-					Device: promResponseItem.Metric.Device,
+					Device:    promResponseItem.Metric.Device,
 					ModelName: promResponseItem.Metric.ModelName,
-					UUID: promResponseItem.Metric.UUID,
-
+					UUID:      promResponseItem.Metric.UUID,
 				}
 			}
 
@@ -116,11 +114,11 @@ func TestGPUInfo(t *testing.T) {
 					continue
 				}
 				podAllocGPUMap[allocationResponseItem.Properties.Container] = &PodGPUData{
-					Pod: allocationResponseItem.Properties.Pod,
+					Pod:       allocationResponseItem.Properties.Pod,
 					Namespace: allocationResponseItem.Properties.Namespace,
-					Device: allocationResponseItem.GPUAllocation.GPUDevice,
+					Device:    allocationResponseItem.GPUAllocation.GPUDevice,
 					ModelName: allocationResponseItem.GPUAllocation.GPUModel,
-					UUID: allocationResponseItem.GPUAllocation.GPUUUID,
+					UUID:      allocationResponseItem.GPUAllocation.GPUUUID,
 				}
 			}
 
@@ -129,7 +127,7 @@ func TestGPUInfo(t *testing.T) {
 				t.Errorf("Prometheus GPU Containers:\n%v\nAllocation GPU Containers:\n%v", podPromGPUMap, podAllocGPUMap)
 				t.Fatalf("Number of Containers from Prometheus (%d) and Allocation (%d) don't match.", len(podPromGPUMap), len(podAllocGPUMap))
 			}
-			
+
 			for container, containerPromGPUInfo := range podPromGPUMap {
 				containerAllocGPUInfo, ok := podAllocGPUMap[container]
 				if !ok {
@@ -140,12 +138,12 @@ func TestGPUInfo(t *testing.T) {
 				t.Logf("Pod %s", containerPromGPUInfo.Pod)
 				t.Logf("Namespace %s", containerPromGPUInfo.Namespace)
 				if containerAllocGPUInfo.ModelName != containerPromGPUInfo.ModelName {
-					t.Errorf("  - [Fail] Prom ModelName %s != Alloc ModelName %s",containerPromGPUInfo.ModelName, containerAllocGPUInfo.ModelName)
+					t.Errorf("  - [Fail] Prom ModelName %s != Alloc ModelName %s", containerPromGPUInfo.ModelName, containerAllocGPUInfo.ModelName)
 				} else {
 					t.Logf("  - [Pass] ModelName: %s", containerPromGPUInfo.ModelName)
 				}
 				if containerAllocGPUInfo.UUID != containerPromGPUInfo.UUID {
-					t.Errorf("  - [Fail] Prom UUID %s != Alloc UUID %s",containerPromGPUInfo.UUID, containerAllocGPUInfo.UUID)
+					t.Errorf("  - [Fail] Prom UUID %s != Alloc UUID %s", containerPromGPUInfo.UUID, containerAllocGPUInfo.UUID)
 				} else {
 					t.Logf("  - [Pass] UUID: %s", containerPromGPUInfo.UUID)
 				}

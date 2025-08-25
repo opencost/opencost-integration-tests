@@ -109,6 +109,7 @@ func TestGPUMax(t *testing.T) {
 
 			for _, allocationResponseItem := range apiResponse.Data[0] {
 				gpuUsageMaxPod, ok := gpuUsageMaxPodMap[allocationResponseItem.Properties.Pod]
+
 				if !ok {
 					gpuUsageMaxPodMap[allocationResponseItem.Properties.Pod] = &GPUUsageMaxAggregate{
 						PrometheusUsageMax: 0.0,
