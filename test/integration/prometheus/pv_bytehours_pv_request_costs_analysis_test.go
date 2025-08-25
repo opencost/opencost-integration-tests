@@ -1,17 +1,21 @@
 package prometheus
 
-// Description: Checks all PV related Costs
-// - PVBytes
+// Description: Checks 
+// - PVCost
 // - PVBytesHours
-// - PVBytesRequestAverage
 
-// Testing Methodology: Step by Step Information
-//     - Get Persistent Volume RunTimes
-//	   - Get Persistent Volume Information
-//	   - Get Persistent Volume Claim Information
-//	   - Get Pod Information and create a PodMap
-// 	   - Create PersistentVolume and PersistentVolumeClaimMap
-//	   - Compute Cost of PVC usage for each pod based on its running interval in the pods lifecycle
+// Methodology
+// - Build Pod Map
+// - Build Persistent Volume Map
+// - Build Persistent Volume Claim Map
+// - Calculate Costs Pod/Persistent Volume
+
+// Note:
+// Container Costs are not real costs but generated costs. They are obtained by equally distributing pod costs to all pod containers. This 
+// is the not the best approach as init containers can also contribute to the bytehours and cost.
+//
+// IngestUID is a flag you can set to calculate by Pod and UID. This way Pod costs are calculated separately based on UID and then aggregated by Pod for the final results.
+// This feature is currently not supported by OpenCost
 
 import (
 	"fmt"
@@ -78,10 +82,11 @@ type PersistentVolumeAllocations struct {
 }
 
 type PodData struct {
-	Pod        string
-	Namespace  string
-	Window	   api.Window
-	Allocations map[string]*PersistentVolumeAllocations
+	Pod        		string
+	Namespace  		string
+	Window	       	api.Window
+	NumContainers  	int
+	Allocations 	map[string]*PersistentVolumeAllocations
 }
 
 
@@ -409,7 +414,6 @@ func buildPodMap(IngestUID bool, window string, endTime int64, resolution time.D
 	return podMap, podUIDKeyMap
 }
 
-
 func buildPVMap(window string, endTime int64, resolution time.Duration, queryWindow api.Window, t *testing.T) (map[string]*PersistentVolume) {
 
 	pvRunTime, err := queryPVActiveMins(window, endTime)
@@ -687,42 +691,12 @@ func applyPodPVCCosts(queryWindow api.Window, podMap map[PodKey]*PodData, podPVC
 				pod = getUnmountedPodForNamespace(queryWindow, podMap, pvc.Namespace)
 			}
 
-			// Alloc is pvs, the map of persistent volumes
-
-			// for _, alloc := range pod.Containers {
-			// 	s, e := pod.Start, pod.End
-
-			// 	minutes := e.Sub(s).Minutes()
-			// 	hrs := minutes / 60.0
-
-			// 	gib := pvc.RequestedBytes / 1024 / 1024 / 1024
-			// 	cost := pvc.PersistentVolume.CostPerGiBHour * gib * hrs
-			// 	byteHours := pvc.RequestedBytes * hrs
-			// 	coef := prometheus.GetCoefficientFromComponents(coeffComponents)
-			// 	pvKey := pvc.PersistentVolume.Name
-
-			// 	count := float64(len(pod.Containers))
-			// 	alloc[pvKey] = &prometheus.PVAllocations{
-			// 		ByteHours:  (byteHours * coef) / count,
-			// 		Cost:       (cost * coef) / count,
-			// 		ProviderID: pvc.PersistentVolume.ProviderID,
-			// 	}
-			// }
-
 			hrs := utils.ConvertToHours(pod.Window.RunTime())
 			gib := pvc.RequestedBytes / 1024 / 1024 / 1024
 			cost := pvc.PersistentVolume.CostPerGiBHour * gib * hrs
 			byteHours := pvc.RequestedBytes * hrs
 			coef := GetCoefficientFromComponents(coeffComponents)
 			pvKey := pvc.PersistentVolume.Name
-
-			// if pod.Pod ==  "" {
-			// 	t.Logf("Bytehours: %v", pvc.RequestedBytes)
-			// 	t.Logf("Pod RunTime %v", pod.Window.RunTime())
-			// 	t.Logf("PV Run Time: %v", pvc.Window.RunTime())
-			// 	t.Logf("PV Name: %v", pvc.PersistentVolume.Name)
-			// 	t.Logf("Coeff %v", coef)
-			// }
 
 			pod.Allocations[pvKey] = &PersistentVolumeAllocations{
 				ByteHours:  (byteHours * coef),
@@ -755,26 +729,236 @@ func applyPVUnmountedCosts(queryWindow api.Window, podMap map[PodKey]*PodData, p
 	}
 }
 
+// getUnmountedPodForNamespace is as getUnmountedPodForCluster, but keys allocation property pod/namespace field off namespace
+// This creates or adds allocations to an unmounted pod in the specified namespace, rather than in __unmounted__
+func getUnmountedPodForNamespace(window api.Window, podMap map[PodKey]*PodData, namespace string) *PodData {
+	// container := "__unmounted__"
+	podName := fmt.Sprintf("%s-unmounted-pvcs", namespace)
+
+	thisPodKey := PodKey{
+		Namespace: namespace,
+		Pod:       podName,
+	}
+
+	// Initialize pod and container if they do not already exist
+	thisPod, ok := podMap[thisPodKey]
+	if !ok {
+		thisPod = &PodData{
+			Window: window,
+			Allocations: make(map[string]*PersistentVolumeAllocations),
+		}
+
+		thisPod.Allocations = make(map[string]*PersistentVolumeAllocations)
+		podMap[thisPodKey] = thisPod
+	}
+	return thisPod
+}
+
+func contains(s []PodKey, str PodKey) bool {
+    for _, v := range s {
+        if v == str {
+            return true
+        }
+    }
+    return false
+}
+
+// IntervalPoint describes a start or end of a window of time
+// Currently, this used in PVC-pod relations to detect/calculate
+// coefficients for PV cost when a PVC is shared between pods.
+type IntervalPoint struct {
+	Time      time.Time
+	PointType string
+	Key       PodKey
+}
+
+// IntervalPoints describes a slice of IntervalPoint structs
+type IntervalPoints []IntervalPoint
+
+// Requisite functions for implementing sort.Sort for
+// IntervalPointList
+func (ips IntervalPoints) Len() int {
+	return len(ips)
+}
+
+func (ips IntervalPoints) Less(i, j int) bool {
+	if ips[i].Time.Equal(ips[j].Time) {
+		return ips[i].PointType == "start" && ips[j].PointType == "end"
+	}
+	return ips[i].Time.Before(ips[j].Time)
+}
+
+func (ips IntervalPoints) Swap(i, j int) {
+	ips[i], ips[j] = ips[j], ips[i]
+}
+
+
+// NewIntervalPoint creates and returns a new IntervalPoint instance with given parameters.
+func NewIntervalPoint(time time.Time, pointType string, key PodKey) IntervalPoint {
+	return IntervalPoint{
+		Time:      time,
+		PointType: pointType,
+		Key:       key,
+	}
+}
+
+// CoefficientComponent is a representative struct holding two fields which describe an interval
+// as part of a single number cost coefficient calculation:
+// 1. Proportion: The division of cost based on how many pods were running between those points
+// 2. Time: The ratio of the time between those points to the total time that pod was running
+type CoefficientComponent struct {
+	Proportion float64
+	Time       float64
+}
+
+// getIntervalPointFromWindows takes a map of podKeys to windows
+// and returns a sorted list of IntervalPoints representing the
+// starts and ends of all those windows.
+func GetIntervalPointsFromWindows(windows map[PodKey]api.Window) IntervalPoints {
+
+	var intervals IntervalPoints
+
+	for podKey, podWindow := range windows {
+
+		start := NewIntervalPoint(podWindow.Start, "start", podKey)
+		end := NewIntervalPoint(podWindow.End, "end", podKey)
+
+		intervals = append(intervals, []IntervalPoint{start, end}...)
+
+	}
+
+	sort.Sort(intervals)
+
+	return intervals
+
+}
+
+// getPVCCostCoefficients gets a coefficient which represents the scale
+// factor that each PVC in a pvcIntervalMap and corresponding slice of
+// IntervalPoints intervals uses to calculate a cost for that PVC's PV.
+func GetPVCCostCoefficients(intervals IntervalPoints, thisPVC *PersistentVolumeClaim, t *testing.T) (map[PodKey][]CoefficientComponent, error) {
+	// pvcCostCoefficientMap has a format such that the individual coefficient
+	// components are preserved for testing purposes.
+	pvcCostCoefficientMap := make(map[PodKey][]CoefficientComponent)
+
+	pvcWindowDurationMinutes := thisPVC.Window.RunTime()
+	
+	if pvcWindowDurationMinutes <= 0.0 {
+		// Protect against Inf and NaN issues that would be caused by dividing
+		// by zero later on.
+		return nil, fmt.Errorf("detected PVC with window of zero duration: %s/%s", thisPVC.Namespace, thisPVC.PersistentVolumeClaimName)
+	}
+
+	unmountedKey := PodKey{
+		Namespace: "__unmounted__",
+		Pod: "__unmounted__",
+	}
+
+	var void struct{}
+	activeKeys := map[PodKey]struct{}{}
+
+	currentTime := thisPVC.Window.Start
+
+	// For each interval i.e. for any time a pod-PVC relation ends or starts...
+	for _, point := range intervals {
+		// If the current point happens at a later time than the previous point
+		if !point.Time.Equal(currentTime) {
+			// If there are active keys, attribute one unit of proportion to
+			// each active key.
+			for key := range activeKeys {
+				pvcCostCoefficientMap[key] = append(
+					pvcCostCoefficientMap[key],
+					CoefficientComponent{
+						Time:       point.Time.Sub(currentTime).Minutes() / pvcWindowDurationMinutes,
+						Proportion: 1.0 / float64(len(activeKeys)),
+					},
+				)
+			}
+
+			// If there are no active keys attribute all cost to the unmounted pv
+			if len(activeKeys) == 0 {
+				pvcCostCoefficientMap[unmountedKey] = append(
+					pvcCostCoefficientMap[unmountedKey],
+					CoefficientComponent{
+						Time:       point.Time.Sub(currentTime).Minutes() / pvcWindowDurationMinutes,
+						Proportion: 1.0,
+					},
+				)
+			}
+
+		}
+
+		// If the point was a start, increment and track
+		if point.PointType == "start" {
+			activeKeys[point.Key] = void
+		}
+
+		// If the point was an end, decrement and stop tracking
+		if point.PointType == "end" {
+			delete(activeKeys, point.Key)
+		}
+
+		currentTime = point.Time
+	}
+
+	// If all pod intervals end before the end of the PVC attribute the remaining cost to unmounted
+	if currentTime.Before(thisPVC.Window.End) {
+
+		if thisPVC.Window.End.Sub(currentTime).Minutes() > 1 {
+			pvcCostCoefficientMap[unmountedKey] = append(
+			pvcCostCoefficientMap[unmountedKey],
+				CoefficientComponent{
+					Time:        thisPVC.Window.End.Sub(currentTime).Minutes() / pvcWindowDurationMinutes,
+					Proportion: 1.0,
+				},
+			)
+		} else {
+			t.Logf("PVC %v, Pod %v", thisPVC.Window.End, currentTime)
+		}
+	}
+	return pvcCostCoefficientMap, nil
+}
+
+// getCoefficientFromComponents takes the components of a PVC-pod PV cost coefficient
+// determined by getPVCCostCoefficient and gets the resulting single
+// floating point coefficient.
+func GetCoefficientFromComponents(coefficientComponents []CoefficientComponent) float64 {
+
+	coefficient := 0.0
+
+	for i := range coefficientComponents {
+
+		proportion := coefficientComponents[i].Proportion
+		time := coefficientComponents[i].Time
+
+		coefficient += proportion * time
+
+	}
+	return coefficient
+}
+
 func TestPVCosts(t *testing.T) {
 	apiObj := api.NewAPI()
 
 	// test for more windows
 	testCases := []struct {
-		name        string
-		window      string
-		aggregate   string
-		accumulate  string
-		includeIdle string
-		ingestUID	bool
-		considerContainerCosts bool
+		name        			string
+		window      			string
+		aggregate   			string
+		accumulate  			string
+		includeIdle 			string
+		IngestUID				bool
+		ConsiderContainerCosts  bool
+		CheckUnmountedCosts		bool
 	}{
 		{
 			name:        "Yesterday",
 			window:      "24h",
 			aggregate:   "pod",
 			accumulate:  "true",
-			ingestUID: 	 false,
-			considerContainerCosts: false,
+			IngestUID: 	 false,
+			ConsiderContainerCosts: false,
+			CheckUnmountedCosts: false,
 		},
 	}
 
@@ -803,10 +987,10 @@ func TestPVCosts(t *testing.T) {
 
 			// t.Logf("%v", endTime)
 
-			podMap, podUIDKeyMap := buildPodMap(tc.ingestUID, tc.window, endTime, resolution, queryWindow, t)
+			podMap, podUIDKeyMap := buildPodMap(tc.IngestUID, tc.window, endTime, resolution, queryWindow, t)
 			persistentVolumeMap := buildPVMap(tc.window, endTime, resolution, queryWindow, t)
 			persistentVolumeClaimMap := buildPVCMap(tc.window, endTime, resolution, queryWindow, persistentVolumeMap, t)
-			podPVCMap := buildPodPVCMap(tc.window, endTime, podMap, persistentVolumeMap, persistentVolumeClaimMap, tc.ingestUID, podUIDKeyMap, t)
+			podPVCMap := buildPodPVCMap(tc.window, endTime, podMap, persistentVolumeMap, persistentVolumeClaimMap, tc.IngestUID, podUIDKeyMap, t)
 
 			// --------------------------------------
 			// Apply PVCs to Pod
@@ -816,7 +1000,9 @@ func TestPVCosts(t *testing.T) {
 			// ----------------------------------------------
 			// Unmounted PV Costs
 			// ----------------------------------------------
-			applyPVUnmountedCosts(queryWindow, podMap, persistentVolumeClaimMap, t)
+			if tc.CheckUnmountedCosts {
+				applyPVUnmountedCosts(queryWindow, podMap, persistentVolumeClaimMap, t)
+			}
 
 			
 			// ----------------------------------------------
@@ -862,7 +1048,7 @@ func TestPVCosts(t *testing.T) {
 				
 
 				// Get Pods
-				if tc.ingestUID {
+				if tc.IngestUID {
 					podKeys := podUIDKeyMap[podKey]
 					
 					podMap[podKey] = &PodData{
@@ -996,218 +1182,4 @@ func TestPVCosts(t *testing.T) {
 			}
 		})
 	}
-}
-
-// getUnmountedPodForNamespace is as getUnmountedPodForCluster, but keys allocation property pod/namespace field off namespace
-// This creates or adds allocations to an unmounted pod in the specified namespace, rather than in __unmounted__
-func getUnmountedPodForNamespace(window api.Window, podMap map[PodKey]*PodData, namespace string) *PodData {
-	// container := "__unmounted__"
-	podName := fmt.Sprintf("%s-unmounted-pvcs", namespace)
-
-	thisPodKey := PodKey{
-		Namespace: namespace,
-		Pod:       podName,
-	}
-
-	// Initialize pod and container if they do not already exist
-	thisPod, ok := podMap[thisPodKey]
-	if !ok {
-		thisPod = &PodData{
-			Window: window,
-			Allocations: make(map[string]*PersistentVolumeAllocations),
-		}
-
-		thisPod.Allocations = make(map[string]*PersistentVolumeAllocations)
-		podMap[thisPodKey] = thisPod
-	}
-	return thisPod
-}
-
-func contains(s []PodKey, str PodKey) bool {
-    for _, v := range s {
-        if v == str {
-            return true
-        }
-    }
-    return false
-}
-
-
-// IntervalPoint describes a start or end of a window of time
-// Currently, this used in PVC-pod relations to detect/calculate
-// coefficients for PV cost when a PVC is shared between pods.
-type IntervalPoint struct {
-	Time      time.Time
-	PointType string
-	Key       PodKey
-}
-
-// IntervalPoints describes a slice of IntervalPoint structs
-type IntervalPoints []IntervalPoint
-
-// Requisite functions for implementing sort.Sort for
-// IntervalPointList
-func (ips IntervalPoints) Len() int {
-	return len(ips)
-}
-
-func (ips IntervalPoints) Less(i, j int) bool {
-	if ips[i].Time.Equal(ips[j].Time) {
-		return ips[i].PointType == "start" && ips[j].PointType == "end"
-	}
-	return ips[i].Time.Before(ips[j].Time)
-}
-
-func (ips IntervalPoints) Swap(i, j int) {
-	ips[i], ips[j] = ips[j], ips[i]
-}
-
-// NewIntervalPoint creates and returns a new IntervalPoint instance with given parameters.
-func NewIntervalPoint(time time.Time, pointType string, key PodKey) IntervalPoint {
-	return IntervalPoint{
-		Time:      time,
-		PointType: pointType,
-		Key:       key,
-	}
-}
-
-// CoefficientComponent is a representative struct holding two fields which describe an interval
-// as part of a single number cost coefficient calculation:
-// 1. Proportion: The division of cost based on how many pods were running between those points
-// 2. Time: The ratio of the time between those points to the total time that pod was running
-type CoefficientComponent struct {
-	Proportion float64
-	Time       float64
-}
-
-// getIntervalPointFromWindows takes a map of podKeys to windows
-// and returns a sorted list of IntervalPoints representing the
-// starts and ends of all those windows.
-func GetIntervalPointsFromWindows(windows map[PodKey]api.Window) IntervalPoints {
-
-	var intervals IntervalPoints
-
-	for podKey, podWindow := range windows {
-
-		start := NewIntervalPoint(podWindow.Start, "start", podKey)
-		end := NewIntervalPoint(podWindow.End, "end", podKey)
-
-		intervals = append(intervals, []IntervalPoint{start, end}...)
-
-	}
-
-	sort.Sort(intervals)
-
-	return intervals
-
-}
-
-// getPVCCostCoefficients gets a coefficient which represents the scale
-// factor that each PVC in a pvcIntervalMap and corresponding slice of
-// IntervalPoints intervals uses to calculate a cost for that PVC's PV.
-func GetPVCCostCoefficients(intervals IntervalPoints, thisPVC *PersistentVolumeClaim, t *testing.T) (map[PodKey][]CoefficientComponent, error) {
-	// pvcCostCoefficientMap has a format such that the individual coefficient
-	// components are preserved for testing purposes.
-	pvcCostCoefficientMap := make(map[PodKey][]CoefficientComponent)
-
-	// pvcWindow := api.Window{
-	// 	Start: PVC.Start,
-	// 	End: thisPVC.End,
-	// }
-
-	pvcWindowDurationMinutes := thisPVC.Window.RunTime()
-	
-	if pvcWindowDurationMinutes <= 0.0 {
-		// Protect against Inf and NaN issues that would be caused by dividing
-		// by zero later on.
-		return nil, fmt.Errorf("detected PVC with window of zero duration: %s/%s", thisPVC.Namespace, thisPVC.PersistentVolumeClaimName)
-	}
-
-	unmountedKey := PodKey{
-		Namespace: "__unmounted__",
-		Pod: "__unmounted__",
-	}
-
-	var void struct{}
-	activeKeys := map[PodKey]struct{}{}
-
-	currentTime := thisPVC.Window.Start
-
-	// For each interval i.e. for any time a pod-PVC relation ends or starts...
-	for _, point := range intervals {
-		// If the current point happens at a later time than the previous point
-		if !point.Time.Equal(currentTime) {
-			// If there are active keys, attribute one unit of proportion to
-			// each active key.
-			for key := range activeKeys {
-				pvcCostCoefficientMap[key] = append(
-					pvcCostCoefficientMap[key],
-					CoefficientComponent{
-						Time:       point.Time.Sub(currentTime).Minutes() / pvcWindowDurationMinutes,
-						Proportion: 1.0 / float64(len(activeKeys)),
-					},
-				)
-			}
-
-			// If there are no active keys attribute all cost to the unmounted pv
-			if len(activeKeys) == 0 {
-				pvcCostCoefficientMap[unmountedKey] = append(
-					pvcCostCoefficientMap[unmountedKey],
-					CoefficientComponent{
-						Time:       point.Time.Sub(currentTime).Minutes() / pvcWindowDurationMinutes,
-						Proportion: 1.0,
-					},
-				)
-			}
-
-		}
-
-		// If the point was a start, increment and track
-		if point.PointType == "start" {
-			activeKeys[point.Key] = void
-		}
-
-		// If the point was an end, decrement and stop tracking
-		if point.PointType == "end" {
-			delete(activeKeys, point.Key)
-		}
-
-		currentTime = point.Time
-	}
-
-	// If all pod intervals end before the end of the PVC attribute the remaining cost to unmounted
-	if currentTime.Before(thisPVC.Window.End) {
-
-		if thisPVC.Window.End.Sub(currentTime).Minutes() > 1 {
-			pvcCostCoefficientMap[unmountedKey] = append(
-			pvcCostCoefficientMap[unmountedKey],
-				CoefficientComponent{
-					Time:        thisPVC.Window.End.Sub(currentTime).Minutes() / pvcWindowDurationMinutes,
-					Proportion: 1.0,
-				},
-			)
-		} else {
-			t.Logf("PVC %v, Pod %v", thisPVC.Window.End, currentTime)
-		}
-	}
-	return pvcCostCoefficientMap, nil
-}
-
-// getCoefficientFromComponents takes the components of a PVC-pod PV cost coefficient
-// determined by getPVCCostCoefficient and gets the resulting single
-// floating point coefficient.
-func GetCoefficientFromComponents(coefficientComponents []CoefficientComponent) float64 {
-
-	coefficient := 0.0
-
-	for i := range coefficientComponents {
-
-		proportion := coefficientComponents[i].Proportion
-		time := coefficientComponents[i].Time
-
-		coefficient += proportion * time
-
-	}
-
-	return coefficient
 }

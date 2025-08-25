@@ -1,153 +1,153 @@
 === RUN   TestPVCosts
     pv_bytehours_pv_request_costs_analysis_test.go:781: testCases: [{Yesterday 24h pod true  false false}]
 === RUN   TestPVCosts/Yesterday
-    pv_bytehours_pv_request_costs_analysis_test.go:1190: PVC 2025-08-25 14:25:04.279020294 +0000 UTC, Pod 2025-08-25 14:25:02.175320764 +0000 UTC
-    pv_bytehours_pv_request_costs_analysis_test.go:1190: PVC 2025-08-25 14:25:04.279017488 +0000 UTC, Pod 2025-08-25 14:25:02.175320764 +0000 UTC
-    pv_bytehours_pv_request_costs_analysis_test.go:1190: PVC 2025-08-25 14:25:04.279021657 +0000 UTC, Pod 2025-08-25 14:25:02.175321204 +0000 UTC
-    pv_bytehours_pv_request_costs_analysis_test.go:1190: PVC 2025-08-25 14:25:04.279021156 +0000 UTC, Pod 2025-08-25 14:25:02.175321204 +0000 UTC
-    pv_bytehours_pv_request_costs_analysis_test.go:1190: PVC 2025-08-25 14:25:04.279022949 +0000 UTC, Pod 2025-08-25 14:25:02.17532425 +0000 UTC
-    pv_bytehours_pv_request_costs_analysis_test.go:1190: PVC 2025-08-25 14:25:04.279022228 +0000 UTC, Pod 2025-08-25 14:25:02.175313559 +0000 UTC
-    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-jsxz4
-    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 39
-    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
-    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~1937172421.03
+    pv_bytehours_pv_request_costs_analysis_test.go:1190: PVC 2025-08-25 14:28:00.183812354 +0000 UTC, Pod 2025-08-25 14:27:57.96312468 +0000 UTC
+    pv_bytehours_pv_request_costs_analysis_test.go:1190: PVC 2025-08-25 14:28:00.183813927 +0000 UTC, Pod 2025-08-25 14:27:57.963127455 +0000 UTC
+    pv_bytehours_pv_request_costs_analysis_test.go:1190: PVC 2025-08-25 14:28:00.183813256 +0000 UTC, Pod 2025-08-25 14:27:57.963117426 +0000 UTC
+    pv_bytehours_pv_request_costs_analysis_test.go:1190: PVC 2025-08-25 14:28:00.183811623 +0000 UTC, Pod 2025-08-25 14:27:57.963124269 +0000 UTC
+    pv_bytehours_pv_request_costs_analysis_test.go:1190: PVC 2025-08-25 14:28:00.183803777 +0000 UTC, Pod 2025-08-25 14:27:57.963124269 +0000 UTC
+    pv_bytehours_pv_request_costs_analysis_test.go:1190: PVC 2025-08-25 14:28:00.183812795 +0000 UTC, Pod 2025-08-25 14:27:57.96312468 +0000 UTC
     pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-kdf6b
-    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 22.10149
+    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 25.0316
     pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
-    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~622131341.94
-    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-tjjcf
-    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 20
-    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
-    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~509447053.52
-    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-bfs58
-    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 100
-    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
-    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~12736176338.11
-    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-tf8mc
+    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~796364841.30
+    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: prometheus-prometheus-kube-prometheus-prometheus-0
+    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 1408.0316
+    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-a3d01919-8004-420b-9ecc-5c94c29222e3
+    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~1259881274111.83
+    pv_bytehours_pv_request_costs_analysis_test.go:989:       - Cost[Pass]: ~0.04
+    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-4tg8d
     pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 40
     pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
-    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~2037788214.10
-    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-j2lwt
+    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~2033549718.20
+    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-q9j85
     pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 20
     pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
-    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~509447053.52
+    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~508387429.55
+    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-shlln
+    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 40
+    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
+    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~2033549718.20
+    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-gzxkt
+    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 19
+    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
+    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~458819655.17
+    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-cnpg-main-2
+    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 1408.0316
+    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-3e493950-a8bb-48fc-8c6e-2a6c46be335e
+    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~2519762548021.79
+    pv_bytehours_pv_request_costs_analysis_test.go:989:       - Cost[Pass]: ~0.08
+    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-bb8858a8-d03b-4b2e-ae29-ccd2486aac42
+    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~2519762548059.58
+    pv_bytehours_pv_request_costs_analysis_test.go:989:       - Cost[Pass]: ~0.08
     pv_bytehours_pv_request_costs_analysis_test.go:850: Unmounted Pod
     pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: network-load-gen-unmounted-pvcs
     pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 1440
     pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
-    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~14683126549.96
-    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-gzxkt
-    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 19
-    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
-    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~459775965.81
-    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-qvhnq
-    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 19
-    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
-    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~459775965.81
-    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-v57k9
-    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 40
-    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
-    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~2037788214.10
-    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-pclk6
-    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 63
-    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
-    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~5054988388.60
-    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-tkqxb
-    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 40
-    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
-    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~2037788214.10
-    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-cnpg-main-2
-    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 1405.10149
-    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-3e493950-a8bb-48fc-8c6e-2a6c46be335e
-    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~2514516274254.33
-    pv_bytehours_pv_request_costs_analysis_test.go:989:       - Cost[Pass]: ~0.08
-    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-bb8858a8-d03b-4b2e-ae29-ccd2486aac42
-    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~2514516274301.85
-    pv_bytehours_pv_request_costs_analysis_test.go:989:       - Cost[Pass]: ~0.08
-    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-t55d6
-    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 20
-    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
-    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~509447053.52
-    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-cnpg-main-1
-    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 1405.10149
-    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-7da248e4-1143-4c64-ab24-3ab1ba178f9b
-    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~2514516274309.21
-    pv_bytehours_pv_request_costs_analysis_test.go:989:       - Cost[Pass]: ~0.08
-    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-c48e669f-d785-4727-9d7a-84fcb3a946f3
-    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~2514516274354.88
-    pv_bytehours_pv_request_costs_analysis_test.go:989:       - Cost[Pass]: ~0.08
-    pv_bytehours_pv_request_costs_analysis_test.go:850: Unmounted Pod
-    pv_bytehours_pv_request_costs_analysis_test.go:927: PodKey {prometheus-system prometheus-system-unmounted-pvcs } missing from Prometheus
-    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-q9j85
-    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 20
-    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
-    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~509447053.52
-    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-vkxr2
-    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 19
-    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
-    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~459775965.81
+    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~14649896122.77
     pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-bg596
     pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 40
     pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
-    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~2037788214.10
-    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-lfzkb
-    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 140
-    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
-    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~24962905622.70
-    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-4tg8d
-    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 40
-    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
-    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~2037788214.10
-    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-r8s6d
-    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 39
-    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
-    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~1937172421.03
-    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-jc464
-    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 119
-    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
-    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~18035699312.40
-    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: prometheus-prometheus-kube-prometheus-prometheus-0
-    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 1405.10149
-    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-a3d01919-8004-420b-9ecc-5c94c29222e3
-    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~1257258137172.79
-    pv_bytehours_pv_request_costs_analysis_test.go:989:       - Cost[Pass]: ~0.04
-    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-5tsrq
-    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 20
-    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
-    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~509447053.52
-    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-cnd9x
-    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 60
-    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
-    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~4585023481.72
-    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-h9mfm
-    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 120
-    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
-    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~18340093926.88
-    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-lfg4w
-    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 219
-    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
-    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~61083975335.21
-    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-njvtn
-    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 20
-    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
-    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~509447053.52
+    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~2033549718.20
+    pv_bytehours_pv_request_costs_analysis_test.go:850: Unmounted Pod
+    pv_bytehours_pv_request_costs_analysis_test.go:927: PodKey {prometheus-system prometheus-system-unmounted-pvcs } missing from Prometheus
     pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-68spz
     pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 19
     pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
-    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~459775965.81
-    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-shlln
+    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~458819655.17
+    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-t55d6
+    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 20
+    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
+    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~508387429.55
+    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-qvhnq
+    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 19
+    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
+    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~458819655.17
+    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-pclk6
+    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 63
+    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
+    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~5044474269.71
+    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-h9mfm
+    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 120
+    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
+    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~18301947463.80
+    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-vkxr2
+    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 19
+    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
+    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~458819655.17
+    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-tjjcf
+    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 20
+    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
+    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~508387429.55
+    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-cnd9x
+    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 60
+    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
+    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~4575486865.95
+    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-njvtn
+    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 20
+    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
+    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~508387429.55
+    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-v57k9
     pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 40
     pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
-    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~2037788214.10
+    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~2033549718.20
     pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-f7k24
     pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 20
     pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
-    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~509447053.52
+    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~508387429.55
+    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-cnpg-main-1
+    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 1408.0316
+    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-7da248e4-1143-4c64-ab24-3ab1ba178f9b
+    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~2519762548062.51
+    pv_bytehours_pv_request_costs_analysis_test.go:989:       - Cost[Pass]: ~0.08
+    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-c48e669f-d785-4727-9d7a-84fcb3a946f3
+    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~2519762548124.57
+    pv_bytehours_pv_request_costs_analysis_test.go:989:       - Cost[Pass]: ~0.08
+    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-lfzkb
+    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 140
+    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
+    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~24910984047.95
+    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-tf8mc
+    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 40
+    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
+    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~2033549718.20
+    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-bfs58
+    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 100
+    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
+    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~12709685738.75
+    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-lfg4w
+    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 219
+    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
+    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~60956923771.61
+    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-jc464
+    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 119
+    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
+    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~17998185974.64
+    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-jsxz4
+    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 39
+    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
+    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~1933143200.86
+    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-r8s6d
+    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 39
+    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
+    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~1933143200.86
     pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-vvcn8
     pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 20
     pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
-    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~509447053.52
---- PASS: TestPVCosts (7.13s)
-    --- PASS: TestPVCosts/Yesterday (7.13s)
+    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~508387429.55
+    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-5tsrq
+    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 20
+    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
+    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~508387429.55
+    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-tkqxb
+    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 40
+    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
+    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~2033549718.20
+    pv_bytehours_pv_request_costs_analysis_test.go:948: Pod: test-install-speedtest-tracker-56944bbf5b-j2lwt
+    pv_bytehours_pv_request_costs_analysis_test.go:949: Pod Runtime: 20
+    pv_bytehours_pv_request_costs_analysis_test.go:973:   - Persistent Volume Name: csi-398733a4-9c59-4d71-92e0-2ec69ab99a9c
+    pv_bytehours_pv_request_costs_analysis_test.go:978:       - ByteHours[Pass]: ~508387429.55
+--- PASS: TestPVCosts (6.73s)
+    --- PASS: TestPVCosts/Yesterday (6.73s)
 PASS
-ok  	command-line-arguments	7.136s
+ok  	command-line-arguments	6.742s
