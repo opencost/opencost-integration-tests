@@ -26,6 +26,12 @@ func TestGPUCount(t *testing.T) {
 			aggregate:  "node",
 			accumulate: "false",
 		},
+		{
+			name:       "Last Week",
+			window:     "168h",
+			aggregate:  "node",
+			accumulate: "false",
+		},
 	}
 
 	t.Logf("testCases: %v", testCases)
