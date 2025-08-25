@@ -27,7 +27,7 @@ import (
 )
 
 const Resolution = "1m"
-const tolerance = 0.05
+const Tolerance = 0.05
 
 func ConvertToHours(minutes float64) float64 {
 	// Convert Time from Minutes to Hours
@@ -379,13 +379,13 @@ func TestGPUCosts(t *testing.T) {
 				// ----------------------------------------------
 				t.Logf("Namespace: %s", namespace)
 				// 5 % Tolerance
-				withinRange, diff_percent := utils.AreWithinPercentage(nsGPUCoresHours, allocationResponseItem.GPUHours, tolerance)
+				withinRange, diff_percent := utils.AreWithinPercentage(nsGPUCoresHours, allocationResponseItem.GPUHours, Tolerance)
 				if withinRange {
 					t.Logf("    - GPUCoreHours[Pass]: ~%.2f", nsGPUCoresHours)
 				} else {
 					t.Errorf("    - GPUCoreHours[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsGPUCoresHours, allocationResponseItem.GPUHours)
 				}
-				withinRange, diff_percent = utils.AreWithinPercentage(nsGPUCoresRequest, allocationResponseItem.GPUAllocation.GPURequestAverage, tolerance)
+				withinRange, diff_percent = utils.AreWithinPercentage(nsGPUCoresRequest, allocationResponseItem.GPUAllocation.GPURequestAverage, Tolerance)
 				if withinRange {
 					t.Logf("    - GPUCoreRequestAverage[Pass]: ~%.2f", nsGPUCoresRequest)
 				} else {

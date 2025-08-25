@@ -12,7 +12,7 @@ import (
 )
 
 const Resolution = "1m"
-const tolerance = 0.07
+const Tolerance = 0.07
 const negligibleUsage = 0.01
 
 func TestCPUAvgUsage(t *testing.T) {
@@ -200,7 +200,7 @@ func TestCPUAvgUsage(t *testing.T) {
 					seenUsage = true
 				}
 				t.Logf("Namespace %s", namespace)
-				withinRange, diff_percent := utils.AreWithinPercentage(cpuAvgUsageValues.PrometheusUsageAvg, cpuAvgUsageValues.AllocationUsageAvg, tolerance)
+				withinRange, diff_percent := utils.AreWithinPercentage(cpuAvgUsageValues.PrometheusUsageAvg, cpuAvgUsageValues.AllocationUsageAvg, Tolerance)
 				if !withinRange {
 					t.Errorf("cpuUsageAvg[Fail]: DifferencePercent %0.2f, Prometheus: %0.2f, /allocation: %0.2f", diff_percent, cpuAvgUsageValues.PrometheusUsageAvg, cpuAvgUsageValues.AllocationUsageAvg)
 				} else {

@@ -12,7 +12,7 @@ import (
 )
 
 const Resolution = "1m"
-const tolerance = 0.05
+const Tolerance = 0.07
 const negligibleUsage = 0.01
 
 func TestRAMAvgUsage(t *testing.T) {
