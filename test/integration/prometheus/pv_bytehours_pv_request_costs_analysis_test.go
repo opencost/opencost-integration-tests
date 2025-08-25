@@ -1174,7 +1174,7 @@ func TestPVCosts(t *testing.T) {
 					// Loop Over Persistent Volume Claims
 					if len(allocationResponseItem.PersistentVolumes) != 0 {
 						t.Logf("Pod: %v", pod)
-						t.Logf("Pod Runtime: %v", allocationResponseItem.Minutes)
+						t.Logf("Pod Runtime: %v minutes", allocationResponseItem.Minutes)
 						if tc.ConsiderContainerCosts {
 							t.Logf("Container %v", container)
 						}
