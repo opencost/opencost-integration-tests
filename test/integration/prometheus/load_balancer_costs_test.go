@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-const tolerance = 0.05
+const Tolerance = 0.05
 
 func TestLoadBalancerCost(t *testing.T) {
 	apiObj := api.NewAPI()
@@ -226,7 +226,7 @@ func TestLoadBalancerCost(t *testing.T) {
 			t.Logf("Load Balancer Costs by Namespace")
 			for namespace, LBNamespaceItem := range LBNamespaceMap {
 				t.Logf("Namespace %s", namespace)
-				withinRange, diff_percent := utils.AreWithinPercentage(LBNamespaceItem.PromLBCost, LBNamespaceItem.AllocLBCost, tolerance)
+				withinRange, diff_percent := utils.AreWithinPercentage(LBNamespaceItem.PromLBCost, LBNamespaceItem.AllocLBCost, Tolerance)
 				if !withinRange {
 					t.Errorf("  - LoadBalancerCost[Fail]: DifferencePercent %0.2f, Prometheus: %0.2f, /allocation: %0.2f", diff_percent, LBNamespaceItem.PromLBCost, LBNamespaceItem.AllocLBCost)
 				} else {
@@ -238,7 +238,7 @@ func TestLoadBalancerCost(t *testing.T) {
 			t.Logf("Load Balancer Costs by Services")
 			for service, LBServiceItem := range LBServiceMap {
 				t.Logf("Service %s", service)
-				withinRange, diff_percent := utils.AreWithinPercentage(LBServiceItem.PromLBCost, LBServiceItem.AllocLBCost, tolerance)
+				withinRange, diff_percent := utils.AreWithinPercentage(LBServiceItem.PromLBCost, LBServiceItem.AllocLBCost, Tolerance)
 				if !withinRange {
 					t.Errorf("  - LoadBalancerCost[Fail]: DifferencePercent %0.2f, Prometheus: %0.2f, /allocation: %0.2f", diff_percent, LBServiceItem.PromLBCost, LBServiceItem.AllocLBCost)
 				} else {

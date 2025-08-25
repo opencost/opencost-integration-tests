@@ -203,7 +203,7 @@ func TestRAMAvgUsage(t *testing.T) {
 					seenUsage = true
 				}
 				t.Logf("Namespace %s", namespace)
-				withinRange, diff_percent := utils.AreWithinPercentage(ramAvgUsageValues.PrometheusUsageAvg, ramAvgUsageValues.AllocationUsageAvg, tolerance)
+				withinRange, diff_percent := utils.AreWithinPercentage(ramAvgUsageValues.PrometheusUsageAvg, ramAvgUsageValues.AllocationUsageAvg, Tolerance)
 				if !withinRange {
 					t.Errorf("RAMUsageAvg[Fail]: DifferencePercent %0.2f, Prometheus: %0.2f, /allocation: %0.2f", diff_percent, ramAvgUsageValues.PrometheusUsageAvg, ramAvgUsageValues.AllocationUsageAvg)
 				} else {

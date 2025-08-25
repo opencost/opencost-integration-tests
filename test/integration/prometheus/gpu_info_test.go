@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const tolerance = 0.05
+const Tolerance = 0.05
 
 func TestGPUInfo(t *testing.T) {
 	apiObj := api.NewAPI()

@@ -27,7 +27,7 @@ import (
 )
 
 const Resolution = "1m"
-const tolerance = 0.05
+const Tolerance = 0.05
 
 func ConvertToHours(minutes float64) float64 {
 	// Convert Time from Minutes to Hours
@@ -381,19 +381,19 @@ func TestRAMCosts(t *testing.T) {
 				// ----------------------------------------------
 				t.Logf("Namespace: %s", namespace)
 				// 5 % Tolerance
-				withinRange, diff_percent := utils.AreWithinPercentage(nsRAMBytes, allocationResponseItem.RAMBytes, tolerance)
+				withinRange, diff_percent := utils.AreWithinPercentage(nsRAMBytes, allocationResponseItem.RAMBytes, Tolerance)
 				if withinRange {
 					t.Logf("    - RAMBytes[Pass]: ~%.2f", nsRAMBytes)
 				} else {
 					t.Errorf("    - RAMBytes[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsRAMBytes, allocationResponseItem.RAMBytes)
 				}
-				withinRange, diff_percent = utils.AreWithinPercentage(nsRAMBytesHours, allocationResponseItem.RAMByteHours, tolerance)
+				withinRange, diff_percent = utils.AreWithinPercentage(nsRAMBytesHours, allocationResponseItem.RAMByteHours, Tolerance)
 				if withinRange {
 					t.Logf("    - RAMByteHours[Pass]: ~%.2f", nsRAMBytesHours)
 				} else {
 					t.Errorf("    - RAMByteHours[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsRAMBytesHours, allocationResponseItem.RAMByteHours)
 				}
-				withinRange, diff_percent = utils.AreWithinPercentage(nsRAMBytesRequest, allocationResponseItem.RAMBytesRequestAverage, tolerance)
+				withinRange, diff_percent = utils.AreWithinPercentage(nsRAMBytesRequest, allocationResponseItem.RAMBytesRequestAverage, Tolerance)
 				if withinRange {
 					t.Logf("    - RAMByteRequestAverage[Pass]: ~%.2f", nsRAMBytesRequest)
 				} else {
