@@ -21,15 +21,17 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"strconv"
 	"testing"
 	"time"
 )
 
-const IngestUID = true
-const ConsiderContainerCosts = false
+
+// Default Opencost Resolution
 const Resolution = "1m"
 
-const tolerance = 0.05
+// Accepted Difference
+const Tolerance = 0.05
 
 const KiB = 1024.0
 const MiB = 1024.0 * KiB
@@ -83,6 +85,35 @@ type PodData struct {
 }
 
 
+// This function is used to match the query pattern in allocation
+// If using a version of Prometheus where the resolution needs duration offset,
+//
+// E.g. avg(node_total_hourly_cost{}) by (node, provider_id)[60m:5m] with
+// time=01:00:00 will return, for a node running the entire time, 12
+// timestamps where the first is 00:05:00 and the last is 01:00:00.
+// However, OpenCost expects for there to be 13 timestamps where the first
+// begins at 00:00:00. To achieve this, we must modify our query to
+// avg(node_total_hourly_cost{}) by (node, provider_id)[65m:5m]
+
+// Allocation Working Style
+// 24h: [2025-08-21T21:00:00+0000, 2025-08-22T21:00:00+0000)
+// 1440m: [2025-08-21T20:51:00+0000, 2025-08-22T20:51:00+0000)
+
+// 24h in allocation gets records from the first minute of the hour but promethues 3.0 and above considers the first point after the start hour.
+// To not undercount values, we increase the range to counter promethues's behavior
+
+func getOffsetAdjustedQueryWindow(window string) (string) {
+
+	// This function is specifically designed for window is [0-9]h format and resolution in [0-9]m. 
+	// Please upgrade this function if you want to support more time ranges or special keywords.
+	window_int, _ := utils.ExtractNumericPrefix(window)
+	resolution_int, _ := utils.ExtractNumericPrefix(Resolution)
+
+	window_offset := strconv.Itoa(int(window_int) * 60 + int(resolution_int))
+	window_offset_string := fmt.Sprintf("%sm", window_offset)
+
+	return window_offset_string
+}
 
 func queryPods(window string, endTime int64) (prometheus.PrometheusResponse, error) {
 	// --------------------------------------
@@ -102,8 +133,8 @@ func queryPods(window string, endTime int64) (prometheus.PrometheusResponse, err
 	promPodInfoInput.MetricNotEqualTo = "0"
 	promPodInfoInput.AggregateBy = []string{"pod", "namespace"}
 	promPodInfoInput.Function = []string{"avg"}
-	promPodInfoInput.AggregateWindow = "1441m"
-	promPodInfoInput.AggregateResolution = "1m"
+	promPodInfoInput.AggregateWindow = getOffsetAdjustedQueryWindow(window)
+	promPodInfoInput.AggregateResolution = Resolution
 	promPodInfoInput.Time = &endTime
 
 	podInfo, err := client.RunPromQLQuery(promPodInfoInput)
@@ -128,8 +159,8 @@ func queryPodsUID(window string, endTime int64) (prometheus.PrometheusResponse, 
 	promPodInfoInput.MetricNotEqualTo = "0"
 	promPodInfoInput.AggregateBy = []string{"pod", "namespace", "uid"}
 	promPodInfoInput.Function = []string{"avg"}
-	promPodInfoInput.AggregateWindow = "1441m"
-	promPodInfoInput.AggregateResolution = "1m"
+	promPodInfoInput.AggregateWindow = getOffsetAdjustedQueryWindow(window)
+	promPodInfoInput.AggregateResolution = Resolution
 	promPodInfoInput.Time = &endTime
 
 	podInfo, err := client.RunPromQLQuery(promPodInfoInput)
@@ -151,8 +182,8 @@ func queryPVActiveMins(window string, endTime int64) (prometheus.PrometheusRespo
 	promPVRunTime.Metric = "kube_persistentvolume_capacity_bytes"
 	promPVRunTime.AggregateBy = []string{"persistentvolume"}
 	promPVRunTime.Function = []string{"avg"}
-	promPVRunTime.AggregateWindow = "1441m"
-	promPVRunTime.AggregateResolution = "1m"
+	promPVRunTime.AggregateWindow = getOffsetAdjustedQueryWindow(window)
+	promPVRunTime.AggregateResolution = Resolution
 	promPVRunTime.Time = &endTime
 
 	pvRunTime, err := client.RunPromQLQuery(promPVRunTime)
@@ -176,7 +207,7 @@ func queryPVCapacityBytes(window string, endTime int64) (prometheus.PrometheusRe
 	promPVBytes.Metric = "kube_persistentvolume_capacity_bytes"
 	promPVBytes.AggregateBy = []string{"persistentvolume"}
 	promPVBytes.Function = []string{"avg_over_time", "avg"}
-	promPVBytes.QueryWindow = "1441m"
+	promPVBytes.QueryWindow = getOffsetAdjustedQueryWindow(window)
 	promPVBytes.Time = &endTime
 
 	pvBytes, err := client.RunPromQLQuery(promPVBytes)
@@ -200,7 +231,7 @@ func queryPVCostPerGibHour(window string, endTime int64) (prometheus.PrometheusR
 	promCostPerGiBHour.Metric = "pv_hourly_cost"
 	promCostPerGiBHour.AggregateBy = []string{"persistentvolume", "volumename", "provider_id"}
 	promCostPerGiBHour.Function = []string{"avg_over_time", "avg"}
-	promCostPerGiBHour.QueryWindow = "1441m"
+	promCostPerGiBHour.QueryWindow = getOffsetAdjustedQueryWindow(window)
 	promCostPerGiBHour.Time = &endTime
 
 	pvCostPerGiBHour, err := client.RunPromQLQuery(promCostPerGiBHour)
@@ -224,7 +255,7 @@ func queryPVMeta(window string, endTime int64) (prometheus.PrometheusResponse, e
 	promPVMeta.Metric = "kubecost_pv_info"
 	promPVMeta.AggregateBy = []string{"storageclass", "persistentvolume", "provider_id"}
 	promPVMeta.Function = []string{"avg_over_time", "avg"}
-	promPVMeta.QueryWindow = "1441m"
+	promPVMeta.QueryWindow = getOffsetAdjustedQueryWindow(window)
 	promPVMeta.Time = &endTime
 
 	pvMeta, err := client.RunPromQLQuery(promPVMeta)
@@ -252,8 +283,8 @@ func queryPVCInfo(window string, endTime int64) (prometheus.PrometheusResponse, 
 	}
 	promPVCInfo.AggregateBy = []string{"persistentvolumeclaim", "storageclass", "volumename", "namespace"}
 	promPVCInfo.Function = []string{"avg"}
-	promPVCInfo.AggregateWindow = "1441m"
-	promPVCInfo.AggregateResolution = "1m"
+	promPVCInfo.AggregateWindow = getOffsetAdjustedQueryWindow(window)
+	promPVCInfo.AggregateResolution = Resolution
 	promPVCInfo.Time = &endTime
 
 	pvcInfo, err := client.RunPromQLQuery(promPVCInfo)
@@ -277,7 +308,7 @@ func queryPVCRequestedBytes(window string, endTime int64) (prometheus.Prometheus
 	promPVCRequestedBytes.Metric = "kube_persistentvolumeclaim_resource_requests_storage_bytes"
 	promPVCRequestedBytes.AggregateBy = []string{"persistentvolumeclaim", "namespace"}
 	promPVCRequestedBytes.Function = []string{"avg_over_time", "avg"}
-	promPVCRequestedBytes.QueryWindow = "1441m"
+	promPVCRequestedBytes.QueryWindow = getOffsetAdjustedQueryWindow(window)
 	promPVCRequestedBytes.Time = &endTime
 
 	pvcRequestedBytes, err := client.RunPromQLQuery(promPVCRequestedBytes)
@@ -301,7 +332,7 @@ func queryPodPVCAllocation(window string, endTime int64) (prometheus.PrometheusR
 	promPodPVCAllocation.Metric = "pod_pvc_allocation"
 	promPodPVCAllocation.AggregateBy = []string{"persistentvolume", "persistentvolumeclaim", "pod", "namespace"}
 	promPodPVCAllocation.Function = []string{"avg_over_time", "avg"}
-	promPodPVCAllocation.QueryWindow = "1441m"
+	promPodPVCAllocation.QueryWindow = getOffsetAdjustedQueryWindow(window)
 	promPodPVCAllocation.Time = &endTime
 
 	podPVCAllocation, err := client.RunPromQLQuery(promPodPVCAllocation)
@@ -638,7 +669,7 @@ func applyPodPVCCosts(queryWindow api.Window, podMap map[PodKey]*PodData, podPVC
 		// Check for errors later
 		pvc, _ := persistentVolumeClaimMap[thisPVCKey]
 
-		sharedPVCCostCoefficients, err := GetPVCCostCoefficients(intervals, pvc)
+		sharedPVCCostCoefficients, err := GetPVCCostCoefficients(intervals, pvc, t)
 		// t.Logf("Shared %v", sharedPVCCostCoefficients)
 		if err != nil {
 			t.Logf("Allocation: Compute: applyPVCsToPods: getPVCCostCoefficients: %s", err)
@@ -652,7 +683,7 @@ func applyPodPVCCosts(queryWindow api.Window, podMap map[PodKey]*PodData, podPVC
 			// for __unmounted__
 			if !ok {
 				// Get namespace unmounted pod, as pvc will have a namespace
-				t.Logf("Calling Once")
+				// t.Logf("Calling Once")
 				pod = getUnmountedPodForNamespace(queryWindow, podMap, pvc.Namespace)
 			}
 
@@ -685,13 +716,13 @@ func applyPodPVCCosts(queryWindow api.Window, podMap map[PodKey]*PodData, podPVC
 			coef := GetCoefficientFromComponents(coeffComponents)
 			pvKey := pvc.PersistentVolume.Name
 
-			if pod.Pod ==  "" {
-				t.Logf("Bytehours: %v", pvc.RequestedBytes)
-				t.Logf("Pod RunTime %v", pod.Window.RunTime())
-				t.Logf("PV Run Time: %v", pvc.Window.RunTime())
-				t.Logf("PV Name: %v", pvc.PersistentVolume.Name)
-				t.Logf("Coeff %v", coef)
-			}
+			// if pod.Pod ==  "" {
+			// 	t.Logf("Bytehours: %v", pvc.RequestedBytes)
+			// 	t.Logf("Pod RunTime %v", pod.Window.RunTime())
+			// 	t.Logf("PV Run Time: %v", pvc.Window.RunTime())
+			// 	t.Logf("PV Name: %v", pvc.PersistentVolume.Name)
+			// 	t.Logf("Coeff %v", coef)
+			// }
 
 			pod.Allocations[pvKey] = &PersistentVolumeAllocations{
 				ByteHours:  (byteHours * coef),
@@ -734,12 +765,16 @@ func TestPVCosts(t *testing.T) {
 		aggregate   string
 		accumulate  string
 		includeIdle string
+		ingestUID	bool
+		considerContainerCosts bool
 	}{
 		{
 			name:        "Yesterday",
 			window:      "24h",
 			aggregate:   "pod",
 			accumulate:  "true",
+			ingestUID: 	 false,
+			considerContainerCosts: false,
 		},
 	}
 
@@ -768,10 +803,10 @@ func TestPVCosts(t *testing.T) {
 
 			// t.Logf("%v", endTime)
 
-			podMap, podUIDKeyMap := buildPodMap(IngestUID, tc.window, endTime, resolution, queryWindow, t)
+			podMap, podUIDKeyMap := buildPodMap(tc.ingestUID, tc.window, endTime, resolution, queryWindow, t)
 			persistentVolumeMap := buildPVMap(tc.window, endTime, resolution, queryWindow, t)
 			persistentVolumeClaimMap := buildPVCMap(tc.window, endTime, resolution, queryWindow, persistentVolumeMap, t)
-			podPVCMap := buildPodPVCMap(tc.window, endTime, podMap, persistentVolumeMap, persistentVolumeClaimMap, IngestUID, podUIDKeyMap, t)
+			podPVCMap := buildPodPVCMap(tc.window, endTime, podMap, persistentVolumeMap, persistentVolumeClaimMap, tc.ingestUID, podUIDKeyMap, t)
 
 			// --------------------------------------
 			// Apply PVCs to Pod
@@ -827,7 +862,7 @@ func TestPVCosts(t *testing.T) {
 				
 
 				// Get Pods
-				if IngestUID {
+				if tc.ingestUID {
 					podKeys := podUIDKeyMap[podKey]
 					
 					podMap[podKey] = &PodData{
@@ -885,7 +920,13 @@ func TestPVCosts(t *testing.T) {
 					}
 				}
 
-				podItem := podMap[podKey]
+				podItem, ok := podMap[podKey]
+				
+				// Maybe for Unmounted Pods
+				if !ok {
+					t.Logf("PodKey %v missing from Prometheus", podKey)
+					continue
+				}
 				// if !ok {
 				// 	if container == "__unmounted__" { // If promethues starts recognising unmounted pods, remove this. Temporary Fix
 				// 		t.Logf("[Skipping] Unmounted PVs not supported")
@@ -918,7 +959,7 @@ func TestPVCosts(t *testing.T) {
 						re := regexp.MustCompile(`name=([^:]+)`)
 						allocPVName := re.FindStringSubmatch(allocPVName)[1]
 						
-						t.Logf("%v", allocPVName)
+						// t.Logf("%v", allocPVName)
 						allocPVItem, ok := podItem.Allocations[allocPVName]
 						if !ok {
 							continue
@@ -932,7 +973,7 @@ func TestPVCosts(t *testing.T) {
 						t.Logf("  - Persistent Volume Name: %v", allocPVName)
 
 						// Compare ByteHours
-						withinRange, diff_percent := utils.AreWithinPercentage(allocPVItem.ByteHours, allocByteHours, tolerance)
+						withinRange, diff_percent := utils.AreWithinPercentage(allocPVItem.ByteHours, allocByteHours, Tolerance)
 						if withinRange {
 							t.Logf("      - ByteHours[Pass]: ~%0.2f", allocByteHours)
 						} else {
@@ -943,7 +984,7 @@ func TestPVCosts(t *testing.T) {
 						if allocCost < NegligibleCost {
 							continue
 						}
-						withinRange, diff_percent = utils.AreWithinPercentage(allocPVItem.Cost, allocCost, tolerance)
+						withinRange, diff_percent = utils.AreWithinPercentage(allocPVItem.Cost, allocCost, Tolerance)
 						if withinRange {
 							t.Logf("      - Cost[Pass]: ~%0.2f", allocCost)
 						} else {
@@ -1064,7 +1105,7 @@ func GetIntervalPointsFromWindows(windows map[PodKey]api.Window) IntervalPoints 
 // getPVCCostCoefficients gets a coefficient which represents the scale
 // factor that each PVC in a pvcIntervalMap and corresponding slice of
 // IntervalPoints intervals uses to calculate a cost for that PVC's PV.
-func GetPVCCostCoefficients(intervals IntervalPoints, thisPVC *PersistentVolumeClaim) (map[PodKey][]CoefficientComponent, error) {
+func GetPVCCostCoefficients(intervals IntervalPoints, thisPVC *PersistentVolumeClaim, t *testing.T) (map[PodKey][]CoefficientComponent, error) {
 	// pvcCostCoefficientMap has a format such that the individual coefficient
 	// components are preserved for testing purposes.
 	pvcCostCoefficientMap := make(map[PodKey][]CoefficientComponent)
@@ -1136,13 +1177,18 @@ func GetPVCCostCoefficients(intervals IntervalPoints, thisPVC *PersistentVolumeC
 
 	// If all pod intervals end before the end of the PVC attribute the remaining cost to unmounted
 	if currentTime.Before(thisPVC.Window.End) {
-		pvcCostCoefficientMap[unmountedKey] = append(
+
+		if thisPVC.Window.End.Sub(currentTime).Minutes() > 1 {
+			pvcCostCoefficientMap[unmountedKey] = append(
 			pvcCostCoefficientMap[unmountedKey],
-			CoefficientComponent{
-				Time:       thisPVC.Window.End.Sub(currentTime).Minutes() / pvcWindowDurationMinutes,
-				Proportion: 1.0,
-			},
-		)
+				CoefficientComponent{
+					Time:        thisPVC.Window.End.Sub(currentTime).Minutes() / pvcWindowDurationMinutes,
+					Proportion: 1.0,
+				},
+			)
+		} else {
+			t.Logf("PVC %v, Pod %v", thisPVC.Window.End, currentTime)
+		}
 	}
 	return pvcCostCoefficientMap, nil
 }
