@@ -904,7 +904,11 @@ func GetPVCCostCoefficients(intervals IntervalPoints, thisPVC *PersistentVolumeC
 	// If all pod intervals end before the end of the PVC attribute the remaining cost to unmounted
 	if currentTime.Before(thisPVC.Window.End) {
 
-		if thisPVC.Window.End.Sub(currentTime).Minutes() > 1 {
+		// PV should be unused for more than the query resolution
+		// Not doing this yields weird results as any time difference below the resolution is not accurate without the K8 API.
+		resolution, err := utils.ExtractNumericPrefix(Resolution)
+
+		if thisPVC.Window.End.Sub(currentTime).Minutes() > resolution {
 			pvcCostCoefficientMap[unmountedKey] = append(
 			pvcCostCoefficientMap[unmountedKey],
 				CoefficientComponent{
