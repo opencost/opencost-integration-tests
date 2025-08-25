@@ -22,6 +22,11 @@ func AreWithinPercentage(num1, num2, tolerance float64) (bool, float64) {
 	return (diff <= (reference * tolerance)), diff_percent
 }
 
+func ConvertToHours(minutes float64) float64 {
+	// Convert Time from Minutes to Hours
+	return minutes / 60
+}
+
 func RoundUpToTwoDecimals(num float64) float64 {
 
 	temp := num * 100

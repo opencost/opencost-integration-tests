@@ -1,6 +1,7 @@
 package prometheus
 
 import (
+	"github.com/opencost/opencost-integration-tests/pkg/utils"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -59,34 +60,32 @@ type PrometheusResponse struct {
 }
 
 type Metric struct {
-
 	Pod       string `json:"pod"`
 	Namespace string `json:"namespace"`
 	Container string `json:"container"`
-	
-  Node          string `json:"node"`
-  Instance      string `json:"instance"`
-	InstanceType  string `json:"instance_type"`
 
+	Node         string `json:"node"`
+	Instance     string `json:"instance"`
+	InstanceType string `json:"instance_type"`
 
 	// Load Balancer Specific Costs
-	ServiceName string    		`json:"service_name"`
-	IngressIP   string    		`json:"ingress_ip"`
+	ServiceName string `json:"service_name"`
+	IngressIP   string `json:"ingress_ip"`
 
 	// GPU Specific Fields (Optional Result)
-	Device     string 	  		`json:"device`
-	ModelName  string 	  		`json:"modelName`
-	UUID 	     string 	  		`json:"UUID"`
-  ProviderID string         `json:"provider_id"`
+	Device     string `json:"device`
+	ModelName  string `json:"modelName`
+	UUID       string `json:"UUID"`
+	ProviderID string `json:"provider_id"`
 
 	// PersistentVolume Specific
-	VolumeName	string	`json:"volumename"`
+	VolumeName string `json:"volumename"`
 
 	// Labels will capture all fields that start with "label_" from the Prometheus metric.
 	// The `label_` prefix will be removed from the key when stored here.
 	Labels map[string]string `json:"labels"` // This field will be populated manually
 
-	Annotations map[string]string	`json:"annotations"`
+	Annotations map[string]string `json:"annotations"`
 	// UnhandledFields will capture any other fields that are not explicitly defined
 	// and do not start with "label_".
 	UnhandledFields map[string]string `json:"-"` // Use json:"-" to prevent default unmarshaling
@@ -102,7 +101,7 @@ func (m *Metric) UnmarshalJSON(data []byte) error {
 	}
 
 	m.Labels = make(map[string]string)
-  
+
 	m.Annotations = make(map[string]string)
 
 	m.UnhandledFields = make(map[string]string)
@@ -158,7 +157,7 @@ func (m *Metric) UnmarshalJSON(data []byte) error {
 				// If it does not start with "label_" and is not explicitly defined,
 				newKey := strings.TrimPrefix(key, "annotation_")
 				m.Annotations[newKey] = strVal
-        
+
 			} else {
 				// If it does not start with "label_" and is not explicitly defined,
 				m.UnhandledFields[key] = strVal
@@ -352,4 +351,17 @@ func (c *Client) RunPromQLQuery(promQLArgs PrometheusInput) (PrometheusResponse,
 	}
 
 	return promData, nil
+}
+
+func GetOffsetAdjustedQueryWindow(window string, resolution string) string {
+
+	// This function is specifically designed for window is [0-9]h format and resolution in [0-9]m.
+	// Please upgrade this function if you want to support more time ranges or special keywords.
+	window_int, _ := utils.ExtractNumericPrefix(window)
+	resolution_int, _ := utils.ExtractNumericPrefix(resolution)
+
+	window_offset := strconv.Itoa(int(window_int)*60 + int(resolution_int))
+	window_offset_string := fmt.Sprintf("%sm", window_offset)
+
+	return window_offset_string
 }

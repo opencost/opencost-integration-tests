@@ -26,6 +26,7 @@ import (
 	"time"
 )
 
+const Resolution = "1m"
 const tolerance = 0.05
 
 func ConvertToHours(minutes float64) float64 {
@@ -46,6 +47,12 @@ func TestGPUCosts(t *testing.T) {
 		{
 			name:       "Yesterday",
 			window:     "24h",
+			aggregate:  "namespace",
+			accumulate: "false",
+		},
+		{
+			name:       "Yesterday",
+			window:     "48h",
 			aggregate:  "namespace",
 			accumulate: "false",
 		},
@@ -83,7 +90,11 @@ func TestGPUCosts(t *testing.T) {
 
 				// Use this information to find start and end time of pod
 				queryEnd := time.Now().UTC().Truncate(time.Hour).Add(time.Hour)
-				queryStart := queryEnd.Add(-24 * time.Hour)
+				// Get Time Duration
+				timeMumericVal, _ := utils.ExtractNumericPrefix(tc.window)
+				// Assume the minumum unit is an hour
+				negativeDuration := time.Duration(timeMumericVal*float64(time.Hour)) * -1
+				queryStart := queryEnd.Add(negativeDuration)
 				window24h := api.Window{
 					Start: queryStart,
 					End:   queryEnd,
@@ -94,6 +105,7 @@ func TestGPUCosts(t *testing.T) {
 				// Query End Time for all Queries
 				endTime := queryEnd.Unix()
 
+				windowRange := prometheus.GetOffsetAdjustedQueryWindow(tc.window, Resolution)
 				// Metric: GPURequests
 				// avg(avg_over_time(
 				// 		kube_pod_container_resource_requests{
@@ -118,7 +130,7 @@ func TestGPUCosts(t *testing.T) {
 				}
 				promGPURequestedInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
 				promGPURequestedInput.Function = []string{"avg_over_time", "avg"}
-				promGPURequestedInput.QueryWindow = tc.window
+				promGPURequestedInput.QueryWindow = windowRange
 				promGPURequestedInput.Time = &endTime
 
 				requestedGPU, err := client.RunPromQLQuery(promGPURequestedInput)
@@ -149,7 +161,7 @@ func TestGPUCosts(t *testing.T) {
 				}
 				promGPUAllocatedInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
 				promGPUAllocatedInput.Function = []string{"avg_over_time", "avg"}
-				promGPUAllocatedInput.QueryWindow = tc.window
+				promGPUAllocatedInput.QueryWindow = windowRange
 				promGPUAllocatedInput.Time = &endTime
 
 				allocatedGPU, err := client.RunPromQLQuery(promGPUAllocatedInput)
@@ -172,8 +184,8 @@ func TestGPUCosts(t *testing.T) {
 				promPodInfoInput.MetricNotEqualTo = "0"
 				promPodInfoInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
 				promPodInfoInput.Function = []string{"avg"}
-				promPodInfoInput.AggregateWindow = tc.window
-				promPodInfoInput.AggregateResolution = "5m"
+				promPodInfoInput.AggregateWindow = windowRange
+				promPodInfoInput.AggregateResolution = Resolution
 				promPodInfoInput.Time = &endTime
 
 				podInfo, err := client.RunPromQLQuery(promPodInfoInput)
