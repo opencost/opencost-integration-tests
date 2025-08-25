@@ -59,34 +59,37 @@ type PrometheusResponse struct {
 }
 
 type Metric struct {
-
 	Pod       string `json:"pod"`
+	UID       string `json:"uid"`
 	Namespace string `json:"namespace"`
 	Container string `json:"container"`
-	
-  Node          string `json:"node"`
-  Instance      string `json:"instance"`
-	InstanceType  string `json:"instance_type"`
 
+	PersistentVolume      string `json:"persistentvolume"`
+	PersistentVolumeClaim string `json:"persistentvolumeclaim"`
+	StorageClass 		  string `json:s"storageclass"`
+
+	Node         string `json:"node"`
+	Instance     string `json:"instance"`
+	InstanceType string `json:"instance_type"`
 
 	// Load Balancer Specific Costs
-	ServiceName string    		`json:"service_name"`
-	IngressIP   string    		`json:"ingress_ip"`
+	ServiceName string `json:"service_name"`
+	IngressIP   string `json:"ingress_ip"`
 
 	// GPU Specific Fields (Optional Result)
-	Device     string 	  		`json:"device`
-	ModelName  string 	  		`json:"modelName`
-	UUID 	     string 	  		`json:"UUID"`
-  ProviderID string         `json:"provider_id"`
+	Device     string `json:"device`
+	ModelName  string `json:"modelName`
+	UUID       string `json:"UUID"`
+	ProviderID string `json:"provider_id"`
 
 	// PersistentVolume Specific
-	VolumeName	string	`json:"volumename"`
+	VolumeName string `json:"volumename"`
 
 	// Labels will capture all fields that start with "label_" from the Prometheus metric.
 	// The `label_` prefix will be removed from the key when stored here.
 	Labels map[string]string `json:"labels"` // This field will be populated manually
 
-	Annotations map[string]string	`json:"annotations"`
+	Annotations map[string]string `json:"annotations"`
 	// UnhandledFields will capture any other fields that are not explicitly defined
 	// and do not start with "label_".
 	UnhandledFields map[string]string `json:"-"` // Use json:"-" to prevent default unmarshaling
@@ -102,7 +105,7 @@ func (m *Metric) UnmarshalJSON(data []byte) error {
 	}
 
 	m.Labels = make(map[string]string)
-  
+
 	m.Annotations = make(map[string]string)
 
 	m.UnhandledFields = make(map[string]string)
@@ -122,6 +125,14 @@ func (m *Metric) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "pod":
 			m.Pod = strVal
+		case "uid":
+			m.UID = strVal
+		case "persistentvolume":
+			m.PersistentVolume = strVal
+		case "persistentvolumeclaim":
+			m.PersistentVolumeClaim = strVal
+		case "storageclass":
+			m.StorageClass = strVal
 		case "namespace":
 			m.Namespace = strVal
 		case "container":
@@ -158,7 +169,7 @@ func (m *Metric) UnmarshalJSON(data []byte) error {
 				// If it does not start with "label_" and is not explicitly defined,
 				newKey := strings.TrimPrefix(key, "annotation_")
 				m.Annotations[newKey] = strVal
-        
+
 			} else {
 				// If it does not start with "label_" and is not explicitly defined,
 				m.UnhandledFields[key] = strVal
