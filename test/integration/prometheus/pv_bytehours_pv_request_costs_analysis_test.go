@@ -1,6 +1,6 @@
 package prometheus
 
-// Description: Checks 
+// Description: Checks
 // - PVCost
 // - PVBytesHours
 
@@ -11,7 +11,7 @@ package prometheus
 // - Calculate Costs Pod/Persistent Volume
 
 // Note:
-// Container Costs are not real costs but generated costs. They are obtained by equally distributing pod costs to all pod containers. This 
+// Container Costs are not real costs but generated costs. They are obtained by equally distributing pod costs to all pod containers. This
 // is the not the best approach as init containers can also contribute to the bytehours and cost.
 //
 // IngestUID is a flag you can set to calculate by Pod and UID. This way Pod costs are calculated separately based on UID and then aggregated by Pod for the final results.
@@ -24,12 +24,11 @@ import (
 	"github.com/opencost/opencost-integration-tests/pkg/utils"
 	"regexp"
 	"sort"
-	"strings"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
-
 
 // Default Opencost Resolution
 const Resolution = "1m"
@@ -47,9 +46,9 @@ const PV_USAGE_SANITY_LIMIT_BYTES = 10.0 * PiB
 const NegligibleCost = 0.01
 
 type PodKey struct {
-	Namespace		string
-	Pod				string
-	UID				string
+	Namespace string
+	Pod       string
+	UID       string
 }
 
 type PersistentVolumeClaimKey struct {
@@ -58,21 +57,21 @@ type PersistentVolumeClaimKey struct {
 }
 
 type PersistentVolume struct {
-	Name 		    string
-	Window			api.Window
-	CostPerGiBHour  float64
-	ProviderID	    string
-	PVBytes		    float64
-	StorageClass	string
+	Name           string
+	Window         api.Window
+	CostPerGiBHour float64
+	ProviderID     string
+	PVBytes        float64
+	StorageClass   string
 }
 
 type PersistentVolumeClaim struct {
-	PersistentVolume			    *PersistentVolume
-	Namespace						string
-	PersistentVolumeClaimName		string
-	Window							api.Window
-	RequestedBytes					float64
-	Mounted							bool
+	PersistentVolume          *PersistentVolume
+	Namespace                 string
+	PersistentVolumeClaimName string
+	Window                    api.Window
+	RequestedBytes            float64
+	Mounted                   bool
 }
 
 type PersistentVolumeAllocations struct {
@@ -82,13 +81,12 @@ type PersistentVolumeAllocations struct {
 }
 
 type PodData struct {
-	Pod        		string
-	Namespace  		string
-	Window	       	api.Window
-	NumContainers  	int
-	Allocations 	map[string]*PersistentVolumeAllocations
+	Pod           string
+	Namespace     string
+	Window        api.Window
+	NumContainers int
+	Allocations   map[string]*PersistentVolumeAllocations
 }
-
 
 // This function is used to match the query pattern in allocation
 // If using a version of Prometheus where the resolution needs duration offset,
@@ -107,14 +105,14 @@ type PodData struct {
 // 24h in allocation gets records from the first minute of the hour but promethues 3.0 and above considers the first point after the start hour.
 // To not undercount values, we increase the range to counter promethues's behavior
 
-func getOffsetAdjustedQueryWindow(window string) (string) {
+func getOffsetAdjustedQueryWindow(window string) string {
 
-	// This function is specifically designed for window is [0-9]h format and resolution in [0-9]m. 
+	// This function is specifically designed for window is [0-9]h format and resolution in [0-9]m.
 	// Please upgrade this function if you want to support more time ranges or special keywords.
 	window_int, _ := utils.ExtractNumericPrefix(window)
 	resolution_int, _ := utils.ExtractNumericPrefix(Resolution)
 
-	window_offset := strconv.Itoa(int(window_int) * 60 + int(resolution_int))
+	window_offset := strconv.Itoa(int(window_int)*60 + int(resolution_int))
 	window_offset_string := fmt.Sprintf("%sm", window_offset)
 
 	return window_offset_string
@@ -148,7 +146,7 @@ func queryPods(window string, endTime int64) (prometheus.PrometheusResponse, err
 
 func queryPodsUID(window string, endTime int64) (prometheus.PrometheusResponse, error) {
 	// --------------------------------------
-	// Build UID Pod Map 
+	// Build UID Pod Map
 	// --------------------------------------
 
 	// Query all running pod information
@@ -173,6 +171,33 @@ func queryPodsUID(window string, endTime int64) (prometheus.PrometheusResponse, 
 	return podInfo, err
 }
 
+func queryContainers(window string, endTime int64) (prometheus.PrometheusResponse, error) {
+	// --------------------------------------
+	// Get Number of Running Containers in Pod
+	// --------------------------------------
+
+	// Query all running pod information
+	// avg(kube_pod_container_status_running{} != 0)
+	// by
+	// (container, pod, namespace, uid)[24h:5m]
+
+	client := prometheus.NewClient()
+	promPodInfoInput := prometheus.PrometheusInput{}
+
+	promPodInfoInput.Metric = "kube_pod_container_status_running"
+	promPodInfoInput.Filters = map[string]string{}
+	promPodInfoInput.MetricNotEqualTo = "0"
+	promPodInfoInput.AggregateBy = []string{"container", "pod", "namespace", "uid"}
+	promPodInfoInput.Function = []string{"avg"}
+	promPodInfoInput.AggregateWindow = getOffsetAdjustedQueryWindow(window)
+	promPodInfoInput.AggregateResolution = Resolution
+	promPodInfoInput.Time = &endTime
+
+	podInfo, err := client.RunPromQLQuery(promPodInfoInput)
+
+	return podInfo, err
+}
+
 func queryPVActiveMins(window string, endTime int64) (prometheus.PrometheusResponse, error) {
 	// ----------------------------------------------
 	// Metric: PVActiveMins
@@ -180,7 +205,7 @@ func queryPVActiveMins(window string, endTime int64) (prometheus.PrometheusRespo
 
 	// avg(kube_persistentvolume_capacity_bytes{%s}) by (%s, persistentvolume)[%s:%dm]`
 	// ----------------------------------------------
-	
+
 	client := prometheus.NewClient()
 	promPVRunTime := prometheus.PrometheusInput{}
 
@@ -253,7 +278,7 @@ func queryPVMeta(window string, endTime int64) (prometheus.PrometheusResponse, e
 	// by
 	// (%s, storageclass, persistentvolume, provider_id)
 	// ----------------------------------------------
-	
+
 	client := prometheus.NewClient()
 	promPVMeta := prometheus.PrometheusInput{}
 
@@ -278,7 +303,7 @@ func queryPVCInfo(window string, endTime int64) (prometheus.PrometheusResponse, 
 	// by
 	// (persistentvolumeclaim, storageclass, volumename, namespace, %s)[%s:%dm]
 	// ----------------------------------------------
-	
+
 	client := prometheus.NewClient()
 	promPVCInfo := prometheus.PrometheusInput{}
 
@@ -293,7 +318,7 @@ func queryPVCInfo(window string, endTime int64) (prometheus.PrometheusResponse, 
 	promPVCInfo.Time = &endTime
 
 	pvcInfo, err := client.RunPromQLQuery(promPVCInfo)
-	
+
 	return pvcInfo, err
 }
 
@@ -306,7 +331,7 @@ func queryPVCRequestedBytes(window string, endTime int64) (prometheus.Prometheus
 	// by
 	// (persistentvolumeclaim, namespace, %s)
 	// ----------------------------------------------
-	
+
 	client := prometheus.NewClient()
 	promPVCRequestedBytes := prometheus.PrometheusInput{}
 
@@ -346,7 +371,7 @@ func queryPodPVCAllocation(window string, endTime int64) (prometheus.PrometheusR
 }
 
 func buildPodMap(IngestUID bool, window string, endTime int64, resolution time.Duration, queryWindow api.Window, t *testing.T) (map[PodKey]*PodData, map[PodKey][]PodKey) {
-	
+
 	var podInfo prometheus.PrometheusResponse
 	var err error
 
@@ -355,7 +380,7 @@ func buildPodMap(IngestUID bool, window string, endTime int64, resolution time.D
 	} else {
 		podInfo, err = queryPodsUID(window, endTime)
 	}
-	
+
 	if err != nil {
 		t.Fatalf("Prometheus Query kube_pod_container_status_running failed: %v", err)
 	}
@@ -393,7 +418,7 @@ func buildPodMap(IngestUID bool, window string, endTime int64, resolution time.D
 		s, e := prometheus.CalculateStartAndEnd(podInfoResponseItem.Values, resolution, queryWindow)
 		podWindow := api.Window{
 			Start: s,
-			End: e,
+			End:   e,
 		}
 		if pod == "test-install-speedtest-tracker-56944bbf5b-h76q7" {
 			t.Logf("Start and End %v, %v, %v", s, e, podWindow.RunTime())
@@ -402,9 +427,9 @@ func buildPodMap(IngestUID bool, window string, endTime int64, resolution time.D
 			thisPod.Window = *api.ExpandTimeRange(&thisPod.Window, &podWindow)
 		} else {
 			podMap[podKey] = &PodData{
-				Pod: 		pod,
-				Namespace:  namespace,
-				Window: podWindow,
+				Pod:         pod,
+				Namespace:   namespace,
+				Window:      podWindow,
 				Allocations: make(map[string]*PersistentVolumeAllocations),
 			}
 		}
@@ -414,7 +439,7 @@ func buildPodMap(IngestUID bool, window string, endTime int64, resolution time.D
 	return podMap, podUIDKeyMap
 }
 
-func buildPVMap(window string, endTime int64, resolution time.Duration, queryWindow api.Window, t *testing.T) (map[string]*PersistentVolume) {
+func buildPVMap(window string, endTime int64, resolution time.Duration, queryWindow api.Window, t *testing.T) map[string]*PersistentVolume {
 
 	pvRunTime, err := queryPVActiveMins(window, endTime)
 	if err != nil {
@@ -443,10 +468,10 @@ func buildPVMap(window string, endTime int64, resolution time.Duration, queryWin
 		persistentVolumeName := promPVRunTimeItem.Metric.PersistentVolume
 		s, e := prometheus.CalculateStartAndEnd(promPVRunTimeItem.Values, resolution, queryWindow)
 		persistentVolumeMap[persistentVolumeName] = &PersistentVolume{
-			Name:           persistentVolumeName,
-			Window: 		api.Window{
+			Name: persistentVolumeName,
+			Window: api.Window{
 				Start: s,
-				End: e,
+				End:   e,
 			},
 			CostPerGiBHour: 0.0,
 			ProviderID:     "",
@@ -496,8 +521,8 @@ func buildPVMap(window string, endTime int64, resolution time.Duration, queryWin
 	return persistentVolumeMap
 }
 
-func buildPVCMap(window string, endTime int64, resolution time.Duration, queryWindow api.Window, persistentVolumeMap map[string]*PersistentVolume, t *testing.T) (map[PersistentVolumeClaimKey]*PersistentVolumeClaim) {
-	
+func buildPVCMap(window string, endTime int64, resolution time.Duration, queryWindow api.Window, persistentVolumeMap map[string]*PersistentVolume, t *testing.T) map[PersistentVolumeClaimKey]*PersistentVolumeClaim {
+
 	pvcInfo, err := queryPVCInfo(window, endTime)
 	if err != nil {
 		t.Fatalf("Error Occured while querying PromQL kube_persistentvolumeclaim_info: %v", err)
@@ -542,9 +567,9 @@ func buildPVCMap(window string, endTime int64, resolution time.Duration, queryWi
 			Namespace:                 namespace,
 			PersistentVolumeClaimName: persistentVolumeClaimName,
 			PersistentVolume:          pvItem,
-			Window:					   api.Window{
+			Window: api.Window{
 				Start: s,
-				End: e,
+				End:   e,
 			},
 		}
 	}
@@ -571,8 +596,8 @@ func buildPVCMap(window string, endTime int64, resolution time.Duration, queryWi
 	return persistentVolumeClaimMap
 }
 
-func buildPodPVCMap(window string, endTime int64, podMap map[PodKey]*PodData, persistentVolumeMap map[string]*PersistentVolume, persistentVolumeClaimMap map[PersistentVolumeClaimKey]*PersistentVolumeClaim, IngestUID bool, podUIDKeyMap map[PodKey][]PodKey, t *testing.T) (map[PodKey][]*PersistentVolumeClaim) {
-	
+func buildPodPVCMap(window string, endTime int64, podMap map[PodKey]*PodData, persistentVolumeMap map[string]*PersistentVolume, persistentVolumeClaimMap map[PersistentVolumeClaimKey]*PersistentVolumeClaim, IngestUID bool, podUIDKeyMap map[PodKey][]PodKey, t *testing.T) map[PodKey][]*PersistentVolumeClaim {
+
 	podPVCAllocation, err := queryPodPVCAllocation(window, endTime)
 	if err != nil {
 		t.Fatalf("Error Occured while querying PromQL pod_pvc_allocation: %v", err)
@@ -626,7 +651,7 @@ func buildPodPVCMap(window string, endTime int64, podMap map[PodKey]*PodData, pe
 	return podPVCMap
 }
 
-func applyPodPVCCosts(queryWindow api.Window, podMap map[PodKey]*PodData, podPVCMap map[PodKey][]*PersistentVolumeClaim, persistentVolumeClaimMap map[PersistentVolumeClaimKey]*PersistentVolumeClaim, t *testing.T) () {
+func applyPodPVCCosts(queryWindow api.Window, podMap map[PodKey]*PodData, podPVCMap map[PodKey][]*PersistentVolumeClaim, persistentVolumeClaimMap map[PersistentVolumeClaimKey]*PersistentVolumeClaim, t *testing.T) {
 
 	// For each persistent volume
 	// Attach the pod along with a modified run time based on the persistent volume.
@@ -673,7 +698,7 @@ func applyPodPVCCosts(queryWindow api.Window, podMap map[PodKey]*PodData, podPVC
 		// Check for errors later
 		pvc, _ := persistentVolumeClaimMap[thisPVCKey]
 
-		sharedPVCCostCoefficients, err := GetPVCCostCoefficients(intervals, pvc, t)
+		sharedPVCCostCoefficients, err := GetPVCCostCoefficients(intervals, pvc)
 		// t.Logf("Shared %v", sharedPVCCostCoefficients)
 		if err != nil {
 			t.Logf("Allocation: Compute: applyPVCsToPods: getPVCCostCoefficients: %s", err)
@@ -683,11 +708,9 @@ func applyPodPVCCosts(queryWindow api.Window, podMap map[PodKey]*PodData, podPVC
 		for thisPodKey, coeffComponents := range sharedPVCCostCoefficients {
 
 			pod, ok := podMap[thisPodKey]
-			
+
 			// for __unmounted__
 			if !ok {
-				// Get namespace unmounted pod, as pvc will have a namespace
-				// t.Logf("Calling Once")
 				pod = getUnmountedPodForNamespace(queryWindow, podMap, pvc.Namespace)
 			}
 
@@ -707,7 +730,7 @@ func applyPodPVCCosts(queryWindow api.Window, podMap map[PodKey]*PodData, podPVC
 	}
 }
 
-func applyPVUnmountedCosts(queryWindow api.Window, podMap map[PodKey]*PodData, persistentVolumeClaimMap map[PersistentVolumeClaimKey]*PersistentVolumeClaim, t *testing.T) () {
+func applyPVUnmountedCosts(queryWindow api.Window, podMap map[PodKey]*PodData, persistentVolumeClaimMap map[PersistentVolumeClaimKey]*PersistentVolumeClaim, t *testing.T) {
 
 	for _, pvc := range persistentVolumeClaimMap {
 
@@ -729,6 +752,38 @@ func applyPVUnmountedCosts(queryWindow api.Window, podMap map[PodKey]*PodData, p
 	}
 }
 
+func applyContainerInfotoPodMap(podMap map[PodKey]*PodData, window string, endTime int64, t *testing.T) {
+
+	var containerInfo prometheus.PrometheusResponse
+	var err error
+
+	containerInfo, err = queryContainers(window, endTime)
+
+	if err != nil {
+		t.Fatalf("Prometheus Query kube_pod_container_status_running failed: %v", err)
+	}
+
+	for _, containerInfoResponseItem := range containerInfo.Data.Result {
+		container := containerInfoResponseItem.Metric.Container
+		pod := containerInfoResponseItem.Metric.Pod
+		namespace := containerInfoResponseItem.Metric.Namespace
+
+		if container == "__unmounted__" {
+			continue
+		}
+
+		podKey := PodKey{
+			Namespace: namespace,
+			Pod:       pod,
+		}
+
+		podItem, ok := podMap[podKey]
+		if ok {
+			podItem.NumContainers += 1
+		}
+	}
+}
+
 // getUnmountedPodForNamespace is as getUnmountedPodForCluster, but keys allocation property pod/namespace field off namespace
 // This creates or adds allocations to an unmounted pod in the specified namespace, rather than in __unmounted__
 func getUnmountedPodForNamespace(window api.Window, podMap map[PodKey]*PodData, namespace string) *PodData {
@@ -744,7 +799,7 @@ func getUnmountedPodForNamespace(window api.Window, podMap map[PodKey]*PodData, 
 	thisPod, ok := podMap[thisPodKey]
 	if !ok {
 		thisPod = &PodData{
-			Window: window,
+			Window:      window,
 			Allocations: make(map[string]*PersistentVolumeAllocations),
 		}
 
@@ -752,15 +807,6 @@ func getUnmountedPodForNamespace(window api.Window, podMap map[PodKey]*PodData, 
 		podMap[thisPodKey] = thisPod
 	}
 	return thisPod
-}
-
-func contains(s []PodKey, str PodKey) bool {
-    for _, v := range s {
-        if v == str {
-            return true
-        }
-    }
-    return false
 }
 
 // IntervalPoint describes a start or end of a window of time
@@ -791,7 +837,6 @@ func (ips IntervalPoints) Less(i, j int) bool {
 func (ips IntervalPoints) Swap(i, j int) {
 	ips[i], ips[j] = ips[j], ips[i]
 }
-
 
 // NewIntervalPoint creates and returns a new IntervalPoint instance with given parameters.
 func NewIntervalPoint(time time.Time, pointType string, key PodKey) IntervalPoint {
@@ -836,13 +881,13 @@ func GetIntervalPointsFromWindows(windows map[PodKey]api.Window) IntervalPoints 
 // getPVCCostCoefficients gets a coefficient which represents the scale
 // factor that each PVC in a pvcIntervalMap and corresponding slice of
 // IntervalPoints intervals uses to calculate a cost for that PVC's PV.
-func GetPVCCostCoefficients(intervals IntervalPoints, thisPVC *PersistentVolumeClaim, t *testing.T) (map[PodKey][]CoefficientComponent, error) {
+func GetPVCCostCoefficients(intervals IntervalPoints, thisPVC *PersistentVolumeClaim) (map[PodKey][]CoefficientComponent, error) {
 	// pvcCostCoefficientMap has a format such that the individual coefficient
 	// components are preserved for testing purposes.
 	pvcCostCoefficientMap := make(map[PodKey][]CoefficientComponent)
 
 	pvcWindowDurationMinutes := thisPVC.Window.RunTime()
-	
+
 	if pvcWindowDurationMinutes <= 0.0 {
 		// Protect against Inf and NaN issues that would be caused by dividing
 		// by zero later on.
@@ -851,7 +896,7 @@ func GetPVCCostCoefficients(intervals IntervalPoints, thisPVC *PersistentVolumeC
 
 	unmountedKey := PodKey{
 		Namespace: "__unmounted__",
-		Pod: "__unmounted__",
+		Pod:       "__unmounted__",
 	}
 
 	var void struct{}
@@ -906,18 +951,16 @@ func GetPVCCostCoefficients(intervals IntervalPoints, thisPVC *PersistentVolumeC
 
 		// PV should be unused for more than the query resolution
 		// Not doing this yields weird results as any time difference below the resolution is not accurate without the K8 API.
-		resolution, err := utils.ExtractNumericPrefix(Resolution)
+		resolution, _ := utils.ExtractNumericPrefix(Resolution)
 
 		if thisPVC.Window.End.Sub(currentTime).Minutes() > resolution {
 			pvcCostCoefficientMap[unmountedKey] = append(
-			pvcCostCoefficientMap[unmountedKey],
+				pvcCostCoefficientMap[unmountedKey],
 				CoefficientComponent{
-					Time:        thisPVC.Window.End.Sub(currentTime).Minutes() / pvcWindowDurationMinutes,
+					Time:       thisPVC.Window.End.Sub(currentTime).Minutes() / pvcWindowDurationMinutes,
 					Proportion: 1.0,
 				},
 			)
-		} else {
-			t.Logf("PVC %v, Pod %v", thisPVC.Window.End, currentTime)
 		}
 	}
 	return pvcCostCoefficientMap, nil
@@ -946,23 +989,23 @@ func TestPVCosts(t *testing.T) {
 
 	// test for more windows
 	testCases := []struct {
-		name        			string
-		window      			string
-		aggregate   			string
-		accumulate  			string
-		includeIdle 			string
-		IngestUID				bool
-		ConsiderContainerCosts  bool
-		CheckUnmountedCosts		bool
+		name                   string
+		window                 string
+		aggregate              string
+		accumulate             string
+		includeIdle            string
+		IngestUID              bool
+		ConsiderContainerCosts bool
+		CheckUnmountedCosts    bool
 	}{
 		{
-			name:        "Yesterday",
-			window:      "24h",
-			aggregate:   "pod",
-			accumulate:  "true",
-			IngestUID: 	 false,
+			name:                   "Yesterday",
+			window:                 "24h",
+			aggregate:              "pod",
+			accumulate:             "true",
+			IngestUID:              false,
 			ConsiderContainerCosts: false,
-			CheckUnmountedCosts: false,
+			CheckUnmountedCosts:    false,
 		},
 	}
 
@@ -976,7 +1019,7 @@ func TestPVCosts(t *testing.T) {
 			// Get Time Duration
 			timeMumericVal, _ := utils.ExtractNumericPrefix(tc.window)
 			// Assume the minumum unit is an hour
-			negativeDuration := time.Duration(timeMumericVal * float64(time.Hour)) * -1
+			negativeDuration := time.Duration(timeMumericVal*float64(time.Hour)) * -1
 			queryStart := queryEnd.Add(negativeDuration)
 
 			queryWindow := api.Window{
@@ -988,8 +1031,6 @@ func TestPVCosts(t *testing.T) {
 
 			// Query End Time for all Queries
 			endTime := queryEnd.Unix()
-
-			// t.Logf("%v", endTime)
 
 			podMap, podUIDKeyMap := buildPodMap(tc.IngestUID, tc.window, endTime, resolution, queryWindow, t)
 			persistentVolumeMap := buildPVMap(tc.window, endTime, resolution, queryWindow, t)
@@ -1008,15 +1049,18 @@ func TestPVCosts(t *testing.T) {
 				applyPVUnmountedCosts(queryWindow, podMap, persistentVolumeClaimMap, t)
 			}
 
-			
+			if tc.ConsiderContainerCosts {
+				applyContainerInfotoPodMap(podMap, tc.window, endTime, t)
+			}
+
 			// ----------------------------------------------
 			// Allocation API Data Collection
 			// ----------------------------------------------
 			// /compute/allocation: PV Costs for all namespaces
 			apiResponse, err := apiObj.GetAllocation(api.AllocationRequest{
-				Window:      tc.window,
-				Aggregate:   tc.aggregate,
-				Accumulate:  tc.accumulate,
+				Window:     tc.window,
+				Aggregate:  tc.aggregate,
+				Accumulate: tc.accumulate,
 			})
 
 			if err != nil {
@@ -1034,71 +1078,46 @@ func TestPVCosts(t *testing.T) {
 			for _, allocationResponseItem := range apiResponse.Data[0] {
 				namespace := allocationResponseItem.Properties.Namespace
 				pod := allocationResponseItem.Properties.Pod
-
-				
-				if strings.Contains(pod, "pvcs") {
-					t.Logf("Unmounted Pod")
-				}
-
-				// container := allocationResponseItem.Properties.Container
+				container := allocationResponseItem.Properties.Container
 
 				podKey := PodKey{
 					Namespace: namespace,
 					Pod:       pod,
 				}
 
-				// podItem := podMap[podKey]
-
-				
-
 				// Get Pods
 				if tc.IngestUID {
 					podKeys := podUIDKeyMap[podKey]
-					
-					podMap[podKey] = &PodData{
-						Pod: pod,
-						Namespace: namespace,
-						Allocations: make(map[string]*PersistentVolumeAllocations),
-					}
-					
-					podItem := podMap[podKey]
-				// // In the case of unmounted pods
-				// if container == "__unmounted__" {
-				// 	podKeys = []prometheus.PodKey{podUIDKey}
-				// 	continue
-				// }
 
-				// podData1 := &prometheus.PodData{}
-				// podData1.Containers = make(map[string]map[string]*prometheus.PVAllocations)
+					podItem, ok := podMap[podKey]
+
+					if !ok {
+						podMap[podKey] = &PodData{
+							Pod:           pod,
+							Namespace:     namespace,
+							Allocations:   make(map[string]*PersistentVolumeAllocations),
+							NumContainers: 1, // To prevent divide by zero errors
+						}
+					} else {
+						podItem.Pod = pod
+						podItem.Namespace = namespace
+						podItem.Allocations = make(map[string]*PersistentVolumeAllocations)
+					}
+					podItem = podMap[podKey]
+
 					for _, key := range podKeys {
+
 						thisPod := podMap[key]
-						// if thisPod.Pod == "prometheus-prometheus-kube-prometheus-prometheus-0" {
-						// 	t.Logf("PodKeys Loop%v", thisPod.Pod)
-						// 	t.Logf("PodKey %v", podKeys)
-						// 		// t.Logf("PV %v", pv)
-						// 		// t.Logf("ByteHours: %v", thisPod.Containers[container][pv].ByteHours)
-						// }
 						if thisPod == nil {
 							continue
 						}
-						// if _, ok := podData1.Containers[container]; !ok {
-						// 	podData1.Containers[container] = thisPod.Containers[container]
-						// 	continue
-						// }
-						// if container == "__unmounted__" {
-						// 	continue
-						// }
+
 						for pv, pvinfo := range thisPod.Allocations {
 							podinfo, ok := podItem.Allocations[pv]
-							// if thisPod.Pod == "prometheus-prometheus-kube-prometheus-prometheus-0" {
-							// 	t.Logf("%v", thisPod.Pod)
-							// 	t.Logf("PV %v", pv)
-							// 	t.Logf("ByteHours: %v", thisPod.Containers[container][pv].ByteHours)
-							// }
 							if !ok {
 								podItem.Allocations[pv] = &PersistentVolumeAllocations{
-									ByteHours: pvinfo.ByteHours,
-									Cost: pvinfo.Cost,
+									ByteHours:  pvinfo.ByteHours,
+									Cost:       pvinfo.Cost,
 									ProviderID: pvinfo.ProviderID,
 								}
 								continue
@@ -1106,50 +1125,62 @@ func TestPVCosts(t *testing.T) {
 							podinfo.ByteHours += pvinfo.ByteHours
 							podinfo.Cost += pvinfo.Cost
 						}
-						
 					}
 				}
 
 				podItem, ok := podMap[podKey]
-				
+
 				// Maybe for Unmounted Pods
 				if !ok {
 					t.Logf("PodKey %v missing from Prometheus", podKey)
 					continue
 				}
-				// if !ok {
-				// 	if container == "__unmounted__" { // If promethues starts recognising unmounted pods, remove this. Temporary Fix
-				// 		t.Logf("[Skipping] Unmounted PVs not supported")
-				// 		continue
-				// 	}
-				// 	t.Errorf("Pod Information Missing from API")
-				// 	continue
-				// }
 
-				// Get Containers
-				// containerPVs, ok := podData1.Containers[container]
-				// if !ok {
-				// 	t.Errorf("Container Information Missing from API")
-				// }
+				// Unmounted Pods
+				if strings.Contains(pod, "pvcs") {
+					if !tc.CheckUnmountedCosts {
+						continue
+					}
+				}
+
+				// Cluster Unmounted Costs, We never check
+				if pod == "__unmounted__" {
+					continue
+				}
+
+				// For Pods
+				costCoefficient := 1.0
+				if tc.ConsiderContainerCosts {
+					costCoefficient = float64(podItem.NumContainers) * 1.0
+
+					if tc.ConsiderContainerCosts {
+						// Skip Unmounted Containers
+						if container == "__unmounted__" {
+							continue
+						}
+					}
+				}
 
 				if allocationResponseItem.PersistentVolumes != nil {
 					// Loop Over Persistent Volume Claims
 					if len(allocationResponseItem.PersistentVolumes) != 0 {
 						t.Logf("Pod: %v", pod)
 						t.Logf("Pod Runtime: %v", allocationResponseItem.Minutes)
+						if tc.ConsiderContainerCosts {
+							t.Logf("Container %v", container)
+						}
 					}
 
 					for allocPVName, allocPV := range allocationResponseItem.PersistentVolumes {
 						allocProviderID := allocPV.ProviderID
-						allocByteHours := allocPV.ByteHours
-						allocCost := allocPV.Cost
+						allocByteHours := allocPV.ByteHours / costCoefficient
+						allocCost := allocPV.Cost / costCoefficient
 
 						// Get PV Name
 						// allocPVName = cluster=default-cluster:name=csi-7da248e4-1143-4c64-ab24-3ab1ba178f9
 						re := regexp.MustCompile(`name=([^:]+)`)
 						allocPVName := re.FindStringSubmatch(allocPVName)[1]
-						
-						// t.Logf("%v", allocPVName)
+
 						allocPVItem, ok := podItem.Allocations[allocPVName]
 						if !ok {
 							continue
@@ -1169,8 +1200,8 @@ func TestPVCosts(t *testing.T) {
 						} else {
 							t.Errorf("      - ByteHours[Fail]: DifferencePercent: %0.2f, Prom Results: %0.4f, API Results: %0.4f", diff_percent, allocPVItem.ByteHours, allocByteHours)
 						}
+
 						// Compare Cost
-						
 						if allocCost < NegligibleCost {
 							continue
 						}
@@ -1178,11 +1209,11 @@ func TestPVCosts(t *testing.T) {
 						if withinRange {
 							t.Logf("      - Cost[Pass]: ~%0.2f", allocCost)
 						} else {
-							t.Errorf("      - Cost[Fail]: DifferencePercent: %0.2f, Prom Results: %0.4f, API Results: %0.4f", diff_percent,allocPVItem.Cost, allocCost)
+							t.Errorf("      - Cost[Fail]: DifferencePercent: %0.2f, Prom Results: %0.4f, API Results: %0.4f", diff_percent, allocPVItem.Cost, allocCost)
 						}
 					}
 				}
-				
+
 			}
 		})
 	}
