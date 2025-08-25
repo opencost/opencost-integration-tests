@@ -1004,6 +1004,15 @@ func TestPVCosts(t *testing.T) {
 			aggregate:              "pod",
 			accumulate:             "true",
 			IngestUID:              false,
+			ConsiderContainerCosts: false, // Consider Setting Aggregate to pod,container when requesting for container costs
+			CheckUnmountedCosts:    false,
+		},
+		{
+			name:                   "Last Two Days",
+			window:                 "48h",
+			aggregate:              "pod",
+			accumulate:             "true",
+			IngestUID:              false,
 			ConsiderContainerCosts: false,
 			CheckUnmountedCosts:    false,
 		},
