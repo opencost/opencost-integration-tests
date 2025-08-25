@@ -36,7 +36,7 @@ import (
 	"time"
 )
 
-const tolerance = 0.05
+const Tolerance = 0.05
 
 func TestRAMMax(t *testing.T) {
 	apiObj := api.NewAPI()
@@ -50,6 +50,12 @@ func TestRAMMax(t *testing.T) {
 		{
 			name:       "Yesterday",
 			window:     "24h",
+			aggregate:  "container,pod",
+			accumulate: "false",
+		},
+		{
+			name:       "Last Two Days",
+			window:     "48h",
 			aggregate:  "container,pod",
 			accumulate: "false",
 		},
@@ -155,7 +161,7 @@ func TestRAMMax(t *testing.T) {
 				if ramMaxUsageValues.AllocationUsageMax == 0 {
 					continue
 				}
-				withinTolerance, diff_percent := utils.AreWithinPercentage(ramMaxUsageValues.PrometheusUsageMax, ramMaxUsageValues.AllocationUsageMax, tolerance)
+				withinTolerance, diff_percent := utils.AreWithinPercentage(ramMaxUsageValues.PrometheusUsageMax, ramMaxUsageValues.AllocationUsageMax, Tolerance)
 				if !withinTolerance {
 					t.Errorf("RAMUsageMax[Fail]: DifferencePercent %0.2f, Prometheus: %0.2f, /allocation: %0.2f", diff_percent, ramMaxUsageValues.PrometheusUsageMax, ramMaxUsageValues.AllocationUsageMax)
 				} else {
@@ -182,7 +188,7 @@ func TestRAMMax(t *testing.T) {
 			// Windows are not accurate for prometheus and allocation
 			for namespace, ramMaxUsageValues := range ramUsageMaxNamespaceMap {
 				t.Logf("Namespace %s", namespace)
-				withinRange, diff_percent := utils.AreWithinPercentage(ramMaxUsageValues.PrometheusUsageMax, ramMaxUsageValues.AllocationUsageMax, tolerance)
+				withinRange, diff_percent := utils.AreWithinPercentage(ramMaxUsageValues.PrometheusUsageMax, ramMaxUsageValues.AllocationUsageMax, Tolerance)
 				if !withinRange {
 					t.Errorf("RAMUsageMax[Fail]: DifferencePercent %0.2f, Prometheus: %0.2f, /allocation: %0.2f", diff_percent, ramMaxUsageValues.PrometheusUsageMax, ramMaxUsageValues.AllocationUsageMax)
 				} else {

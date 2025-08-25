@@ -11,6 +11,7 @@ import (
 	"time"
 )
 
+const Resolution = "1m"
 const tolerance = 0.05
 const negligibleUsage = 0.01
 
@@ -29,6 +30,12 @@ func TestGPUAvgUsage(t *testing.T) {
 			aggregate:  "namespace",
 			accumulate: "false",
 		},
+		{
+			name:       "Last Two Days",
+			window:     "48h",
+			aggregate:  "namespace",
+			accumulate: "false",
+		},
 	}
 
 	t.Logf("testCases: %v", testCases)
@@ -38,13 +45,21 @@ func TestGPUAvgUsage(t *testing.T) {
 
 			// Use this information to find start and end time of pod
 			queryEnd := time.Now().UTC().Truncate(time.Hour).Add(time.Hour)
-			queryStart := queryEnd.Add(-24 * time.Hour)
+			// Get Time Duration
+			timeNumericVal, _ := utils.ExtractNumericPrefix(tc.window)
+			// Assume the minumum unit is an hour
+			negativeDuration := time.Duration(timeNumericVal*float64(time.Hour)) * -1
+			queryStart := queryEnd.Add(negativeDuration)
 			window24h := api.Window{
 				Start: queryStart,
 				End:   queryEnd,
 			}
-			resolution := 5 * time.Minute
+
+			resolutionNumericVal, _ := utils.ExtractNumericPrefix(Resolution)
+			resolution := time.Duration(int(resolutionNumericVal) * int(time.Minute))
 			endTime := queryEnd.Unix()
+
+			windowRange := prometheus.GetOffsetAdjustedQueryWindow(tc.window, Resolution)
 
 			client := prometheus.NewClient()
 			// Pod Info
@@ -53,8 +68,8 @@ func TestGPUAvgUsage(t *testing.T) {
 			promPodInfoInput.MetricNotEqualTo = "0"
 			promPodInfoInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
 			promPodInfoInput.Function = []string{"avg"}
-			promPodInfoInput.AggregateWindow = tc.window
-			promPodInfoInput.AggregateResolution = "5m"
+			promPodInfoInput.AggregateWindow = windowRange
+			promPodInfoInput.AggregateResolution = Resolution
 			promPodInfoInput.Time = &endTime
 
 			podInfo, err := client.RunPromQLQuery(promPodInfoInput)
@@ -65,7 +80,7 @@ func TestGPUAvgUsage(t *testing.T) {
 			type PodData struct {
 				Pod       string
 				Namespace string
-				Window 	  *api.Window
+				Window    *api.Window
 			}
 
 			podMap := make(map[string]*PodData)
@@ -78,7 +93,7 @@ func TestGPUAvgUsage(t *testing.T) {
 					Namespace: podInfoResponseItem.Metric.Namespace,
 					Window: &api.Window{
 						Start: s,
-						End: e,
+						End:   e,
 					},
 				}
 			}
@@ -86,7 +101,7 @@ func TestGPUAvgUsage(t *testing.T) {
 			type GPUUsageAvgAggregate struct {
 				AllocationUsageAvg float64
 				PrometheusUsageAvg float64
-				Window			   *api.Window
+				Window             *api.Window
 			}
 			GPUUsageAvgNamespaceMap := make(map[string]*GPUUsageAvgAggregate)
 
@@ -103,7 +118,7 @@ func TestGPUAvgUsage(t *testing.T) {
 				"container": {""},
 			}
 			promInput.Function = []string{"avg_over_time", "avg"}
-			promInput.QueryWindow = tc.window
+			promInput.QueryWindow = windowRange
 			promInput.IgnoreFilters = ignoreFilters
 			promInput.AggregateBy = []string{"container", "pod", "namespace"}
 			promInput.Time = &endTime
@@ -133,7 +148,7 @@ func TestGPUAvgUsage(t *testing.T) {
 						AllocationUsageAvg: 0.0,
 						Window: &api.Window{
 							Start: pod.Window.Start,
-							End: pod.Window.End,
+							End:   pod.Window.End,
 						},
 					}
 					continue
