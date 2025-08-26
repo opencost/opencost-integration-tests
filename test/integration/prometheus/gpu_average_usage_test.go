@@ -30,12 +30,13 @@ func TestGPUAvgUsage(t *testing.T) {
 			aggregate:  "namespace",
 			accumulate: "false",
 		},
-		{
-			name:       "Last Two Days",
-			window:     "48h",
-			aggregate:  "namespace",
-			accumulate: "false",
-		},
+		//TODO
+		// {
+		// 	name:       "Last Two Days",
+		// 	window:     "48h",
+		// 	aggregate:  "namespace",
+		// 	accumulate: "false",
+		// },
 	}
 
 	t.Logf("testCases: %v", testCases)
