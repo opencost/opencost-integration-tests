@@ -63,6 +63,7 @@ type Metric struct {
 	Pod       string `json:"pod"`
 	Namespace string `json:"namespace"`
 	Container string `json:"container"`
+	UID		  string `json:"uid"`
 
 	Node         string `json:"node"`
 	Instance     string `json:"instance"`
@@ -125,6 +126,8 @@ func (m *Metric) UnmarshalJSON(data []byte) error {
 			m.Namespace = strVal
 		case "container":
 			m.Container = strVal
+		case "uid":
+			m.UID = strVal
 		case "node":
 			m.Node = strVal
 		case "instance":

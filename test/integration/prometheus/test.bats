@@ -78,10 +78,17 @@ teardown() {
 # ------------------------------------------------------
 
 
-
 # ------------------------------------------------------
 # Node Costs
 @test "prometheus: Node Hourly Cost" {
     go test ./test/integration/prometheus/node_costs_test.go
+}
+# ------------------------------------------------------
+
+
+# ------------------------------------------------------
+# Miscellaneous
+@test "prometheus: No Pod Restarts" {
+    go test ./test/integration/prometheus/no_pod_restarts_test.go
 }
 # ------------------------------------------------------
