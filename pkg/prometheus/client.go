@@ -1,6 +1,7 @@
 package prometheus
 
 import (
+	"github.com/opencost/opencost-integration-tests/pkg/utils"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -363,4 +364,17 @@ func (c *Client) RunPromQLQuery(promQLArgs PrometheusInput) (PrometheusResponse,
 	}
 
 	return promData, nil
+}
+
+func GetOffsetAdjustedQueryWindow(window string, resolution string) string {
+
+	// This function is specifically designed for window is [0-9]h format and resolution in [0-9]m.
+	// Please upgrade this function if you want to support more time ranges or special keywords.
+	window_int, _ := utils.ExtractNumericPrefix(window)
+	resolution_int, _ := utils.ExtractNumericPrefix(resolution)
+
+	window_offset := strconv.Itoa(int(window_int)*60 + int(resolution_int))
+	window_offset_string := fmt.Sprintf("%sm", window_offset)
+
+	return window_offset_string
 }
