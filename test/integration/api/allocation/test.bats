@@ -30,8 +30,8 @@ teardown() {
     go test idle_cost_negative_test.go
 }
 
-@test "validate_api: validate total efficiency" {
-   go test valid_total_efficiency_test.go
+@test "validate_api: negative total efficiency" {
+   go test negative_total_efficiency_test.go
 }
 
 @test "validate_api: validate Total cost vs individual cost" {
