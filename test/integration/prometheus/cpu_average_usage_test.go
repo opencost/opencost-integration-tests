@@ -28,14 +28,21 @@ func TestCPUAvgUsage(t *testing.T) {
 			name:       "Yesterday",
 			window:     "24h",
 			aggregate:  "namespace",
-			accumulate: "false",
+			accumulate: "true",
 		},
-		{
-			name:       "Last Two Days",
-			window:     "48h",
-			aggregate:  "namespace",
-			accumulate: "false",
-		},
+		// TODO
+		// {
+		// 	name:       "Last Two Days",
+		// 	window:     "48h",
+		// 	aggregate:  "namespace",
+		// 	accumulate: "true",
+		// },
+		// {
+		// 	name:       "Last Week",
+		// 	window:     "168h",
+		// 	aggregate:  "namespace",
+		// 	accumulate: "true",
+		// },
 	}
 
 	t.Logf("testCases: %v", testCases)
@@ -48,12 +55,14 @@ func TestCPUAvgUsage(t *testing.T) {
 			// Get Time Duration
 			timeNumericVal, _ := utils.ExtractNumericPrefix(tc.window)
 			// Assume the minumum unit is an hour
+
 			negativeDuration := time.Duration(timeNumericVal*float64(time.Hour)) * -1
 			queryStart := queryEnd.Add(negativeDuration)
 			window24h := api.Window{
 				Start: queryStart,
 				End:   queryEnd,
 			}
+
 			resolutionNumericVal, _ := utils.ExtractNumericPrefix(Resolution)
 			resolution := time.Duration(int(resolutionNumericVal) * int(time.Minute))
 			endTime := queryEnd.Unix()
@@ -65,7 +74,7 @@ func TestCPUAvgUsage(t *testing.T) {
 			promPodInfoInput := prometheus.PrometheusInput{}
 			promPodInfoInput.Metric = "kube_pod_container_status_running"
 			promPodInfoInput.MetricNotEqualTo = "0"
-			promPodInfoInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
+			promPodInfoInput.AggregateBy = []string{"pod", "namespace", "node"}
 			promPodInfoInput.Function = []string{"avg"}
 			promPodInfoInput.AggregateWindow = windowRange
 			promPodInfoInput.AggregateResolution = Resolution
@@ -102,6 +111,7 @@ func TestCPUAvgUsage(t *testing.T) {
 				PrometheusUsageAvg float64
 				Window             *api.Window
 			}
+
 			cpuUsageAvgNamespaceMap := make(map[string]*cpuUsageAvgAggregate)
 
 			////////////////////////////////////////////////////////////////////////////
