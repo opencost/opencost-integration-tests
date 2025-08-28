@@ -2,9 +2,9 @@ package utils
 
 import (
 	"math"
-	"fmt"
-	"strconv"
 	"regexp"
+	"strconv"
+	"fmt"
 )
 
 func AreWithinPercentage(num1, num2, tolerance float64) (bool, float64) {

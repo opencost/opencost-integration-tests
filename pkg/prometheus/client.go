@@ -61,8 +61,13 @@ type PrometheusResponse struct {
 
 type Metric struct {
 	Pod       string `json:"pod"`
+	UID       string `json:"uid"`
 	Namespace string `json:"namespace"`
 	Container string `json:"container"`
+
+	PersistentVolume      string `json:"persistentvolume"`
+	PersistentVolumeClaim string `json:"persistentvolumeclaim"`
+	StorageClass 		  string `json:"storageclass"`
 
 	Node         string `json:"node"`
 	Instance     string `json:"instance"`
@@ -121,6 +126,14 @@ func (m *Metric) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "pod":
 			m.Pod = strVal
+		case "uid":
+			m.UID = strVal
+		case "persistentvolume":
+			m.PersistentVolume = strVal
+		case "persistentvolumeclaim":
+			m.PersistentVolumeClaim = strVal
+		case "storageclass":
+			m.StorageClass = strVal
 		case "namespace":
 			m.Namespace = strVal
 		case "container":

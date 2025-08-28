@@ -61,6 +61,15 @@ teardown() {
     go test ./test/integration/prometheus/gpu_average_usage_test.go
 }
 
+# ------------------------------------------------------
+
+# ------------------------------------------------------
+# Persistent Volume Costs
+    
+@test "prometheus: Mounted Persistent Volume Costs" {
+    go test ./test/integration/prometheus/pv_bytehours_pv_request_costs_analysis_test.go
+}
+
 @test "prometheus: GPU Info" {
     go test ./test/integration/prometheus/gpu_info_test.go
 }
@@ -78,10 +87,10 @@ teardown() {
 # ------------------------------------------------------
 
 
-
 # ------------------------------------------------------
 # Node Costs
 @test "prometheus: Node Hourly Cost" {
     go test ./test/integration/prometheus/node_costs_test.go
 }
+
 # ------------------------------------------------------
