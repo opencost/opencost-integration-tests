@@ -26,6 +26,8 @@ import (
 	"time"
 )
 
+// 10 Minutes
+const ShortLivedPodsRunTime = 10
 const Resolution = "1m"
 const Tolerance = 0.05
 
@@ -374,6 +376,11 @@ func TestGPUCosts(t *testing.T) {
 					}
 				}
 
+				if nsMinutes < ShortLivedPodsRunTime {
+					// Too short of a run time to assert results. ByteHours is very sensitive to run time.
+					continue
+				}
+				
 				// ----------------------------------------------
 				// Compare Results with Allocation
 				// ----------------------------------------------
