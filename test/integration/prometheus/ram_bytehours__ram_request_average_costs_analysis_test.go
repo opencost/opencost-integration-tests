@@ -380,6 +380,7 @@ func TestRAMCosts(t *testing.T) {
 
 				if nsMinutes < ShortLivedPodsRunTime {
 					// Too short of a run time to assert results. ByteHours is very sensitive to run time.
+					t.Logf("[Skipped] Namespace %v: RunTime %v less than %v ", namespace, nsMinutes, ShortLivedPodsRunTime)
 					continue
 				}
 				// ----------------------------------------------
