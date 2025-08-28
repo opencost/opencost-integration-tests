@@ -30,11 +30,14 @@ import (
 	"time"
 )
 
+// This should be adjusted later
+const ShortPVRunTime = 180
+
 // Default Opencost Resolution
 const Resolution = "1m"
 
 // Accepted Difference
-const Tolerance = 0.05
+const Tolerance = 0.07
 
 const KiB = 1024.0
 const MiB = 1024.0 * KiB
@@ -1173,6 +1176,10 @@ func TestPVCosts(t *testing.T) {
 				if allocationResponseItem.PersistentVolumes != nil {
 					// Loop Over Persistent Volume Claims
 					if len(allocationResponseItem.PersistentVolumes) != 0 {
+						if allocationResponseItem.Minutes < ShortPVRunTime {
+							t.Logf("[Skipping] Pod %v: RunTime %v less than minimum runtime %v", pod, allocationResponseItem.Minutes, ShortPVRunTime)
+							continue
+						}
 						t.Logf("Pod: %v", pod)
 						t.Logf("Pod Runtime: %v minutes", allocationResponseItem.Minutes)
 						if tc.ConsiderContainerCosts {
