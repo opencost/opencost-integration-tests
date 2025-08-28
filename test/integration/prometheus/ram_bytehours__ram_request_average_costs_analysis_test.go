@@ -27,7 +27,7 @@ import (
 )
 
 // 10 Minutes
-const ShortLivedPodsRunTime = 10
+const ShortLivedPodsRunTime = 60
 const Resolution = "1m"
 const Tolerance = 0.05
 
