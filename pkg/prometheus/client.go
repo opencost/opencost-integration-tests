@@ -66,7 +66,7 @@ type Metric struct {
 
 	PersistentVolume      string `json:"persistentvolume"`
 	PersistentVolumeClaim string `json:"persistentvolumeclaim"`
-	StorageClass 		  string `json:s"storageclass"`
+	StorageClass 		  string `json:"storageclass"`
 
 	Node         string `json:"node"`
 	Instance     string `json:"instance"`
