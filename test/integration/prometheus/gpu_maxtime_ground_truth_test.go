@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const tolerance = 0.05
+const Tolerance = 0.05
 
 func TestGPUMax(t *testing.T) {
 	apiObj := api.NewAPI()
@@ -109,6 +109,7 @@ func TestGPUMax(t *testing.T) {
 
 			for _, allocationResponseItem := range apiResponse.Data[0] {
 				gpuUsageMaxPod, ok := gpuUsageMaxPodMap[allocationResponseItem.Properties.Pod]
+
 				if !ok {
 					gpuUsageMaxPodMap[allocationResponseItem.Properties.Pod] = &GPUUsageMaxAggregate{
 						PrometheusUsageMax: 0.0,
@@ -126,7 +127,7 @@ func TestGPUMax(t *testing.T) {
 			// 	if gpuMaxUsageValues.AllocationUsageMax == 0{
 			// 		continue
 			// 	}
-			// 	withinTolerance, diff_percent := utils.AreWithinPercentage(gpuMaxUsageValues.PrometheusUsageMax, gpuMaxUsageValues.AllocationUsageMax, tolerance)
+			// 	withinTolerance, diff_percent := utils.AreWithinPercentage(gpuMaxUsageValues.PrometheusUsageMax, gpuMaxUsageValues.AllocationUsageMax, Tolerance)
 			// 	if !withinTolerance {
 			// 		t.Errorf("GPUUsageMax[Fail]: DifferencePercent %0.2f, Prometheus: %0.2f, /allocation: %0.2f", diff_percent, gpuMaxUsageValues.PrometheusUsageMax, gpuMaxUsageValues.AllocationUsageMax)
 			// 	} else {
@@ -152,7 +153,7 @@ func TestGPUMax(t *testing.T) {
 			// Windows are not accurate for prometheus and allocation
 			for namespace, gpuMaxUsageValues := range gpuUsageMaxNamespaceMap {
 				t.Logf("Namespace %s", namespace)
-				withinRange, diff_percent := utils.AreWithinPercentage(gpuMaxUsageValues.PrometheusUsageMax, gpuMaxUsageValues.AllocationUsageMax, tolerance)
+				withinRange, diff_percent := utils.AreWithinPercentage(gpuMaxUsageValues.PrometheusUsageMax, gpuMaxUsageValues.AllocationUsageMax, Tolerance)
 				if !withinRange {
 					t.Errorf("GPUUsageMax[Fail]: DifferencePercent %0.2f, Prometheus: %0.2f, /allocation: %0.2f", diff_percent, gpuMaxUsageValues.PrometheusUsageMax, gpuMaxUsageValues.AllocationUsageMax)
 				} else {

@@ -13,7 +13,7 @@ import (
 	"github.com/opencost/opencost-integration-tests/pkg/utils"
 )
 
-const tolerance = 0.05
+const Tolerance = 0.05
 const negligibleCost = 0.01
 
 func TestNodeInfo(t *testing.T) {
@@ -218,7 +218,7 @@ func TestNodeInfo(t *testing.T) {
 
 				if allocationResponseItem.RAMCost > negligibleCost {
 					seenCost = true
-					withinRange, diff_percent := utils.AreWithinPercentage(ramCost, allocationResponseItem.RAMCost, tolerance)
+					withinRange, diff_percent := utils.AreWithinPercentage(ramCost, allocationResponseItem.RAMCost, Tolerance)
 					if !withinRange {
 						t.Errorf("  - RAMCost[Fail]: DifferencePercent %0.2f, Prometheus: %0.4f, /allocation: %0.4f", diff_percent, ramCost, allocationResponseItem.RAMCost)
 					} else {
@@ -227,7 +227,7 @@ func TestNodeInfo(t *testing.T) {
 				}
 				if allocationResponseItem.CPUCost > negligibleCost {
 					seenCost = true
-					withinRange, diff_percent := utils.AreWithinPercentage(cpuCost, allocationResponseItem.CPUCost, tolerance)
+					withinRange, diff_percent := utils.AreWithinPercentage(cpuCost, allocationResponseItem.CPUCost, Tolerance)
 					if !withinRange {
 						t.Errorf("  - CPUCost[Fail]: DifferencePercent %0.2f, Prometheus: %0.4f, /allocation: %0.4f", diff_percent, cpuCost, allocationResponseItem.CPUCost)
 					} else {
@@ -236,7 +236,7 @@ func TestNodeInfo(t *testing.T) {
 				}
 				if allocationResponseItem.GPUCost > negligibleCost {
 					seenCost = true
-					withinRange, diff_percent := utils.AreWithinPercentage(gpuCost, allocationResponseItem.GPUCost, tolerance)
+					withinRange, diff_percent := utils.AreWithinPercentage(gpuCost, allocationResponseItem.GPUCost, Tolerance)
 					if !withinRange {
 						t.Errorf("  - GPUCost[Fail]: DifferencePercent %0.2f, Prometheus: %0.4f, /allocation: %0.4f", diff_percent, gpuCost, allocationResponseItem.GPUCost)
 					} else {
@@ -275,7 +275,7 @@ func TestNodeInfo(t *testing.T) {
 				calculatedTotalCost := cpuCost + gpuCost + ramCost
 
 				t.Logf("Node: %s", node)
-				withinRange, diff_percent := utils.AreWithinPercentage(calculatedTotalCost, totalCost, tolerance)
+				withinRange, diff_percent := utils.AreWithinPercentage(calculatedTotalCost, totalCost, Tolerance)
 				if withinRange {
 					t.Logf("  - TotalNodeCost[Pass]: ~ %0.2f", totalCost)
 				} else {

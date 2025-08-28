@@ -26,7 +26,8 @@ import (
 	"time"
 )
 
-const tolerance = 0.05
+const Resolution = "1m"
+const Tolerance = 0.05
 
 func ConvertToHours(minutes float64) float64 {
 	// Convert Time from Minutes to Hours
@@ -46,6 +47,12 @@ func TestRAMCosts(t *testing.T) {
 		{
 			name:       "Yesterday",
 			window:     "24h",
+			aggregate:  "namespace",
+			accumulate: "false",
+		},
+		{
+			name:       "Last Two Days",
+			window:     "48h",
 			aggregate:  "namespace",
 			accumulate: "false",
 		},
@@ -83,16 +90,23 @@ func TestRAMCosts(t *testing.T) {
 
 				// Use this information to find start and end time of pod
 				queryEnd := time.Now().UTC().Truncate(time.Hour).Add(time.Hour)
-				queryStart := queryEnd.Add(-24 * time.Hour)
+				// Get Time Duration
+				timeNumericVal, _ := utils.ExtractNumericPrefix(tc.window)
+				// Assume the minumum unit is an hour
+				negativeDuration := time.Duration(timeNumericVal*float64(time.Hour)) * -1
+				queryStart := queryEnd.Add(negativeDuration)
 				window24h := api.Window{
 					Start: queryStart,
 					End:   queryEnd,
 				}
 				// Note that in the Pod Query, we use a 5m resolution [THIS IS THE DEFAULT VALUE IN OPENCOST]
-				resolution := 1 * time.Minute
+				resolutionNumericVal, _ := utils.ExtractNumericPrefix(Resolution)
+				resolution := time.Duration(int(resolutionNumericVal) * int(time.Minute))
 
 				// Query End Time for all Queries
 				endTime := queryEnd.Unix()
+
+				windowRange := prometheus.GetOffsetAdjustedQueryWindow(tc.window, Resolution)
 
 				// Metric: RAMRequests
 				// avg(avg_over_time(
@@ -119,7 +133,7 @@ func TestRAMCosts(t *testing.T) {
 				}
 				promRAMRequestedInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
 				promRAMRequestedInput.Function = []string{"avg_over_time", "avg"}
-				promRAMRequestedInput.QueryWindow = tc.window
+				promRAMRequestedInput.QueryWindow = windowRange
 				promRAMRequestedInput.Time = &endTime
 
 				requestedRAM, err := client.RunPromQLQuery(promRAMRequestedInput)
@@ -150,7 +164,7 @@ func TestRAMCosts(t *testing.T) {
 				}
 				promRAMAllocatedInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
 				promRAMAllocatedInput.Function = []string{"avg_over_time", "avg"}
-				promRAMAllocatedInput.QueryWindow = tc.window
+				promRAMAllocatedInput.QueryWindow = windowRange
 				promRAMAllocatedInput.Time = &endTime
 
 				allocatedRAM, err := client.RunPromQLQuery(promRAMAllocatedInput)
@@ -173,8 +187,8 @@ func TestRAMCosts(t *testing.T) {
 				promPodInfoInput.MetricNotEqualTo = "0"
 				promPodInfoInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
 				promPodInfoInput.Function = []string{"avg"}
-				promPodInfoInput.AggregateWindow = tc.window
-				promPodInfoInput.AggregateResolution = "1m"
+				promPodInfoInput.AggregateWindow = windowRange
+				promPodInfoInput.AggregateResolution = Resolution
 				promPodInfoInput.Time = &endTime
 
 				podInfo, err := client.RunPromQLQuery(promPodInfoInput)
@@ -367,19 +381,19 @@ func TestRAMCosts(t *testing.T) {
 				// ----------------------------------------------
 				t.Logf("Namespace: %s", namespace)
 				// 5 % Tolerance
-				withinRange, diff_percent := utils.AreWithinPercentage(nsRAMBytes, allocationResponseItem.RAMBytes, tolerance)
+				withinRange, diff_percent := utils.AreWithinPercentage(nsRAMBytes, allocationResponseItem.RAMBytes, Tolerance)
 				if withinRange {
 					t.Logf("    - RAMBytes[Pass]: ~%.2f", nsRAMBytes)
 				} else {
 					t.Errorf("    - RAMBytes[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsRAMBytes, allocationResponseItem.RAMBytes)
 				}
-				withinRange, diff_percent = utils.AreWithinPercentage(nsRAMBytesHours, allocationResponseItem.RAMByteHours, tolerance)
+				withinRange, diff_percent = utils.AreWithinPercentage(nsRAMBytesHours, allocationResponseItem.RAMByteHours, Tolerance)
 				if withinRange {
 					t.Logf("    - RAMByteHours[Pass]: ~%.2f", nsRAMBytesHours)
 				} else {
 					t.Errorf("    - RAMByteHours[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsRAMBytesHours, allocationResponseItem.RAMByteHours)
 				}
-				withinRange, diff_percent = utils.AreWithinPercentage(nsRAMBytesRequest, allocationResponseItem.RAMBytesRequestAverage, tolerance)
+				withinRange, diff_percent = utils.AreWithinPercentage(nsRAMBytesRequest, allocationResponseItem.RAMBytesRequestAverage, Tolerance)
 				if withinRange {
 					t.Logf("    - RAMByteRequestAverage[Pass]: ~%.2f", nsRAMBytesRequest)
 				} else {

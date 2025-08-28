@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const tolerance = 0.05
+const Tolerance = 0.05
 
 func TestGPUCount(t *testing.T) {
 
@@ -23,6 +23,12 @@ func TestGPUCount(t *testing.T) {
 		{
 			name:       "Yesterday",
 			window:     "24h",
+			aggregate:  "node",
+			accumulate: "false",
+		},
+		{
+			name:       "Last Week",
+			window:     "168h",
 			aggregate:  "node",
 			accumulate: "false",
 		},
@@ -51,10 +57,10 @@ func TestGPUCount(t *testing.T) {
 			}
 
 			type NodeData struct {
-				Node       		string
-				PromGPUCount 	float64
-				AssetGPUCount	float64
-				AllocGPUCount	float64
+				Node          string
+				PromGPUCount  float64
+				AssetGPUCount float64
+				AllocGPUCount float64
 			}
 
 			nodeMap := make(map[string]*NodeData)
@@ -68,7 +74,7 @@ func TestGPUCount(t *testing.T) {
 				}
 
 				nodeMap[node] = &NodeData{
-					Node: node,
+					Node:         node,
 					PromGPUCount: count,
 				}
 			}
@@ -104,8 +110,8 @@ func TestGPUCount(t *testing.T) {
 			}
 
 			assetResponse, err := apiObj.GetAssets(api.AssetsRequest{
-				Window:     tc.window,
-				Filter:		tc.aggregate,
+				Window: tc.window,
+				Filter: tc.aggregate,
 			})
 
 			if err != nil {
@@ -132,7 +138,7 @@ func TestGPUCount(t *testing.T) {
 			// Windows are not accurate for prometheus and allocation
 			for node, nodegpuCountInfo := range nodeMap {
 				t.Logf("Node %s", node)
-				
+
 				if (nodegpuCountInfo.PromGPUCount == nodegpuCountInfo.AssetGPUCount) && (nodegpuCountInfo.PromGPUCount == nodegpuCountInfo.AllocGPUCount) {
 					t.Logf("  - NodeGPUCount[Pass]: %f", nodegpuCountInfo.PromGPUCount)
 				} else {
