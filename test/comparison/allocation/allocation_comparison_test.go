@@ -100,15 +100,13 @@ func compareAllocationResponses(t *testing.T, resp1, resp2 *api.AllocationRespon
 					alloc1.GPUCost, alloc2.GPUCost, tolerancePercent)
 			}
 
-			// TODO - for some reason the network costs are off by 50%. tolerate that for now
-			tolerancePercentNetwork := 60.0
 			// Compare Network metrics
 			util.CompareValues(t, fmt.Sprintf("%s Network Transfer Bytes", podName),
-				alloc1.NetworkTransferBytes, alloc2.NetworkTransferBytes, tolerancePercentNetwork)
+				alloc1.NetworkTransferBytes, alloc2.NetworkTransferBytes, tolerancePercent)
 			util.CompareValues(t, fmt.Sprintf("%s Network Receive Bytes", podName),
-				alloc1.NetworkReceiveBytes, alloc2.NetworkReceiveBytes, tolerancePercentNetwork)
+				alloc1.NetworkReceiveBytes, alloc2.NetworkReceiveBytes, tolerancePercent)
 			util.CompareValues(t, fmt.Sprintf("%s Network Cost", podName),
-				alloc1.NetworkCost, alloc2.NetworkCost, tolerancePercentNetwork)
+				alloc1.NetworkCost, alloc2.NetworkCost, tolerancePercent)
 
 			// Compare PV metrics
 			util.CompareValues(t, fmt.Sprintf("%s PV Cost", podName),
