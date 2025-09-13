@@ -1,7 +1,6 @@
 package prometheus
 
 import (
-	"github.com/opencost/opencost-integration-tests/pkg/utils"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -11,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/opencost/opencost-integration-tests/pkg/utils"
 )
 
 const (
@@ -67,7 +68,7 @@ type Metric struct {
 
 	PersistentVolume      string `json:"persistentvolume"`
 	PersistentVolumeClaim string `json:"persistentvolumeclaim"`
-	StorageClass 		  string `json:"storageclass"`
+	StorageClass          string `json:"storageclass"`
 
 	Node         string `json:"node"`
 	Instance     string `json:"instance"`
@@ -78,13 +79,21 @@ type Metric struct {
 	IngressIP   string `json:"ingress_ip"`
 
 	// GPU Specific Fields (Optional Result)
-	Device     string `json:"device`
-	ModelName  string `json:"modelName`
+	Device     string `json:"device"`
+	ModelName  string `json:"modelName"`
 	UUID       string `json:"UUID"`
 	ProviderID string `json:"provider_id"`
 
 	// PersistentVolume Specific
 	VolumeName string `json:"volumename"`
+
+	// Additional Kubernetes Resources
+	Deployment  string `json:"deployment"`
+	StatefulSet string `json:"statefulset"`
+	Service     string `json:"service"`
+	JobName     string `json:"job_name"`
+	ReplicaSet  string `json:"replicaset"`
+	DaemonSet   string `json:"daemonset"`
 
 	// Labels will capture all fields that start with "label_" from the Prometheus metric.
 	// The `label_` prefix will be removed from the key when stored here.
@@ -156,8 +165,20 @@ func (m *Metric) UnmarshalJSON(data []byte) error {
 			m.ProviderID = strVal
 		case "UUID": // Case-sensitive match for "UUID"
 			m.UUID = strVal
-		case "volumename": // Case-sensitive match for "UUID"
+		case "volumename": // Case-sensitive match for "VolumeName"
 			m.VolumeName = strVal
+		case "deployment":
+			m.Deployment = strVal
+		case "statefulset":
+			m.StatefulSet = strVal
+		case "service":
+			m.Service = strVal
+		case "job_name":
+			m.JobName = strVal
+		case "replicaset":
+			m.ReplicaSet = strVal
+		case "daemonset":
+			m.DaemonSet = strVal
 		default:
 			// If the key is not one of the explicitly defined fields,
 			// check if it starts with "label_"
