@@ -97,41 +97,8 @@ teardown() {
 
 # ------------------------------------------------------
 # UID Verification Tests
-@test "prometheus: Pod UID Verification" {
-    go test ./test/integration/prometheus/uid_verification_test.go -run TestPodUIDVerification
+@test "prometheus: UID Verification for all k8s objects" {
+    go test ./test/integration/prometheus/uid_verification_test.go
 }
-
-@test "prometheus: Deployment UID Verification" {
-    go test ./test/integration/prometheus/uid_verification_test.go -run TestDeploymentUIDVerification
-}
-
-@test "prometheus: StatefulSet UID Verification" {
-    go test ./test/integration/prometheus/uid_verification_test.go -run TestStatefulSetUIDVerification
-}
-
-@test "prometheus: Service UID Verification" {
-    go test ./test/integration/prometheus/uid_verification_test.go -run TestServiceUIDVerification
-}
-
-@test "prometheus: Namespace UID Verification" {
-    go test ./test/integration/prometheus/uid_verification_test.go -run TestNamespaceUIDVerification
-}
-
-@test "prometheus: Node UID Verification" {
-    go test ./test/integration/prometheus/uid_verification_test.go -run TestNodeUIDVerification
-}
-
-@test "prometheus: PersistentVolume UID Verification" {
-    go test ./test/integration/prometheus/uid_verification_test.go -run TestPersistentVolumeUIDVerification
-}
-
-@test "prometheus: PersistentVolumeClaim UID Verification" {
-    go test ./test/integration/prometheus/uid_verification_test.go -run TestPersistentVolumeClaimUIDVerification
-}
-
-@test "prometheus: Job UID Verification" {
-    go test ./test/integration/prometheus/uid_verification_test.go -run TestJobUIDVerification
-}
-
 
 # ------------------------------------------------------
