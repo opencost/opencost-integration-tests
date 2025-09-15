@@ -1,7 +1,6 @@
 package prometheus
 
 // Description: Verifies that UIDs are properly emitted for all Kubernetes resources
-// as per OpenCost PR #3366 (https://github.com/opencost/opencost/pull/3366)
 //
 // Tests verify:
 // - All resource types have UID labels in their metrics
@@ -120,8 +119,8 @@ func queryResourceWithUID(t *testing.T, client *prometheus.Client, metric string
 		// cluster-scoped resources (nodes, PVs, namespaces) use just the name
 		switch metric {
 		// Deployment metrics
-		case "deployment_match_labels", "kube_deployment_spec_replicas", 
-			 "kube_deployment_status_replicas_available":
+		case "deployment_match_labels", "kube_deployment_spec_replicas",
+			"kube_deployment_status_replicas_available":
 			if item.Metric.Deployment != "" && item.Metric.Namespace != "" {
 				resourceName = fmt.Sprintf("%s/%s", item.Metric.Namespace, item.Metric.Deployment) // namespace-scoped
 			}
@@ -136,27 +135,31 @@ func queryResourceWithUID(t *testing.T, client *prometheus.Client, metric string
 				resourceName = item.Metric.Namespace // cluster-scoped
 			}
 		// Node metrics
-		case "kube_node_status_capacity", "kube_node_status_capacity_memory_bytes", 
-			 "kube_node_status_capacity_cpu_cores", "kube_node_status_allocatable",
-			 "kube_node_status_allocatable_cpu_cores", "kube_node_status_allocatable_memory_bytes",
-			 "kube_node_labels", "kube_node_status_condition":
+		case "kube_node_status_capacity", "kube_node_status_capacity_memory_bytes",
+			"kube_node_status_capacity_cpu_cores", "kube_node_status_allocatable",
+			"kube_node_status_allocatable_cpu_cores", "kube_node_status_allocatable_memory_bytes",
+			"kube_node_labels", "kube_node_status_condition":
 			if item.Metric.Node != "" {
 				resourceName = item.Metric.Node // cluster-scoped
 			}
 		// Pod metrics
-		case "kube_pod_labels":
+		case "kube_pod_labels", "kube_pod_owner", "kube_pod_container_status_running",
+			"kube_pod_container_status_terminated_reason", "kube_pod_container_status_restarts_total",
+			"kube_pod_container_resource_requests", "kube_pod_container_resource_limits",
+			"kube_pod_container_resource_limits_cpu_cores", "kube_pod_container_resource_limits_memory_bytes",
+			"kube_pod_status_phase":
 			if item.Metric.Pod != "" && item.Metric.Namespace != "" {
 				resourceName = fmt.Sprintf("%s/%s", item.Metric.Namespace, item.Metric.Pod) // namespace-scoped
 			}
 		// PVC metrics
-		case "kube_persistentvolumeclaim_resource_requests_storage_bytes", 
-			 "kube_persistentvolumeclaim_info":
+		case "kube_persistentvolumeclaim_resource_requests_storage_bytes",
+			"kube_persistentvolumeclaim_info":
 			if item.Metric.PersistentVolumeClaim != "" && item.Metric.Namespace != "" {
 				resourceName = fmt.Sprintf("%s/%s", item.Metric.Namespace, item.Metric.PersistentVolumeClaim) // namespace-scoped
 			}
 		// PV metrics
-		case "kube_persistentvolume_capacity_bytes", "kube_persistentvolume_status_phase", 
-			 "kubecost_pv_info":
+		case "kube_persistentvolume_capacity_bytes", "kube_persistentvolume_status_phase",
+			"kubecost_pv_info":
 			if item.Metric.PersistentVolume != "" {
 				resourceName = item.Metric.PersistentVolume // cluster-scoped
 			}
@@ -187,13 +190,17 @@ func queryResourceWithUID(t *testing.T, client *prometheus.Client, metric string
 
 // TestPodUIDVerification tests that pods have valid UIDs in its metrics
 func TestPodUIDVerification(t *testing.T) {
-	podMetrics := []string{"kube_pod_labels"}
+	podMetrics := []string{"kube_pod_labels", "kube_pod_owner", "kube_pod_container_status_running",
+		"kube_pod_container_status_terminated_reason", "kube_pod_container_status_restarts_total",
+		"kube_pod_container_resource_requests", "kube_pod_container_resource_limits",
+		"kube_pod_container_resource_limits_cpu_cores", "kube_pod_container_resource_limits_memory_bytes",
+		"kube_pod_status_phase"}
 	testResourceUIDVerification(t, "pods", podMetrics)
 }
 
 // TestDeploymentUIDVerification tests that deployments have valid UIDs in its metrics
 func TestDeploymentUIDVerification(t *testing.T) {
-	deploymentMetrics := []string{"deployment_match_labels", "kube_deployment_spec_replicas", 
+	deploymentMetrics := []string{"deployment_match_labels", "kube_deployment_spec_replicas",
 		"kube_deployment_status_replicas_available"}
 	testResourceUIDVerification(t, "deployments", deploymentMetrics)
 }
@@ -219,7 +226,7 @@ func TestNamespaceUIDVerification(t *testing.T) {
 // TestNodeUIDVerification tests that nodes have valid UIDs in its metrics
 func TestNodeUIDVerification(t *testing.T) {
 	nodeMetrics := []string{
-		"kube_node_status_capacity", "kube_node_status_capacity_memory_bytes", 
+		"kube_node_status_capacity", "kube_node_status_capacity_memory_bytes",
 		"kube_node_status_capacity_cpu_cores", "kube_node_status_allocatable",
 		"kube_node_status_allocatable_cpu_cores", "kube_node_status_allocatable_memory_bytes",
 		"kube_node_labels", "kube_node_status_condition",
@@ -229,14 +236,14 @@ func TestNodeUIDVerification(t *testing.T) {
 
 // TestPersistentVolumeUIDVerification tests that PVs have valid UIDs in its metrics
 func TestPersistentVolumeUIDVerification(t *testing.T) {
-	pvMetrics := []string{"kube_persistentvolume_capacity_bytes", 
+	pvMetrics := []string{"kube_persistentvolume_capacity_bytes",
 		"kube_persistentvolume_status_phase", "kubecost_pv_info"}
 	testResourceUIDVerification(t, "persistent volumes", pvMetrics)
 }
 
 // TestPersistentVolumeClaimUIDVerification tests that PVCs have valid UIDs in its metrics
 func TestPersistentVolumeClaimUIDVerification(t *testing.T) {
-	pvcMetrics := []string{"kube_persistentvolumeclaim_resource_requests_storage_bytes", 
+	pvcMetrics := []string{"kube_persistentvolumeclaim_resource_requests_storage_bytes",
 		"kube_persistentvolumeclaim_info"}
 	testResourceUIDVerification(t, "persistent volume claims", pvcMetrics)
 }
