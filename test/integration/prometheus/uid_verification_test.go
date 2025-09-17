@@ -9,7 +9,6 @@ package prometheus
 // - UIDs persist throughout resource lifecycle
 
 import (
-	"fmt"
 	"regexp"
 	"testing"
 	"time"
@@ -17,6 +16,70 @@ import (
 	"github.com/opencost/opencost-integration-tests/pkg/log"
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 )
+
+// ResourceType represents a Kubernetes resource type
+type ResourceType string
+
+// Resource type constants for better type safety and maintainability
+const (
+	ResourceTypeDeployment             ResourceType = "deployment"
+	ResourceTypeJob                    ResourceType = "job"
+	ResourceTypeNamespace              ResourceType = "namespace"
+	ResourceTypeNode                   ResourceType = "node"
+	ResourceTypePod                    ResourceType = "pod"
+	ResourceTypePersistentVolumeClaim  ResourceType = "persistentvolumeclaim"
+	ResourceTypePersistentVolume       ResourceType = "persistentvolume"
+	ResourceTypeService                ResourceType = "service"
+	ResourceTypeStatefulSet            ResourceType = "statefulset"
+)
+
+
+// Default test time windows - can be easily modified for different test scenarios
+var defaultTestWindows = []string{"1h", "6h", "24h"}
+
+// metricToResourceType maps each metric to its resource type for extracting resource names
+var metricToResourceType = map[string]ResourceType{
+	// Deployment metrics
+	"deployment_match_labels":                      ResourceTypeDeployment,
+	"kube_deployment_spec_replicas":                ResourceTypeDeployment,
+	"kube_deployment_status_replicas_available":   ResourceTypeDeployment,
+	// Job metrics
+	"kube_job_status_failed": ResourceTypeJob,
+	// Namespace metrics
+	"kube_namespace_annotations": ResourceTypeNamespace,
+	"kube_namespace_labels":      ResourceTypeNamespace,
+	// Node metrics
+	"kube_node_status_capacity":                      ResourceTypeNode,
+	"kube_node_status_capacity_memory_bytes":         ResourceTypeNode,
+	"kube_node_status_capacity_cpu_cores":            ResourceTypeNode,
+	"kube_node_status_allocatable":                   ResourceTypeNode,
+	"kube_node_status_allocatable_cpu_cores":         ResourceTypeNode,
+	"kube_node_status_allocatable_memory_bytes":      ResourceTypeNode,
+	"kube_node_labels":                               ResourceTypeNode,
+	"kube_node_status_condition":                     ResourceTypeNode,
+	// Pod metrics
+	"kube_pod_labels":                                 ResourceTypePod,
+	"kube_pod_owner":                                  ResourceTypePod,
+	"kube_pod_container_status_running":               ResourceTypePod,
+	"kube_pod_container_status_terminated_reason":     ResourceTypePod,
+	"kube_pod_container_status_restarts_total":        ResourceTypePod,
+	"kube_pod_container_resource_requests":            ResourceTypePod,
+	"kube_pod_container_resource_limits":              ResourceTypePod,
+	"kube_pod_container_resource_limits_cpu_cores":    ResourceTypePod,
+	"kube_pod_container_resource_limits_memory_bytes": ResourceTypePod,
+	"kube_pod_status_phase":                           ResourceTypePod,
+	// PVC metrics
+	"kube_persistentvolumeclaim_resource_requests_storage_bytes": ResourceTypePersistentVolumeClaim,
+	"kube_persistentvolumeclaim_info":                            ResourceTypePersistentVolumeClaim,
+	// PV metrics
+	"kube_persistentvolume_capacity_bytes": ResourceTypePersistentVolume,
+	"kube_persistentvolume_status_phase":   ResourceTypePersistentVolume,
+	"kubecost_pv_info":                     ResourceTypePersistentVolume,
+	// Service metrics
+	"service_selector_labels": ResourceTypeService,
+	// StatefulSet metrics
+	"statefulSet_match_labels": ResourceTypeStatefulSet,
+}
 
 // UUID validation regex pattern (RFC 4122) - case-insensitive for robustness
 var uuidPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
@@ -26,71 +89,75 @@ func validateUID(uid string) bool {
 	return uuidPattern.MatchString(uid)
 }
 
-// testResourceUIDVerification is a generic helper function to test UID verification for any resource type
-func testResourceUIDVerification(t *testing.T, resourceType string, metrics []string) {
-	client := prometheus.NewClient()
+// TestContext holds shared resources for UID verification tests
+type TestContext struct {
+	Client  *prometheus.Client
+	EndTime int64
+	Windows []string
+}
+
+// NewTestContext creates a new test context with shared resources
+func NewTestContext() *TestContext {
 	queryEnd := time.Now().UTC().Truncate(time.Hour).Add(time.Hour)
-	endTime := queryEnd.Unix()
-	window := "24h"
+	return &TestContext{
+		Client:  prometheus.NewClient(),
+		EndTime: queryEnd.Unix(),
+		Windows: defaultTestWindows,
+	}
+}
 
-	log.Infof("Testing %s UID verification", resourceType)
+// testSingleMetric tests UID verification for a single metric across multiple time windows
+func testSingleMetric(t *testing.T, ctx *TestContext, metric string, resourceType ResourceType) {
+	log.Infof("Testing metric: %s (%s)", metric, resourceType)
 
-	allUIDs := make(map[string]string)
-	seenResources := make(map[string]bool)
-	totalUniqueResources := 0
+	resourcesWithUIDs := make(map[string]string)
+	totalResourcesFound := 0
+	hasValidResources := false
+	invalidUIDCount := 0
 
-	// Loop through all metrics for this resource type
-	for _, metric := range metrics {
-		log.Infof("Checking metric: %s", metric)
-		uidMap, _ := queryResourceWithUID(t, client, metric, window, &endTime)
+	// Test across all time windows
+	for _, window := range ctx.Windows {
+		uidMap, totalResources := queryResourceWithUID(t, ctx.Client, metric, window, &ctx.EndTime)
 
-		// Process each resource found in this metric
+		if totalResources > 0 {
+			hasValidResources = true
+			totalResourcesFound += totalResources
+		}
+
+		// Merge UIDs from this window, checking for consistency
 		for resourceName, uid := range uidMap {
-			// Track unique resources to avoid double counting
-			if !seenResources[resourceName] {
-				totalUniqueResources++
-				seenResources[resourceName] = true
-			}
-
-			// Check for UID consistency across metrics
-			if existingUID, exists := allUIDs[resourceName]; exists {
+			if existingUID, exists := resourcesWithUIDs[resourceName]; exists {
 				if existingUID != uid {
-					t.Errorf("UID mismatch for %s %s: %s vs %s (metric: %s)", resourceType, resourceName, existingUID, uid, metric)
+					t.Errorf("UID mismatch for %s %s in metric %s: %s vs %s (window: %s)",
+						resourceType, resourceName, metric, existingUID, uid, window)
 				}
 			} else {
-				allUIDs[resourceName] = uid
+				resourcesWithUIDs[resourceName] = uid
 			}
 		}
-	}
-
-	// Skip if no resources exist at all
-	if totalUniqueResources == 0 {
-		log.Warnf("No %s found in metrics", resourceType)
-		t.Skipf("Skipping: No %s found in cluster", resourceType)
-		return
-	}
-
-	// Fail if resources exist but no UIDs
-	if len(allUIDs) == 0 {
-		t.Errorf("Found %d %s but none have UIDs - OpenCost UID support not properly deployed", totalUniqueResources, resourceType)
-		return
 	}
 
 	// Validate UID formats
-	invalidUIDs := 0
-	for resourceName, uid := range allUIDs {
+	for resourceName, uid := range resourcesWithUIDs {
 		if !validateUID(uid) {
-			t.Errorf("%s %s has invalid UID format: %s", resourceType, resourceName, uid)
-			invalidUIDs++
+			t.Errorf("Invalid UID format for %s %s in metric %s: %s",
+				resourceType, resourceName, metric, uid)
+			invalidUIDCount++
 		}
 	}
 
-	log.Infof("Found %d %s with UIDs, %d invalid", len(allUIDs), resourceType, invalidUIDs)
-
-	if invalidUIDs > 0 {
-		t.Errorf("Found %d %s with invalid UID format", invalidUIDs, resourceType)
+	// Report results
+	if !hasValidResources {
+		t.Errorf("No resources found for metric %s across any time windows", metric)
+	} else if len(resourcesWithUIDs) == 0 {
+		t.Errorf("Found %d resources for metric %s but none have UIDs",
+			totalResourcesFound, metric)
+	} else {
+		log.Infof("Metric %s: Found %d resources with UIDs, %d invalid",
+			metric, len(resourcesWithUIDs), invalidUIDCount)
 	}
 }
+
 
 // queryResourceWithUID queries Prometheus for a metric and returns both total resources and those with UIDs
 func queryResourceWithUID(t *testing.T, client *prometheus.Client, metric string, window string, endTime *int64) (uidMap map[string]string, totalResources int) {
@@ -112,68 +179,15 @@ func queryResourceWithUID(t *testing.T, client *prometheus.Client, metric string
 	for _, item := range result.Data.Result {
 		// Extract UID from labels
 		uid := item.Metric.UID
-		resourceName := ""
 
-		// Different metrics have different label names and resource name formats
-		// Resource naming: namespace-scoped resources use "namespace/name" format,
-		// cluster-scoped resources (nodes, PVs, namespaces) use just the name
-		switch metric {
-		// Deployment metrics
-		case "deployment_match_labels", "kube_deployment_spec_replicas",
-			"kube_deployment_status_replicas_available":
-			if item.Metric.Deployment != "" && item.Metric.Namespace != "" {
-				resourceName = fmt.Sprintf("%s/%s", item.Metric.Namespace, item.Metric.Deployment) // namespace-scoped
-			}
-		// Job metrics
-		case "kube_job_status_failed":
-			if item.Metric.JobName != "" && item.Metric.Namespace != "" {
-				resourceName = fmt.Sprintf("%s/%s", item.Metric.Namespace, item.Metric.JobName) // namespace-scoped
-			}
-		// Namespace metrics
-		case "kube_namespace_annotations", "kube_namespace_labels":
-			if item.Metric.Namespace != "" {
-				resourceName = item.Metric.Namespace // cluster-scoped
-			}
-		// Node metrics
-		case "kube_node_status_capacity", "kube_node_status_capacity_memory_bytes",
-			"kube_node_status_capacity_cpu_cores", "kube_node_status_allocatable",
-			"kube_node_status_allocatable_cpu_cores", "kube_node_status_allocatable_memory_bytes",
-			"kube_node_labels", "kube_node_status_condition":
-			if item.Metric.Node != "" {
-				resourceName = item.Metric.Node // cluster-scoped
-			}
-		// Pod metrics
-		case "kube_pod_labels", "kube_pod_owner", "kube_pod_container_status_running",
-			"kube_pod_container_status_terminated_reason", "kube_pod_container_status_restarts_total",
-			"kube_pod_container_resource_requests", "kube_pod_container_resource_limits",
-			"kube_pod_container_resource_limits_cpu_cores", "kube_pod_container_resource_limits_memory_bytes",
-			"kube_pod_status_phase":
-			if item.Metric.Pod != "" && item.Metric.Namespace != "" {
-				resourceName = fmt.Sprintf("%s/%s", item.Metric.Namespace, item.Metric.Pod) // namespace-scoped
-			}
-		// PVC metrics
-		case "kube_persistentvolumeclaim_resource_requests_storage_bytes",
-			"kube_persistentvolumeclaim_info":
-			if item.Metric.PersistentVolumeClaim != "" && item.Metric.Namespace != "" {
-				resourceName = fmt.Sprintf("%s/%s", item.Metric.Namespace, item.Metric.PersistentVolumeClaim) // namespace-scoped
-			}
-		// PV metrics
-		case "kube_persistentvolume_capacity_bytes", "kube_persistentvolume_status_phase",
-			"kubecost_pv_info":
-			if item.Metric.PersistentVolume != "" {
-				resourceName = item.Metric.PersistentVolume // cluster-scoped
-			}
-		// Service metrics
-		case "service_selector_labels":
-			if item.Metric.Service != "" && item.Metric.Namespace != "" {
-				resourceName = fmt.Sprintf("%s/%s", item.Metric.Namespace, item.Metric.Service) // namespace-scoped
-			}
-		// StatefulSet metrics
-		case "statefulSet_match_labels":
-			if item.Metric.StatefulSet != "" && item.Metric.Namespace != "" {
-				resourceName = fmt.Sprintf("%s/%s", item.Metric.Namespace, item.Metric.StatefulSet) // namespace-scoped
-			}
+		// Use the metric to resource type mapping to get the resource name
+		resourceType, exists := metricToResourceType[metric]
+		if !exists {
+			log.Warnf("Unknown metric type: %s, dumping metric: %s", metric, item.Metric.ToString())
+			continue
 		}
+
+		resourceName := item.Metric.GetResourceName(string(resourceType))
 
 		// Count all resources found
 		if resourceName != "" {
@@ -188,68 +202,185 @@ func queryResourceWithUID(t *testing.T, client *prometheus.Client, metric string
 	return uidMap, totalResources
 }
 
-// TestPodUIDVerification tests that pods have valid UIDs in its metrics
-func TestPodUIDVerification(t *testing.T) {
-	podMetrics := []string{"kube_pod_labels", "kube_pod_owner", "kube_pod_container_status_running",
-		"kube_pod_container_status_terminated_reason", "kube_pod_container_status_restarts_total",
-		"kube_pod_container_resource_requests", "kube_pod_container_resource_limits",
-		"kube_pod_container_resource_limits_cpu_cores", "kube_pod_container_resource_limits_memory_bytes",
-		"kube_pod_status_phase"}
-	testResourceUIDVerification(t, "pods", podMetrics)
+// =============================================================================
+// INDIVIDUAL METRIC TESTS
+// Each metric is tested separately for better isolation and granular reporting
+// =============================================================================
+
+// Pod Metrics Tests
+func TestPodLabelsMetricUID(t *testing.T) {
+	ctx := NewTestContext()
+	testSingleMetric(t, ctx, "kube_pod_labels", ResourceTypePod)
 }
 
-// TestDeploymentUIDVerification tests that deployments have valid UIDs in its metrics
-func TestDeploymentUIDVerification(t *testing.T) {
-	deploymentMetrics := []string{"deployment_match_labels", "kube_deployment_spec_replicas",
-		"kube_deployment_status_replicas_available"}
-	testResourceUIDVerification(t, "deployments", deploymentMetrics)
+func TestPodOwnerMetricUID(t *testing.T) {
+	ctx := NewTestContext()
+	testSingleMetric(t, ctx, "kube_pod_owner", ResourceTypePod)
 }
 
-// TestStatefulSetUIDVerification tests that statefulsets have valid UIDs in its metrics
-func TestStatefulSetUIDVerification(t *testing.T) {
-	statefulSetMetrics := []string{"statefulSet_match_labels"}
-	testResourceUIDVerification(t, "statefulsets", statefulSetMetrics)
+func TestPodContainerStatusRunningMetricUID(t *testing.T) {
+	ctx := NewTestContext()
+	testSingleMetric(t, ctx, "kube_pod_container_status_running", ResourceTypePod)
 }
 
-// TestServiceUIDVerification tests that services have valid UIDs in its metrics
-func TestServiceUIDVerification(t *testing.T) {
-	serviceMetrics := []string{"service_selector_labels"}
-	testResourceUIDVerification(t, "services", serviceMetrics)
+func TestPodContainerStatusTerminatedReasonMetricUID(t *testing.T) {
+	ctx := NewTestContext()
+	testSingleMetric(t, ctx, "kube_pod_container_status_terminated_reason", ResourceTypePod)
 }
 
-// TestNamespaceUIDVerification tests that namespaces have valid UIDs in its metrics
-func TestNamespaceUIDVerification(t *testing.T) {
-	namespaceMetrics := []string{"kube_namespace_annotations", "kube_namespace_labels"}
-	testResourceUIDVerification(t, "namespaces", namespaceMetrics)
+func TestPodContainerStatusRestartsTotalMetricUID(t *testing.T) {
+	ctx := NewTestContext()
+	testSingleMetric(t, ctx, "kube_pod_container_status_restarts_total", ResourceTypePod)
 }
 
-// TestNodeUIDVerification tests that nodes have valid UIDs in its metrics
-func TestNodeUIDVerification(t *testing.T) {
-	nodeMetrics := []string{
-		"kube_node_status_capacity", "kube_node_status_capacity_memory_bytes",
-		"kube_node_status_capacity_cpu_cores", "kube_node_status_allocatable",
-		"kube_node_status_allocatable_cpu_cores", "kube_node_status_allocatable_memory_bytes",
-		"kube_node_labels", "kube_node_status_condition",
+func TestPodContainerResourceRequestsMetricUID(t *testing.T) {
+	ctx := NewTestContext()
+	testSingleMetric(t, ctx, "kube_pod_container_resource_requests", ResourceTypePod)
+}
+
+func TestPodContainerResourceLimitsMetricUID(t *testing.T) {
+	ctx := NewTestContext()
+	testSingleMetric(t, ctx, "kube_pod_container_resource_limits", ResourceTypePod)
+}
+
+func TestPodContainerResourceLimitsCpuCoresMetricUID(t *testing.T) {
+	ctx := NewTestContext()
+	testSingleMetric(t, ctx, "kube_pod_container_resource_limits_cpu_cores", ResourceTypePod)
+}
+
+func TestPodContainerResourceLimitsMemoryBytesMetricUID(t *testing.T) {
+	ctx := NewTestContext()
+	testSingleMetric(t, ctx, "kube_pod_container_resource_limits_memory_bytes", ResourceTypePod)
+}
+
+func TestPodStatusPhaseMetricUID(t *testing.T) {
+	ctx := NewTestContext()
+	testSingleMetric(t, ctx, "kube_pod_status_phase", ResourceTypePod)
+}
+
+// Deployment Metrics Tests
+func TestDeploymentMatchLabelsMetricUID(t *testing.T) {
+	ctx := NewTestContext()
+	testSingleMetric(t, ctx, "deployment_match_labels", ResourceTypeDeployment)
+}
+
+func TestDeploymentSpecReplicasMetricUID(t *testing.T) {
+	ctx := NewTestContext()
+	testSingleMetric(t, ctx, "kube_deployment_spec_replicas", ResourceTypeDeployment)
+}
+
+func TestDeploymentStatusReplicasAvailableMetricUID(t *testing.T) {
+	ctx := NewTestContext()
+	testSingleMetric(t, ctx, "kube_deployment_status_replicas_available", ResourceTypeDeployment)
+}
+
+// Job Metrics Tests
+func TestJobStatusFailedMetricUID(t *testing.T) {
+	ctx := NewTestContext()
+	testSingleMetric(t, ctx, "kube_job_status_failed", ResourceTypeJob)
+}
+
+// Namespace Metrics Tests
+func TestNamespaceAnnotationsMetricUID(t *testing.T) {
+	ctx := NewTestContext()
+	testSingleMetric(t, ctx, "kube_namespace_annotations", ResourceTypeNamespace)
+}
+
+func TestNamespaceLabelsMetricUID(t *testing.T) {
+	ctx := NewTestContext()
+	testSingleMetric(t, ctx, "kube_namespace_labels", ResourceTypeNamespace)
+}
+
+// Node Metrics Tests
+func TestNodeStatusCapacityMetricUID(t *testing.T) {
+	ctx := NewTestContext()
+	testSingleMetric(t, ctx, "kube_node_status_capacity", ResourceTypeNode)
+}
+
+func TestNodeStatusCapacityMemoryBytesMetricUID(t *testing.T) {
+	ctx := NewTestContext()
+	testSingleMetric(t, ctx, "kube_node_status_capacity_memory_bytes", ResourceTypeNode)
+}
+
+func TestNodeStatusCapacityCpuCoresMetricUID(t *testing.T) {
+	ctx := NewTestContext()
+	testSingleMetric(t, ctx, "kube_node_status_capacity_cpu_cores", ResourceTypeNode)
+}
+
+func TestNodeStatusAllocatableMetricUID(t *testing.T) {
+	ctx := NewTestContext()
+	testSingleMetric(t, ctx, "kube_node_status_allocatable", ResourceTypeNode)
+}
+
+func TestNodeStatusAllocatableCpuCoresMetricUID(t *testing.T) {
+	ctx := NewTestContext()
+	testSingleMetric(t, ctx, "kube_node_status_allocatable_cpu_cores", ResourceTypeNode)
+}
+
+func TestNodeStatusAllocatableMemoryBytesMetricUID(t *testing.T) {
+	ctx := NewTestContext()
+	testSingleMetric(t, ctx, "kube_node_status_allocatable_memory_bytes", ResourceTypeNode)
+}
+
+func TestNodeLabelsMetricUID(t *testing.T) {
+	ctx := NewTestContext()
+	testSingleMetric(t, ctx, "kube_node_labels", ResourceTypeNode)
+}
+
+func TestNodeStatusConditionMetricUID(t *testing.T) {
+	ctx := NewTestContext()
+	testSingleMetric(t, ctx, "kube_node_status_condition", ResourceTypeNode)
+}
+
+// PersistentVolumeClaim Metrics Tests
+func TestPVCResourceRequestsStorageBytesMetricUID(t *testing.T) {
+	ctx := NewTestContext()
+	testSingleMetric(t, ctx, "kube_persistentvolumeclaim_resource_requests_storage_bytes", ResourceTypePersistentVolumeClaim)
+}
+
+func TestPVCInfoMetricUID(t *testing.T) {
+	ctx := NewTestContext()
+	testSingleMetric(t, ctx, "kube_persistentvolumeclaim_info", ResourceTypePersistentVolumeClaim)
+}
+
+// PersistentVolume Metrics Tests
+func TestPVCapacityBytesMetricUID(t *testing.T) {
+	ctx := NewTestContext()
+	testSingleMetric(t, ctx, "kube_persistentvolume_capacity_bytes", ResourceTypePersistentVolume)
+}
+
+func TestPVStatusPhaseMetricUID(t *testing.T) {
+	ctx := NewTestContext()
+	testSingleMetric(t, ctx, "kube_persistentvolume_status_phase", ResourceTypePersistentVolume)
+}
+
+func TestKubecostPVInfoMetricUID(t *testing.T) {
+	ctx := NewTestContext()
+	testSingleMetric(t, ctx, "kubecost_pv_info", ResourceTypePersistentVolume)
+}
+
+// Service Metrics Tests
+func TestServiceSelectorLabelsMetricUID(t *testing.T) {
+	ctx := NewTestContext()
+	testSingleMetric(t, ctx, "service_selector_labels", ResourceTypeService)
+}
+
+// StatefulSet Metrics Tests
+func TestStatefulSetMatchLabelsMetricUID(t *testing.T) {
+	ctx := NewTestContext()
+	testSingleMetric(t, ctx, "statefulSet_match_labels", ResourceTypeStatefulSet)
+}
+
+
+// TestAllMetricsUIDVerification runs UID verification for every individual metric
+// This provides the most granular test reporting
+func TestAllMetricsUIDVerification(t *testing.T) {
+	ctx := NewTestContext()
+
+	for metric, resourceType := range metricToResourceType {
+		t.Run(metric, func(t *testing.T) {
+			testSingleMetric(t, ctx, metric, resourceType)
+		})
 	}
-	testResourceUIDVerification(t, "nodes", nodeMetrics)
 }
 
-// TestPersistentVolumeUIDVerification tests that PVs have valid UIDs in its metrics
-func TestPersistentVolumeUIDVerification(t *testing.T) {
-	pvMetrics := []string{"kube_persistentvolume_capacity_bytes",
-		"kube_persistentvolume_status_phase", "kubecost_pv_info"}
-	testResourceUIDVerification(t, "persistent volumes", pvMetrics)
-}
-
-// TestPersistentVolumeClaimUIDVerification tests that PVCs have valid UIDs in its metrics
-func TestPersistentVolumeClaimUIDVerification(t *testing.T) {
-	pvcMetrics := []string{"kube_persistentvolumeclaim_resource_requests_storage_bytes",
-		"kube_persistentvolumeclaim_info"}
-	testResourceUIDVerification(t, "persistent volume claims", pvcMetrics)
-}
-
-// TestJobUIDVerification tests that jobs have valid UIDs in its metrics
-func TestJobUIDVerification(t *testing.T) {
-	jobMetrics := []string{"kube_job_status_failed"}
-	testResourceUIDVerification(t, "jobs", jobMetrics)
-}
