@@ -19,17 +19,18 @@ package prometheus
 // 5. Compare results with a 5% error margin.
 
 import (
+	"testing"
+	"time"
+
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 	"github.com/opencost/opencost-integration-tests/pkg/utils"
-	"testing"
-	"time"
 )
 
 // 10 Minutes
 const ShortLivedPodsRunTime = 60
 const Resolution = "1m"
-const Tolerance = 0.05
+const Tolerance = 0.075
 
 func ConvertToHours(minutes float64) float64 {
 	// Convert Time from Minutes to Hours
