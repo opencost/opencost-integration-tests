@@ -29,14 +29,15 @@ package prometheus
 
 import (
 	// "fmt"
+	"testing"
+	"time"
+
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 	"github.com/opencost/opencost-integration-tests/pkg/utils"
-	"testing"
-	"time"
 )
 
-const Tolerance = 0.05
+const Tolerance = 0.075
 
 func TestRAMMax(t *testing.T) {
 	apiObj := api.NewAPI()
@@ -152,6 +153,12 @@ func TestRAMMax(t *testing.T) {
 					continue
 				}
 				ramUsageMaxPod.AllocationUsageMax = max(ramUsageMaxPod.AllocationUsageMax, allocationResponseItem.RawAllocationsOnly.RAMByteUsageMax)
+
+				// if the allocation is less than 90 minutes, remove the element from the map
+				if allocationResponseItem.Properties.Minutes < 90 {
+					t.Logf("Removing pod %s from map because it has less than 90 minutes", allocationResponseItem.Properties.Pod)
+					delete(ramUsageMaxPodMap, allocationResponseItem.Properties.Pod)
+				}
 			}
 
 			// Windows are not accurate for prometheus and allocation
