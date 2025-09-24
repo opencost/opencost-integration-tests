@@ -123,6 +123,7 @@ func TestRAMMax(t *testing.T) {
 					continue
 				}
 				ramUsageMaxPod.PrometheusUsageMax = max(ramUsageMaxPod.PrometheusUsageMax, promResponseItem.Value.Value)
+
 			}
 
 			/////////////////////////////////////////////
@@ -155,10 +156,10 @@ func TestRAMMax(t *testing.T) {
 				ramUsageMaxPod.AllocationUsageMax = max(ramUsageMaxPod.AllocationUsageMax, allocationResponseItem.RawAllocationsOnly.RAMByteUsageMax)
 
 				// if the allocation is less than 90 minutes, remove the element from the map
-				if allocationResponseItem.Start.Add(90 * time.Minute).After(time.Now().UTC()) {
-					t.Logf("Removing pod %s from map because it has less than 90 minutes", allocationResponseItem.Properties.Pod)
-					delete(ramUsageMaxPodMap, allocationResponseItem.Properties.Pod)
-				}
+				// if allocationResponseItem.Start.Add(90 * time.Minute).After(time.Now()) {
+				// 	t.Logf("Removing pod %s from map because it has less than 90 minutes", allocationResponseItem.Properties.Pod)
+				// 	delete(ramUsageMaxPodMap, allocationResponseItem.Properties.Pod)
+				// }
 			}
 
 			// Windows are not accurate for prometheus and allocation
