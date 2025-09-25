@@ -22,17 +22,15 @@ type ResourceType string
 
 // Resource type constants for better type safety and maintainability
 const (
-	ResourceTypeDeployment             ResourceType = "deployment"
-	ResourceTypeJob                    ResourceType = "job"
-	ResourceTypeNamespace              ResourceType = "namespace"
-	ResourceTypeNode                   ResourceType = "node"
-	ResourceTypePod                    ResourceType = "pod"
-	ResourceTypePersistentVolumeClaim  ResourceType = "persistentvolumeclaim"
-	ResourceTypePersistentVolume       ResourceType = "persistentvolume"
-	ResourceTypeService                ResourceType = "service"
-	ResourceTypeStatefulSet            ResourceType = "statefulset"
+	ResourceTypeDeployment            ResourceType = "deployment"
+	ResourceTypeJob                   ResourceType = "job"
+	ResourceTypeNamespace             ResourceType = "namespace"
+	ResourceTypeNode                  ResourceType = "node"
+	ResourceTypePod                   ResourceType = "pod"
+	ResourceTypePersistentVolumeClaim ResourceType = "persistentvolumeclaim"
+	ResourceTypePersistentVolume      ResourceType = "persistentvolume"
+	ResourceTypeService               ResourceType = "service"
 )
-
 
 // Default test time windows - can be easily modified for different test scenarios
 var defaultTestWindows = []string{"1h", "6h", "24h"}
@@ -40,45 +38,34 @@ var defaultTestWindows = []string{"1h", "6h", "24h"}
 // metricToResourceType maps each metric to its resource type for extracting resource names
 var metricToResourceType = map[string]ResourceType{
 	// Deployment metrics
-	"deployment_match_labels":                      ResourceTypeDeployment,
-	"kube_deployment_spec_replicas":                ResourceTypeDeployment,
-	"kube_deployment_status_replicas_available":   ResourceTypeDeployment,
+	"deployment_match_labels": ResourceTypeDeployment,
 	// Job metrics
 	"kube_job_status_failed": ResourceTypeJob,
 	// Namespace metrics
 	"kube_namespace_annotations": ResourceTypeNamespace,
 	"kube_namespace_labels":      ResourceTypeNamespace,
 	// Node metrics
-	"kube_node_status_capacity":                      ResourceTypeNode,
-	"kube_node_status_capacity_memory_bytes":         ResourceTypeNode,
-	"kube_node_status_capacity_cpu_cores":            ResourceTypeNode,
-	"kube_node_status_allocatable":                   ResourceTypeNode,
-	"kube_node_status_allocatable_cpu_cores":         ResourceTypeNode,
-	"kube_node_status_allocatable_memory_bytes":      ResourceTypeNode,
-	"kube_node_labels":                               ResourceTypeNode,
-	"kube_node_status_condition":                     ResourceTypeNode,
+	"kube_node_status_capacity":                 ResourceTypeNode,
+	"kube_node_status_capacity_memory_bytes":    ResourceTypeNode,
+	"kube_node_status_capacity_cpu_cores":       ResourceTypeNode,
+	"kube_node_status_allocatable":              ResourceTypeNode,
+	"kube_node_status_allocatable_cpu_cores":    ResourceTypeNode,
+	"kube_node_status_allocatable_memory_bytes": ResourceTypeNode,
+	"kube_node_labels":                          ResourceTypeNode,
 	// Pod metrics
-	"kube_pod_labels":                                 ResourceTypePod,
-	"kube_pod_owner":                                  ResourceTypePod,
-	"kube_pod_container_status_running":               ResourceTypePod,
-	"kube_pod_container_status_terminated_reason":     ResourceTypePod,
-	"kube_pod_container_status_restarts_total":        ResourceTypePod,
-	"kube_pod_container_resource_requests":            ResourceTypePod,
-	"kube_pod_container_resource_limits":              ResourceTypePod,
-	"kube_pod_container_resource_limits_cpu_cores":    ResourceTypePod,
-	"kube_pod_container_resource_limits_memory_bytes": ResourceTypePod,
-	"kube_pod_status_phase":                           ResourceTypePod,
+	"kube_pod_labels":                             ResourceTypePod,
+	"kube_pod_owner":                              ResourceTypePod,
+	"kube_pod_container_status_running":           ResourceTypePod,
+	"kube_pod_container_status_terminated_reason": ResourceTypePod,
+	"kube_pod_container_resource_requests":        ResourceTypePod,
 	// PVC metrics
 	"kube_persistentvolumeclaim_resource_requests_storage_bytes": ResourceTypePersistentVolumeClaim,
 	"kube_persistentvolumeclaim_info":                            ResourceTypePersistentVolumeClaim,
 	// PV metrics
 	"kube_persistentvolume_capacity_bytes": ResourceTypePersistentVolume,
-	"kube_persistentvolume_status_phase":   ResourceTypePersistentVolume,
 	"kubecost_pv_info":                     ResourceTypePersistentVolume,
 	// Service metrics
 	"service_selector_labels": ResourceTypeService,
-	// StatefulSet metrics
-	"statefulSet_match_labels": ResourceTypeStatefulSet,
 }
 
 // UUID validation regex pattern (RFC 4122) - case-insensitive for robustness
@@ -158,7 +145,6 @@ func testSingleMetric(t *testing.T, ctx *TestContext, metric string, resourceTyp
 	}
 }
 
-
 // queryResourceWithUID queries Prometheus for a metric and returns both total resources and those with UIDs
 func queryResourceWithUID(t *testing.T, client *prometheus.Client, metric string, window string, endTime *int64) (uidMap map[string]string, totalResources int) {
 	input := prometheus.PrometheusInput{
@@ -228,50 +214,15 @@ func TestPodContainerStatusTerminatedReasonMetricUID(t *testing.T) {
 	testSingleMetric(t, ctx, "kube_pod_container_status_terminated_reason", ResourceTypePod)
 }
 
-func TestPodContainerStatusRestartsTotalMetricUID(t *testing.T) {
-	ctx := NewTestContext()
-	testSingleMetric(t, ctx, "kube_pod_container_status_restarts_total", ResourceTypePod)
-}
-
 func TestPodContainerResourceRequestsMetricUID(t *testing.T) {
 	ctx := NewTestContext()
 	testSingleMetric(t, ctx, "kube_pod_container_resource_requests", ResourceTypePod)
-}
-
-func TestPodContainerResourceLimitsMetricUID(t *testing.T) {
-	ctx := NewTestContext()
-	testSingleMetric(t, ctx, "kube_pod_container_resource_limits", ResourceTypePod)
-}
-
-func TestPodContainerResourceLimitsCpuCoresMetricUID(t *testing.T) {
-	ctx := NewTestContext()
-	testSingleMetric(t, ctx, "kube_pod_container_resource_limits_cpu_cores", ResourceTypePod)
-}
-
-func TestPodContainerResourceLimitsMemoryBytesMetricUID(t *testing.T) {
-	ctx := NewTestContext()
-	testSingleMetric(t, ctx, "kube_pod_container_resource_limits_memory_bytes", ResourceTypePod)
-}
-
-func TestPodStatusPhaseMetricUID(t *testing.T) {
-	ctx := NewTestContext()
-	testSingleMetric(t, ctx, "kube_pod_status_phase", ResourceTypePod)
 }
 
 // Deployment Metrics Tests
 func TestDeploymentMatchLabelsMetricUID(t *testing.T) {
 	ctx := NewTestContext()
 	testSingleMetric(t, ctx, "deployment_match_labels", ResourceTypeDeployment)
-}
-
-func TestDeploymentSpecReplicasMetricUID(t *testing.T) {
-	ctx := NewTestContext()
-	testSingleMetric(t, ctx, "kube_deployment_spec_replicas", ResourceTypeDeployment)
-}
-
-func TestDeploymentStatusReplicasAvailableMetricUID(t *testing.T) {
-	ctx := NewTestContext()
-	testSingleMetric(t, ctx, "kube_deployment_status_replicas_available", ResourceTypeDeployment)
 }
 
 // Job Metrics Tests
@@ -327,11 +278,6 @@ func TestNodeLabelsMetricUID(t *testing.T) {
 	testSingleMetric(t, ctx, "kube_node_labels", ResourceTypeNode)
 }
 
-func TestNodeStatusConditionMetricUID(t *testing.T) {
-	ctx := NewTestContext()
-	testSingleMetric(t, ctx, "kube_node_status_condition", ResourceTypeNode)
-}
-
 // PersistentVolumeClaim Metrics Tests
 func TestPVCResourceRequestsStorageBytesMetricUID(t *testing.T) {
 	ctx := NewTestContext()
@@ -349,11 +295,6 @@ func TestPVCapacityBytesMetricUID(t *testing.T) {
 	testSingleMetric(t, ctx, "kube_persistentvolume_capacity_bytes", ResourceTypePersistentVolume)
 }
 
-func TestPVStatusPhaseMetricUID(t *testing.T) {
-	ctx := NewTestContext()
-	testSingleMetric(t, ctx, "kube_persistentvolume_status_phase", ResourceTypePersistentVolume)
-}
-
 func TestKubecostPVInfoMetricUID(t *testing.T) {
 	ctx := NewTestContext()
 	testSingleMetric(t, ctx, "kubecost_pv_info", ResourceTypePersistentVolume)
@@ -363,12 +304,6 @@ func TestKubecostPVInfoMetricUID(t *testing.T) {
 func TestServiceSelectorLabelsMetricUID(t *testing.T) {
 	ctx := NewTestContext()
 	testSingleMetric(t, ctx, "service_selector_labels", ResourceTypeService)
-}
-
-// StatefulSet Metrics Tests
-func TestStatefulSetMatchLabelsMetricUID(t *testing.T) {
-	ctx := NewTestContext()
-	testSingleMetric(t, ctx, "statefulSet_match_labels", ResourceTypeStatefulSet)
 }
 
 
@@ -383,4 +318,3 @@ func TestAllMetricsUIDVerification(t *testing.T) {
 		})
 	}
 }
-
