@@ -94,3 +94,11 @@ teardown() {
 }
 
 # ------------------------------------------------------
+
+# ------------------------------------------------------
+# UID Verification Tests
+@test "prometheus: UID Verification for all k8s objects" {
+    go test ./test/integration/prometheus/uid_verification_test.go
+}
+
+# ------------------------------------------------------
