@@ -76,6 +76,12 @@ func validateUID(uid string) bool {
 	return uuidPattern.MatchString(uid)
 }
 
+// isEphemeralResource checks if a resource type is ephemeral (can be recreated/restarted)
+// Ephemeral resources may have different UIDs across time windows due to recreation
+func isEphemeralResource(resourceType ResourceType) bool {
+	return resourceType == ResourceTypePod
+}
+
 // TestContext holds shared resources for UID verification tests
 type TestContext struct {
 	Client  *prometheus.Client
@@ -94,13 +100,21 @@ func NewTestContext() *TestContext {
 }
 
 // testSingleMetric tests UID verification for a single metric across multiple time windows
+// For ephemeral resources (pods), only validates UID presence and format
+// For stable resources, also validates UID consistency across time windows
 func testSingleMetric(t *testing.T, ctx *TestContext, metric string, resourceType ResourceType) {
 	log.Infof("Testing metric: %s (%s)", metric, resourceType)
 
 	resourcesWithUIDs := make(map[string]string)
+	allResourceUIDs := make(map[string][]string) // For ephemeral resources, collect all UIDs per resource
 	totalResourcesFound := 0
 	hasValidResources := false
 	invalidUIDCount := 0
+	isEphemeral := isEphemeralResource(resourceType)
+
+	if isEphemeral {
+		log.Infof("Resource type %s is ephemeral, skipping cross-window UID consistency checks", resourceType)
+	}
 
 	// Test across all time windows
 	for _, window := range ctx.Windows {
@@ -111,26 +125,53 @@ func testSingleMetric(t *testing.T, ctx *TestContext, metric string, resourceTyp
 			totalResourcesFound += totalResources
 		}
 
-		// Merge UIDs from this window, checking for consistency
+		// Handle UIDs differently for ephemeral vs stable resources
 		for resourceName, uid := range uidMap {
-			if existingUID, exists := resourcesWithUIDs[resourceName]; exists {
-				if existingUID != uid {
-					t.Errorf("UID mismatch for %s %s in metric %s: %s vs %s (window: %s)",
-						resourceType, resourceName, metric, existingUID, uid, window)
+			if isEphemeral {
+				// For ephemeral resources, collect all UIDs but don't enforce consistency
+				if _, exists := allResourceUIDs[resourceName]; !exists {
+					allResourceUIDs[resourceName] = []string{}
+					resourcesWithUIDs[resourceName] = uid // Keep the first UID for format validation
 				}
+				allResourceUIDs[resourceName] = append(allResourceUIDs[resourceName], uid)
 			} else {
-				resourcesWithUIDs[resourceName] = uid
+				// For stable resources, enforce UID consistency across windows
+				if existingUID, exists := resourcesWithUIDs[resourceName]; exists {
+					if existingUID != uid {
+						t.Errorf("UID mismatch for %s %s in metric %s: %s vs %s (window: %s)",
+							resourceType, resourceName, metric, existingUID, uid, window)
+					}
+				} else {
+					resourcesWithUIDs[resourceName] = uid
+				}
 			}
 		}
 	}
 
-	// Validate UID formats
+	// Validate UID formats for all resources
 	for resourceName, uid := range resourcesWithUIDs {
 		if !validateUID(uid) {
 			t.Errorf("Invalid UID format for %s %s in metric %s: %s",
 				resourceType, resourceName, metric, uid)
 			invalidUIDCount++
 		}
+	}
+
+	// Additional validation for ephemeral resources
+	if isEphemeral {
+		uniqueUIDs := 0
+		totalUIDs := 0
+		for resourceName, uids := range allResourceUIDs {
+			uniqueUIDSet := make(map[string]bool)
+			for _, uid := range uids {
+				uniqueUIDSet[uid] = true
+				totalUIDs++
+			}
+			uniqueUIDs += len(uniqueUIDSet)
+			log.Infof("Ephemeral resource %s %s: %d unique UIDs across %d observations",
+				resourceType, resourceName, len(uniqueUIDSet), len(uids))
+		}
+		log.Infof("Ephemeral resources summary: %d unique UIDs across %d total observations", uniqueUIDs, totalUIDs)
 	}
 
 	// Report results
