@@ -1,7 +1,6 @@
 package prometheus
 
 import (
-	"github.com/opencost/opencost-integration-tests/pkg/utils"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -11,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/opencost/opencost-integration-tests/pkg/utils"
 )
 
 const (
@@ -59,6 +60,15 @@ type PrometheusResponse struct {
 	} `json:"data"`
 }
 
+type KubernetesResources struct {
+	Deployment  string `json:"deployment"`
+	StatefulSet string `json:"statefulset"`
+	Service     string `json:"service"`
+	JobName     string `json:"job_name"`
+	ReplicaSet  string `json:"replicaset"`
+	DaemonSet   string `json:"daemonset"`
+}
+
 type Metric struct {
 	Pod       string `json:"pod"`
 	UID       string `json:"uid"`
@@ -67,7 +77,7 @@ type Metric struct {
 
 	PersistentVolume      string `json:"persistentvolume"`
 	PersistentVolumeClaim string `json:"persistentvolumeclaim"`
-	StorageClass 		  string `json:"storageclass"`
+	StorageClass          string `json:"storageclass"`
 
 	Node         string `json:"node"`
 	Instance     string `json:"instance"`
@@ -78,13 +88,16 @@ type Metric struct {
 	IngressIP   string `json:"ingress_ip"`
 
 	// GPU Specific Fields (Optional Result)
-	Device     string `json:"device`
-	ModelName  string `json:"modelName`
+	Device     string `json:"device"`
+	ModelName  string `json:"modelName"`
 	UUID       string `json:"UUID"`
 	ProviderID string `json:"provider_id"`
 
 	// PersistentVolume Specific
 	VolumeName string `json:"volumename"`
+
+	// Kubernetes Resources
+	KubernetesResources KubernetesResources `json:"kubernetes_resources"`
 
 	// Labels will capture all fields that start with "label_" from the Prometheus metric.
 	// The `label_` prefix will be removed from the key when stored here.
@@ -94,6 +107,152 @@ type Metric struct {
 	// UnhandledFields will capture any other fields that are not explicitly defined
 	// and do not start with "label_".
 	UnhandledFields map[string]string `json:"-"` // Use json:"-" to prevent default unmarshaling
+}
+
+// ToString returns a string representation of all non-empty fields in the metric
+func (m *Metric) ToString() string {
+	var parts []string
+
+	if m.Pod != "" {
+		parts = append(parts, fmt.Sprintf("pod=%s", m.Pod))
+	}
+	if m.UID != "" {
+		parts = append(parts, fmt.Sprintf("uid=%s", m.UID))
+	}
+	if m.Namespace != "" {
+		parts = append(parts, fmt.Sprintf("namespace=%s", m.Namespace))
+	}
+	if m.Container != "" {
+		parts = append(parts, fmt.Sprintf("container=%s", m.Container))
+	}
+	if m.PersistentVolume != "" {
+		parts = append(parts, fmt.Sprintf("persistentvolume=%s", m.PersistentVolume))
+	}
+	if m.PersistentVolumeClaim != "" {
+		parts = append(parts, fmt.Sprintf("persistentvolumeclaim=%s", m.PersistentVolumeClaim))
+	}
+	if m.StorageClass != "" {
+		parts = append(parts, fmt.Sprintf("storageclass=%s", m.StorageClass))
+	}
+	if m.Node != "" {
+		parts = append(parts, fmt.Sprintf("node=%s", m.Node))
+	}
+	if m.Instance != "" {
+		parts = append(parts, fmt.Sprintf("instance=%s", m.Instance))
+	}
+	if m.InstanceType != "" {
+		parts = append(parts, fmt.Sprintf("instance_type=%s", m.InstanceType))
+	}
+	if m.ServiceName != "" {
+		parts = append(parts, fmt.Sprintf("service_name=%s", m.ServiceName))
+	}
+	if m.IngressIP != "" {
+		parts = append(parts, fmt.Sprintf("ingress_ip=%s", m.IngressIP))
+	}
+	if m.Device != "" {
+		parts = append(parts, fmt.Sprintf("device=%s", m.Device))
+	}
+	if m.ModelName != "" {
+		parts = append(parts, fmt.Sprintf("modelName=%s", m.ModelName))
+	}
+	if m.UUID != "" {
+		parts = append(parts, fmt.Sprintf("UUID=%s", m.UUID))
+	}
+	if m.ProviderID != "" {
+		parts = append(parts, fmt.Sprintf("provider_id=%s", m.ProviderID))
+	}
+	if m.VolumeName != "" {
+		parts = append(parts, fmt.Sprintf("volumename=%s", m.VolumeName))
+	}
+	if m.KubernetesResources.Deployment != "" {
+		parts = append(parts, fmt.Sprintf("deployment=%s", m.KubernetesResources.Deployment))
+	}
+	if m.KubernetesResources.StatefulSet != "" {
+		parts = append(parts, fmt.Sprintf("statefulset=%s", m.KubernetesResources.StatefulSet))
+	}
+	if m.KubernetesResources.Service != "" {
+		parts = append(parts, fmt.Sprintf("service=%s", m.KubernetesResources.Service))
+	}
+	if m.KubernetesResources.JobName != "" {
+		parts = append(parts, fmt.Sprintf("job_name=%s", m.KubernetesResources.JobName))
+	}
+	if m.KubernetesResources.ReplicaSet != "" {
+		parts = append(parts, fmt.Sprintf("replicaset=%s", m.KubernetesResources.ReplicaSet))
+	}
+	if m.KubernetesResources.DaemonSet != "" {
+		parts = append(parts, fmt.Sprintf("daemonset=%s", m.KubernetesResources.DaemonSet))
+	}
+
+	for k, v := range m.Labels {
+		if v != "" {
+			parts = append(parts, fmt.Sprintf("label_%s=%s", k, v))
+		}
+	}
+
+	for k, v := range m.Annotations {
+		if v != "" {
+			parts = append(parts, fmt.Sprintf("annotation_%s=%s", k, v))
+		}
+	}
+
+	for k, v := range m.UnhandledFields {
+		if v != "" {
+			parts = append(parts, fmt.Sprintf("%s=%s", k, v))
+		}
+	}
+
+	return strings.Join(parts, ", ")
+}
+
+// GetResourceName returns the resource name for a given resource type, with namespace if namespace-scoped
+func (m *Metric) GetResourceName(resourceType string) string {
+	switch resourceType {
+	case "deployment":
+		if m.KubernetesResources.Deployment != "" && m.Namespace != "" {
+			return fmt.Sprintf("%s/%s", m.Namespace, m.KubernetesResources.Deployment)
+		}
+	case "statefulset":
+		if m.KubernetesResources.StatefulSet != "" && m.Namespace != "" {
+			return fmt.Sprintf("%s/%s", m.Namespace, m.KubernetesResources.StatefulSet)
+		}
+	case "service":
+		if m.KubernetesResources.Service != "" && m.Namespace != "" {
+			return fmt.Sprintf("%s/%s", m.Namespace, m.KubernetesResources.Service)
+		}
+	case "job":
+		if m.KubernetesResources.JobName != "" && m.Namespace != "" {
+			return fmt.Sprintf("%s/%s", m.Namespace, m.KubernetesResources.JobName)
+		}
+	case "replicaset":
+		if m.KubernetesResources.ReplicaSet != "" && m.Namespace != "" {
+			return fmt.Sprintf("%s/%s", m.Namespace, m.KubernetesResources.ReplicaSet)
+		}
+	case "daemonset":
+		if m.KubernetesResources.DaemonSet != "" && m.Namespace != "" {
+			return fmt.Sprintf("%s/%s", m.Namespace, m.KubernetesResources.DaemonSet)
+		}
+	case "pod":
+		if m.Pod != "" && m.Namespace != "" {
+			return fmt.Sprintf("%s/%s", m.Namespace, m.Pod)
+		}
+	case "namespace":
+		if m.Namespace != "" {
+			return m.Namespace // cluster-scoped
+		}
+	case "node":
+		if m.Node != "" {
+			return m.Node // cluster-scoped
+		}
+	case "persistentvolume":
+		if m.PersistentVolume != "" {
+			return m.PersistentVolume // cluster-scoped
+		}
+	case "persistentvolumeclaim":
+		if m.PersistentVolumeClaim != "" && m.Namespace != "" {
+			return fmt.Sprintf("%s/%s", m.Namespace, m.PersistentVolumeClaim)
+		}
+	}
+	return ""
 }
 
 // This allows us to parse known fields directly and dynamic 'label_' fields into a map.
@@ -156,8 +315,20 @@ func (m *Metric) UnmarshalJSON(data []byte) error {
 			m.ProviderID = strVal
 		case "UUID": // Case-sensitive match for "UUID"
 			m.UUID = strVal
-		case "volumename": // Case-sensitive match for "UUID"
+		case "volumename": // Case-sensitive match for "VolumeName"
 			m.VolumeName = strVal
+		case "deployment":
+			m.KubernetesResources.Deployment = strVal
+		case "statefulset":
+			m.KubernetesResources.StatefulSet = strVal
+		case "service":
+			m.KubernetesResources.Service = strVal
+		case "job_name":
+			m.KubernetesResources.JobName = strVal
+		case "replicaset":
+			m.KubernetesResources.ReplicaSet = strVal
+		case "daemonset":
+			m.KubernetesResources.DaemonSet = strVal
 		default:
 			// If the key is not one of the explicitly defined fields,
 			// check if it starts with "label_"
