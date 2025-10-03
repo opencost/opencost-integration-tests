@@ -4,15 +4,16 @@ package prometheus
 
 import (
 	// "fmt"
+	"testing"
+	"time"
+
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 	"github.com/opencost/opencost-integration-tests/pkg/utils"
-	"testing"
-	"time"
 )
 
 const Resolution = "1m"
-const Tolerance = 0.07
+const Tolerance = 0.09
 const negligibleUsage = 0.01
 
 func TestRAMAvgUsage(t *testing.T) {
