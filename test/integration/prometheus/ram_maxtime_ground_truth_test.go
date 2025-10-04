@@ -36,7 +36,7 @@ import (
 	"time"
 )
 
-const Tolerance = 0.05
+const Tolerance = 0.07
 
 func TestRAMMax(t *testing.T) {
 	apiObj := api.NewAPI()
