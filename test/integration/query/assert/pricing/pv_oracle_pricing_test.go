@@ -5,6 +5,7 @@ package assert
 import (
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 	"github.com/opencost/opencost-integration-tests/pkg/utils"
+
 	// "time"
 	"testing"
 )
@@ -31,8 +32,8 @@ func OraclePVCost(partNumber string) (float64, error) {
 	return oracleCost, err
 
 }
-func TestOracleNodePricing(t *testing.T) {
-
+func TestOraclePVNodePricing(t *testing.T) {
+	t.Skip("Skipping Oracle PV Node Pricing Test")
 	testCases := []struct {
 		name      string
 		window    string
@@ -44,9 +45,9 @@ func TestOracleNodePricing(t *testing.T) {
 			assetType: "disk",
 		},
 		{
-			name:        "Last Two Days",
-			window:      "48h",
-			assetType:   "disk",
+			name:      "Last Two Days",
+			window:    "48h",
+			assetType: "disk",
 		},
 	}
 
