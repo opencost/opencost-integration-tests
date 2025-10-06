@@ -33,7 +33,7 @@ func OraclePVCost(partNumber string) (float64, error) {
 
 }
 func TestOraclePVNodePricing(t *testing.T) {
-	t.Skip("Skipping Oracle PV Node Pricing Test")
+
 	testCases := []struct {
 		name      string
 		window    string

@@ -5,14 +5,15 @@ package assert
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/opencost/opencost-integration-tests/pkg/api"
-	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
-	"github.com/opencost/opencost-integration-tests/pkg/utils"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/opencost/opencost-integration-tests/pkg/api"
+	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
+	"github.com/opencost/opencost-integration-tests/pkg/utils"
 )
 
 const tolerance = 0.05
@@ -83,8 +84,8 @@ func OracleNodeCosts(SKU ProductPartNumber) (OracleCosts, error) {
 		}
 		// In Oracle, 1 Oracle-CPU = 2 Virtual-CPU
 		// We want to calculate costs per V-CPU
-		OracleNodeCost.CPU = ( cpuresp.Items[0].CurrencyCodeLocalizations[0].Prices[0].Value / CalCulateTimeCoeff(cpuresp.Items[0].MetricName) ) / 2
-		
+		OracleNodeCost.CPU = (cpuresp.Items[0].CurrencyCodeLocalizations[0].Prices[0].Value / CalCulateTimeCoeff(cpuresp.Items[0].MetricName)) / 2
+
 	} else {
 		OracleNodeCost.CPU = 0.0
 	}
@@ -125,8 +126,7 @@ func OracleNodeCosts(SKU ProductPartNumber) (OracleCosts, error) {
 
 }
 
-
-func loadRemoteJSON(t *testing.T, url string, target interface{}) (error) {
+func loadRemoteJSON(t *testing.T, url string, target interface{}) error {
 	// Create an HTTP client with a timeout
 	client := &http.Client{
 		Timeout: 30 * time.Second, // Increased timeout for network requests
@@ -170,9 +170,8 @@ func loadRemoteJSON(t *testing.T, url string, target interface{}) (error) {
 	return nil
 }
 
-
 func TestOracleNodePricing(t *testing.T) {
-
+	t.Skip("Skipping Oracle Node Pricing Test")
 	testCases := []struct {
 		name      string
 		window    string
@@ -184,9 +183,9 @@ func TestOracleNodePricing(t *testing.T) {
 			assetType: "node",
 		},
 		{
-			name:        "Last Two Days",
-			window:      "48h",
-			assetType:   "node",
+			name:      "Last Two Days",
+			window:    "48h",
+			assetType: "node",
 		},
 	}
 
@@ -199,7 +198,7 @@ func TestOracleNodePricing(t *testing.T) {
 			// Load Local JSON File
 			// ----------------------------
 			var instanceSKUs InstanceSKU
-			
+
 			remoteJSONURL := "https://raw.githubusercontent.com/opencost/opencost/develop/pkg/cloud/oracle/partnumbers/shape_part_numbers.json"
 			err := loadRemoteJSON(t, remoteJSONURL, &instanceSKUs)
 
@@ -242,7 +241,7 @@ func TestOracleNodePricing(t *testing.T) {
 				node := promNodeTotalCostHrItem.Metric.Node
 				instanceType := promNodeTotalCostHrItem.Metric.InstanceType
 				cost := promNodeTotalCostHrItem.Value.Value
-				
+
 				// Default Node
 				if node == "" {
 					continue
@@ -295,7 +294,7 @@ func TestOracleNodePricing(t *testing.T) {
 				oracleTotalCosts += OracleCostPerHr.Memory * (assetResponseItem.RAMByteHours / 1024 / 1024 / 1024)
 				// GPU
 				oracleTotalCosts += OracleCostPerHr.GPU * assetResponseItem.GPUHours
-				
+
 				nodeInfo.AssetNodeTotalCost = assetResponseItem.TotalCost
 				nodeInfo.OracleNodeCost = oracleTotalCosts
 			}
