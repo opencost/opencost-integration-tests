@@ -4,13 +4,14 @@ package allocation
 // Check Pod Labels from API Match results from Promethues
 
 import (
-	"github.com/opencost/opencost-integration-tests/pkg/api"
-	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 	"testing"
 	"time"
+
+	"github.com/opencost/opencost-integration-tests/pkg/api"
+	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 )
 
-func TestLabels(t *testing.T) {
+func TestPodLabels(t *testing.T) {
 	apiObj := api.NewAPI()
 
 	testCases := []struct {
@@ -64,7 +65,6 @@ func TestLabels(t *testing.T) {
 				// filter the ones that are running because allocation filters for that
 				podRunningStatus[pod] = runningStatus
 			}
-
 
 			// -------------------------------
 			// Pod Labels

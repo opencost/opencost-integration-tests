@@ -4,13 +4,14 @@ package allocation
 // Check Namespace Annotations from API Match results from Promethues
 
 import (
-	"github.com/opencost/opencost-integration-tests/pkg/api"
-	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 	"testing"
 	"time"
+
+	"github.com/opencost/opencost-integration-tests/pkg/api"
+	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 )
 
-func TestAnnotations(t *testing.T) {
+func TestNamespaceAnnotations(t *testing.T) {
 	apiObj := api.NewAPI()
 
 	testCases := []struct {
@@ -62,7 +63,7 @@ func TestAnnotations(t *testing.T) {
 
 			// Store Results in a NamespaceMap
 			type NamespaceData struct {
-				Namespace   string
+				Namespace        string
 				PromAnnotations  map[string]string
 				AllocAnnotations map[string]string
 			}
@@ -75,7 +76,7 @@ func TestAnnotations(t *testing.T) {
 				annotations := promannotation.Metric.Annotations
 
 				namespaceMap[namespace] = &NamespaceData{
-					Namespace:  namespace,
+					Namespace:       namespace,
 					PromAnnotations: annotations,
 				}
 			}
@@ -98,7 +99,7 @@ func TestAnnotations(t *testing.T) {
 			// Store Allocation namespace Annotation Results
 			for namespace, allocationResponseItem := range apiResponse.Data[0] {
 				namespaceAnnotations, ok := namespaceMap[namespace]
-				if !ok  && allocationResponseItem.Properties.NamespaceAnnotations == nil {
+				if !ok && allocationResponseItem.Properties.NamespaceAnnotations == nil {
 					t.Logf("[Skipped] - No Annotations for Namespace: %s", namespace)
 					continue
 				}
@@ -129,7 +130,7 @@ func TestAnnotations(t *testing.T) {
 					}
 				}
 			}
-			if ! seenAnnotations {
+			if !seenAnnotations {
 				t.Fatalf("No Namespace Annotations")
 			}
 		})

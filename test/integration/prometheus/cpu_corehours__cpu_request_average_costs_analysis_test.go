@@ -19,18 +19,19 @@ package prometheus
 // 5. Compare results with a 5% error margin.
 
 import (
+	"testing"
+	"time"
+
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 	"github.com/opencost/opencost-integration-tests/pkg/utils"
-	"testing"
-	"time"
 )
 
 // 10 Minutes
-const ShortLivedPodsRunTime = 60
-const Resolution = "1m"
-const Tolerance = 0.07
-const negligibleCores = 0.01
+const cpuCorevsCpuRequestShortLivedPodsRunTime = 60
+const cpuCorevsCpuRequestResolution = "1m"
+const cpuCorevsCpuRequestTolerance = 0.07
+const cpuCorevsCpuRequestnegligibleCores = 0.01
 
 func TestCPUCosts(t *testing.T) {
 	apiObj := api.NewAPI()
@@ -98,13 +99,13 @@ func TestCPUCosts(t *testing.T) {
 					End:   queryEnd,
 				}
 				// Note that in the Pod Query, we use a 5m resolution [THIS IS THE DEFAULT VALUE IN OPENCOST]
-				resolutionNumericVal, _ := utils.ExtractNumericPrefix(Resolution)
+				resolutionNumericVal, _ := utils.ExtractNumericPrefix(cpuCorevsCpuRequestResolution)
 				resolution := time.Duration(int(resolutionNumericVal) * int(time.Minute))
 
 				// Query End Time for all Queries
 				endTime := queryEnd.Unix()
 
-				windowRange := prometheus.GetOffsetAdjustedQueryWindow(tc.window, Resolution)
+				windowRange := prometheus.GetOffsetAdjustedQueryWindow(tc.window, cpuCorevsCpuRequestResolution)
 				// Metric: CPURequests
 				// avg(avg_over_time(
 				// 		kube_pod_container_resource_requests{
@@ -185,7 +186,7 @@ func TestCPUCosts(t *testing.T) {
 				promPodInfoInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
 				promPodInfoInput.Function = []string{"avg"}
 				promPodInfoInput.AggregateWindow = windowRange
-				promPodInfoInput.AggregateResolution = Resolution
+				promPodInfoInput.AggregateResolution = cpuCorevsCpuRequestResolution
 				promPodInfoInput.Time = &endTime
 
 				podInfo, err := client.RunPromQLQuery(promPodInfoInput)
@@ -373,9 +374,9 @@ func TestCPUCosts(t *testing.T) {
 					}
 				}
 
-				if nsMinutes < ShortLivedPodsRunTime {
+				if nsMinutes < cpuCorevsCpuRequestShortLivedPodsRunTime {
 					// Too short of a run time to assert results. ByteHours is very sensitive to run time.
-					t.Logf("[Skipped] Namespace %v: RunTime %v less than %v ", namespace, nsMinutes, ShortLivedPodsRunTime)
+					t.Logf("[Skipped] Namespace %v: RunTime %v less than %v ", namespace, nsMinutes, cpuCorevsCpuRequestShortLivedPodsRunTime)
 					continue
 				}
 
@@ -384,24 +385,24 @@ func TestCPUCosts(t *testing.T) {
 				// ----------------------------------------------
 				t.Logf("Namespace: %s", namespace)
 				// 5 % Tolerance
-				if allocationResponseItem.CPUCores > negligibleCores {
-					withinRange, diff_percent := utils.AreWithinPercentage(nsCPUCores, allocationResponseItem.CPUCores, Tolerance)
+				if allocationResponseItem.CPUCores > cpuCorevsCpuRequestnegligibleCores {
+					withinRange, diff_percent := utils.AreWithinPercentage(nsCPUCores, allocationResponseItem.CPUCores, cpuCorevsCpuRequestTolerance)
 					if withinRange {
 						t.Logf("    - CPUCores[Pass]: ~%.2f", nsCPUCores)
 					} else {
 						t.Errorf("    - CPUCores[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsCPUCores, allocationResponseItem.CPUCores)
 					}
 				}
-				if allocationResponseItem.CPUCoreHours > negligibleCores {
-					withinRange, diff_percent := utils.AreWithinPercentage(nsCPUCoresHours, allocationResponseItem.CPUCoreHours, Tolerance)
+				if allocationResponseItem.CPUCoreHours > cpuCorevsCpuRequestnegligibleCores {
+					withinRange, diff_percent := utils.AreWithinPercentage(nsCPUCoresHours, allocationResponseItem.CPUCoreHours, cpuCorevsCpuRequestTolerance)
 					if withinRange {
 						t.Logf("    - CPUCoreHours[Pass]: ~%.2f", nsCPUCoresHours)
 					} else {
 						t.Errorf("    - CPUCoreHours[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsCPUCoresHours, allocationResponseItem.CPUCoreHours)
 					}
 				}
-				if allocationResponseItem.CPUCoreRequestAverage > negligibleCores {
-					withinRange, diff_percent := utils.AreWithinPercentage(nsCPUCoresRequest, allocationResponseItem.CPUCoreRequestAverage, Tolerance)
+				if allocationResponseItem.CPUCoreRequestAverage > cpuCorevsCpuRequestnegligibleCores {
+					withinRange, diff_percent := utils.AreWithinPercentage(nsCPUCoresRequest, allocationResponseItem.CPUCoreRequestAverage, cpuCorevsCpuRequestTolerance)
 					if withinRange {
 						t.Logf("    - CPUCoreRequestAverage[Pass]: ~%.2f", nsCPUCoresRequest)
 					} else {

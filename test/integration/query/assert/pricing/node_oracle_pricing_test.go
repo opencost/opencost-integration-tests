@@ -1,4 +1,4 @@
-package assert
+package pricing
 
 // Description - Check Promethues Node Pricing Information matches Oracle Billing API Details
 
@@ -16,7 +16,7 @@ import (
 	"github.com/opencost/opencost-integration-tests/pkg/utils"
 )
 
-const tolerance = 0.05
+const nodeOraclePricingTolerance = 0.05
 
 type ProductPartNumber struct {
 	OCPU   string `json:"OCPU"`

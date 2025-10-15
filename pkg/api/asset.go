@@ -47,12 +47,12 @@ type AssetsResponseItem struct {
 	End          time.Time                     `json:"end"`
 	Minutes      float64                       `json:"minutes"`
 	Adjustment   float64                       `json:"adjustment"`
-	CPUCoreHours float64                       `json:"cpuCoreHours`
-	RAMByteHours float64                       `json:"ramByteHours`
+	CPUCoreHours float64                       `json:"cpuCoreHours"`
+	RAMByteHours float64                       `json:"ramByteHours"`
 	GPUCount     float64                       `json:"gpuCount"`
-	GPUHours     float64                       `json:"GPUHours`
-	CPUCores     float64                       `json:"cpuCores`
-	RAMBytes     float64                       `json:"ramBytes`
+	GPUHours     float64                       `json:"GPUHours"`
+	CPUCores     float64                       `json:"cpuCores"`
+	RAMBytes     float64                       `json:"ramBytes"`
 	RAMCost      float64                       `json:"ramCost"`
 	CPUCost      float64                       `json:"cpuCost"`
 	GPUCost      float64                       `json:"gpuCost"`

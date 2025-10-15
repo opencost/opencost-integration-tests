@@ -108,7 +108,7 @@ func (a *Asserter) AssertEqualTime(exp, act time.Time, msg string) {
 func AssertEqualSlice[S ~[]E, E comparable](a *Asserter, exp, act S, msg string) {
 	a.T.Helper()
 	if !slices.Equal(exp, act) {
-		a.Errorf("%s: exp \"%s\" !== \"%s\" act", msg, exp, act)
+		a.Errorf("%s: exp \"%v\" !== \"%v\" act", msg, exp, act)
 	}
 }
 
@@ -116,7 +116,7 @@ func AssertEqualSlice[S ~[]E, E comparable](a *Asserter, exp, act S, msg string)
 func AssertEqualMap[M1, M2 ~map[K]V, K, V comparable](a *Asserter, exp M1, act M2, msg string) {
 	a.T.Helper()
 	if !maps.Equal(exp, act) {
-		a.Errorf("%s: exp \"%s\" !== \"%s\" act", msg, exp, act)
+		a.Errorf("%s: exp \"%v\" !== \"%v\" act", msg, exp, act)
 	}
 }
 

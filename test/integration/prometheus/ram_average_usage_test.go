@@ -12,9 +12,9 @@ import (
 	"github.com/opencost/opencost-integration-tests/pkg/utils"
 )
 
-const Resolution = "1m"
-const Tolerance = 0.09
-const negligibleUsage = 0.01
+const ramAverageUsageResolution = "1m"
+const ramAverageUsageTolerance = 0.09
+const ramAverageUsageNegligibleUsage = 0.01
 
 func TestRAMAvgUsage(t *testing.T) {
 	apiObj := api.NewAPI()
@@ -56,11 +56,11 @@ func TestRAMAvgUsage(t *testing.T) {
 				Start: queryStart,
 				End:   queryEnd,
 			}
-			resolutionNumericVal, _ := utils.ExtractNumericPrefix(Resolution)
+			resolutionNumericVal, _ := utils.ExtractNumericPrefix(ramAverageUsageResolution)
 			resolution := time.Duration(int(resolutionNumericVal) * int(time.Minute))
 			endTime := queryEnd.Unix()
 
-			windowRange := prometheus.GetOffsetAdjustedQueryWindow(tc.window, Resolution)
+			windowRange := prometheus.GetOffsetAdjustedQueryWindow(tc.window, ramAverageUsageResolution)
 
 			client := prometheus.NewClient()
 			// Pod Info
@@ -70,7 +70,7 @@ func TestRAMAvgUsage(t *testing.T) {
 			promPodInfoInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
 			promPodInfoInput.Function = []string{"avg"}
 			promPodInfoInput.AggregateWindow = windowRange
-			promPodInfoInput.AggregateResolution = Resolution
+			promPodInfoInput.AggregateResolution = ramAverageUsageResolution
 			promPodInfoInput.Time = &endTime
 
 			podInfo, err := client.RunPromQLQuery(promPodInfoInput)
@@ -199,13 +199,13 @@ func TestRAMAvgUsage(t *testing.T) {
 			t.Logf("\nAvg Values for Namespaces.\n")
 			// Windows are not accurate for prometheus and allocation
 			for namespace, ramAvgUsageValues := range ramUsageAvgNamespaceMap {
-				if ramAvgUsageValues.AllocationUsageAvg < negligibleUsage {
+				if ramAvgUsageValues.AllocationUsageAvg < ramAverageUsageNegligibleUsage {
 					continue
 				} else {
 					seenUsage = true
 				}
 				t.Logf("Namespace %s", namespace)
-				withinRange, diff_percent := utils.AreWithinPercentage(ramAvgUsageValues.PrometheusUsageAvg, ramAvgUsageValues.AllocationUsageAvg, Tolerance)
+				withinRange, diff_percent := utils.AreWithinPercentage(ramAvgUsageValues.PrometheusUsageAvg, ramAvgUsageValues.AllocationUsageAvg, ramAverageUsageTolerance)
 				if !withinRange {
 					t.Errorf("RAMUsageAvg[Fail]: DifferencePercent %0.2f, Prometheus: %0.2f, /allocation: %0.2f", diff_percent, ramAvgUsageValues.PrometheusUsageAvg, ramAvgUsageValues.AllocationUsageAvg)
 				} else {

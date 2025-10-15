@@ -107,7 +107,7 @@ type AllocationResponseItem struct {
 	Window                         Window                                  `json:"window"`
 	Start                          time.Time                               `json:"start"`
 	End                            time.Time                               `json:"end"`
-	Minutes						   float64								   `json:"minutes"`		
+	Minutes                        float64                                 `json:"minutes"`
 	CPUCores                       float64                                 `json:"cpuCores"`
 	CPUCoreHours                   float64                                 `json:"cpuCoreHours"`
 	CPUCoreRequestAverage          float64                                 `json:"cpuCoreRequestAverage"`
@@ -119,7 +119,7 @@ type AllocationResponseItem struct {
 	GPUCost                        float64                                 `json:"gpuCost"`
 	GPUCostAdjustment              float64                                 `json:"gpuCostAdjustment"`
 	GPUCostIdle                    float64                                 `json:"gpuCostIdle"`
-	GPUCount 					   float64								   `json:"gpuCount"`
+	GPUCount                       float64                                 `json:"gpuCount"`
 	NetworkTransferBytes           float64                                 `json:"networkTransferBytes"`
 	NetworkReceiveBytes            float64                                 `json:"networkReceiveBytes"`
 	NetworkCost                    float64                                 `json:"networkCost"`
@@ -154,9 +154,9 @@ type RawAllocationsProperties struct {
 	GPUUsageMax     float64 `json:"gpuUsageMax"`
 }
 type GPUAllocationItemProperties struct {
-	GPUDevice         string  `json:gpuDevice`
-	GPUModel          string  `json:gpuModel`
-	GPUUUID           string  `json:gpuUUID`
+	GPUDevice         string  `json:"gpuDevice"`
+	GPUModel          string  `json:"gpuModel"`
+	GPUUUID           string  `json:"gpuUUID"`
 	ISGPUShared       bool    `json:"isGPUShared"`
 	GPUUsageAverage   float64 `json:"gpuUsageAverage"`
 	GPURequestAverage float64 `json:"gpuRequestAverage"`
@@ -165,7 +165,7 @@ type GPUAllocationItemProperties struct {
 type LoadBalancerProperties struct {
 	Service    string  `json:"service"`
 	Cost       float64 `json:"cost"`
-	Private    bool    `json:"private`
+	Private    bool    `json:"private"`
 	IP         string  `json:"ip"`
 	Hours      float64 `json:"hours"`
 	Adjustment float64 `json:"adjustment"`

@@ -4,16 +4,17 @@ package prometheus
 
 import (
 	// "fmt"
+	"testing"
+	"time"
+
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 	"github.com/opencost/opencost-integration-tests/pkg/utils"
-	"testing"
-	"time"
 )
 
-const Resolution = "1m"
-const Tolerance = 0.07
-const negligibleUsage = 0.01
+const cpuAverageTestResolution = "1m"
+const cpuAverageTestTolerance = 0.07
+const cpuAverageTestnegligibleUsage = 0.01
 
 func TestCPUAvgUsage(t *testing.T) {
 	apiObj := api.NewAPI()
@@ -63,11 +64,11 @@ func TestCPUAvgUsage(t *testing.T) {
 				End:   queryEnd,
 			}
 
-			resolutionNumericVal, _ := utils.ExtractNumericPrefix(Resolution)
+			resolutionNumericVal, _ := utils.ExtractNumericPrefix(cpuAverageTestResolution)
 			resolution := time.Duration(int(resolutionNumericVal) * int(time.Minute))
 			endTime := queryEnd.Unix()
 
-			windowRange := prometheus.GetOffsetAdjustedQueryWindow(tc.window, Resolution)
+			windowRange := prometheus.GetOffsetAdjustedQueryWindow(tc.window, cpuAverageTestResolution)
 
 			client := prometheus.NewClient()
 			// Pod Info
@@ -77,7 +78,7 @@ func TestCPUAvgUsage(t *testing.T) {
 			promPodInfoInput.AggregateBy = []string{"pod", "namespace", "node"}
 			promPodInfoInput.Function = []string{"avg"}
 			promPodInfoInput.AggregateWindow = windowRange
-			promPodInfoInput.AggregateResolution = Resolution
+			promPodInfoInput.AggregateResolution = cpuAverageTestResolution
 			promPodInfoInput.Time = &endTime
 
 			podInfo, err := client.RunPromQLQuery(promPodInfoInput)
@@ -204,13 +205,13 @@ func TestCPUAvgUsage(t *testing.T) {
 			t.Logf("\nAvg Values for Namespaces.\n")
 			// Windows are not accurate for prometheus and allocation
 			for namespace, cpuAvgUsageValues := range cpuUsageAvgNamespaceMap {
-				if cpuAvgUsageValues.AllocationUsageAvg < negligibleUsage {
+				if cpuAvgUsageValues.AllocationUsageAvg < cpuAverageTestnegligibleUsage {
 					continue
 				} else {
 					seenUsage = true
 				}
 				t.Logf("Namespace %s", namespace)
-				withinRange, diff_percent := utils.AreWithinPercentage(cpuAvgUsageValues.PrometheusUsageAvg, cpuAvgUsageValues.AllocationUsageAvg, Tolerance)
+				withinRange, diff_percent := utils.AreWithinPercentage(cpuAvgUsageValues.PrometheusUsageAvg, cpuAvgUsageValues.AllocationUsageAvg, cpuAverageTestTolerance)
 				if !withinRange {
 					t.Errorf("cpuUsageAvg[Fail]: DifferencePercent %0.2f, Prometheus: %0.2f, /allocation: %0.2f", diff_percent, cpuAvgUsageValues.PrometheusUsageAvg, cpuAvgUsageValues.AllocationUsageAvg)
 				} else {

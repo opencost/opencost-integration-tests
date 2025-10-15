@@ -28,9 +28,9 @@ import (
 )
 
 // 10 Minutes
-const ShortLivedPodsRunTime = 60
-const Resolution = "1m"
-const Tolerance = 0.075
+const ramByteVsRamAverageShortLivedPodsRunTime = 60
+const ramByteVsRamAverageResolution = "1m"
+const ramByteVsRamAverageTolerance = 0.075
 
 func ConvertToHours(minutes float64) float64 {
 	// Convert Time from Minutes to Hours
@@ -103,13 +103,13 @@ func TestRAMCosts(t *testing.T) {
 					End:   queryEnd,
 				}
 				// Note that in the Pod Query, we use a 5m resolution [THIS IS THE DEFAULT VALUE IN OPENCOST]
-				resolutionNumericVal, _ := utils.ExtractNumericPrefix(Resolution)
+				resolutionNumericVal, _ := utils.ExtractNumericPrefix(ramByteVsRamAverageResolution)
 				resolution := time.Duration(int(resolutionNumericVal) * int(time.Minute))
 
 				// Query End Time for all Queries
 				endTime := queryEnd.Unix()
 
-				windowRange := prometheus.GetOffsetAdjustedQueryWindow(tc.window, Resolution)
+				windowRange := prometheus.GetOffsetAdjustedQueryWindow(tc.window, ramByteVsRamAverageResolution)
 
 				// Metric: RAMRequests
 				// avg(avg_over_time(
@@ -191,7 +191,7 @@ func TestRAMCosts(t *testing.T) {
 				promPodInfoInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
 				promPodInfoInput.Function = []string{"avg"}
 				promPodInfoInput.AggregateWindow = windowRange
-				promPodInfoInput.AggregateResolution = Resolution
+				promPodInfoInput.AggregateResolution = ramByteVsRamAverageResolution
 				promPodInfoInput.Time = &endTime
 
 				podInfo, err := client.RunPromQLQuery(promPodInfoInput)
@@ -379,9 +379,9 @@ func TestRAMCosts(t *testing.T) {
 					}
 				}
 
-				if nsMinutes < ShortLivedPodsRunTime {
+				if nsMinutes < ramByteVsRamAverageShortLivedPodsRunTime {
 					// Too short of a run time to assert results. ByteHours is very sensitive to run time.
-					t.Logf("[Skipped] Namespace %v: RunTime %v less than %v ", namespace, nsMinutes, ShortLivedPodsRunTime)
+					t.Logf("[Skipped] Namespace %v: RunTime %v less than %v ", namespace, nsMinutes, ramByteVsRamAverageShortLivedPodsRunTime)
 					continue
 				}
 				// ----------------------------------------------
@@ -389,19 +389,19 @@ func TestRAMCosts(t *testing.T) {
 				// ----------------------------------------------
 				t.Logf("Namespace: %s", namespace)
 				// 5 % Tolerance
-				withinRange, diff_percent := utils.AreWithinPercentage(nsRAMBytes, allocationResponseItem.RAMBytes, Tolerance)
+				withinRange, diff_percent := utils.AreWithinPercentage(nsRAMBytes, allocationResponseItem.RAMBytes, ramByteVsRamAverageTolerance)
 				if withinRange {
 					t.Logf("    - RAMBytes[Pass]: ~%.2f", nsRAMBytes)
 				} else {
 					t.Errorf("    - RAMBytes[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsRAMBytes, allocationResponseItem.RAMBytes)
 				}
-				withinRange, diff_percent = utils.AreWithinPercentage(nsRAMBytesHours, allocationResponseItem.RAMByteHours, Tolerance)
+				withinRange, diff_percent = utils.AreWithinPercentage(nsRAMBytesHours, allocationResponseItem.RAMByteHours, ramByteVsRamAverageTolerance)
 				if withinRange {
 					t.Logf("    - RAMByteHours[Pass]: ~%.2f", nsRAMBytesHours)
 				} else {
 					t.Errorf("    - RAMByteHours[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsRAMBytesHours, allocationResponseItem.RAMByteHours)
 				}
-				withinRange, diff_percent = utils.AreWithinPercentage(nsRAMBytesRequest, allocationResponseItem.RAMBytesRequestAverage, Tolerance)
+				withinRange, diff_percent = utils.AreWithinPercentage(nsRAMBytesRequest, allocationResponseItem.RAMBytesRequestAverage, ramByteVsRamAverageTolerance)
 				if withinRange {
 					t.Logf("    - RAMByteRequestAverage[Pass]: ~%.2f", nsRAMBytesRequest)
 				} else {
