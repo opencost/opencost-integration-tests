@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-const nodeOraclePricingTolerance = 0.05
+const pvOraclePricingTolerance = 0.05
 
 func OraclePVCost(partNumber string) (float64, error) {
 
@@ -118,7 +118,7 @@ func TestOraclePVNodePricing(t *testing.T) {
 				t.Logf("Details: %s", pvInfo.PVPartNumber)
 
 				// Verify Assets API with Oracle API
-				withinRange, diff_percent := utils.AreWithinPercentage(pvInfo.AssetPVTotalCost, pvInfo.OraclePVCost, nodeOraclePricingTolerance)
+				withinRange, diff_percent := utils.AreWithinPercentage(pvInfo.AssetPVTotalCost, pvInfo.OraclePVCost, pvOraclePricingTolerance)
 				if withinRange {
 					t.Logf("    - NodeTotalOracleCost[Pass]: ~%0.2f", pvInfo.AssetPVTotalCost)
 				} else {

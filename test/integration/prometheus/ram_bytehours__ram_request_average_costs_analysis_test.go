@@ -32,11 +32,6 @@ const ramByteVsRamAverageShortLivedPodsRunTime = 60
 const ramByteVsRamAverageResolution = "1m"
 const ramByteVsRamAverageTolerance = 0.075
 
-func ConvertToHours(minutes float64) float64 {
-	// Convert Time from Minutes to Hours
-	return minutes / 60
-}
-
 func TestRAMCosts(t *testing.T) {
 	apiObj := api.NewAPI()
 
@@ -270,7 +265,7 @@ func TestRAMCosts(t *testing.T) {
 						continue
 					}
 
-					runHours := ConvertToHours(runMinutes)
+					runHours := utils.ConvertToHours(runMinutes)
 					podData.Containers[container] = &ContainerRAMData{
 						Container:              container,
 						RAMBytesHours:          ramBytes * runHours,
@@ -305,7 +300,7 @@ func TestRAMCosts(t *testing.T) {
 						continue
 					}
 
-					runHours := ConvertToHours(runMinutes)
+					runHours := utils.ConvertToHours(runMinutes)
 
 					// if the container exists, you need to apply the opencost cost specification
 					if containerData, ok := podData.Containers[container]; ok {
@@ -361,7 +356,7 @@ func TestRAMCosts(t *testing.T) {
 						nsStart = start
 						nsEnd = end
 						nsMinutes = nsEnd.Sub(nsStart).Minutes()
-						nsHours := ConvertToHours(nsMinutes)
+						nsHours := utils.ConvertToHours(nsMinutes)
 						nsRAMBytes = nsRAMBytesHours / nsHours
 						nsRAMBytesRequest = nsRAMBytesRequest / nsMinutes
 						continue
@@ -373,7 +368,7 @@ func TestRAMCosts(t *testing.T) {
 							nsEnd = end
 						}
 						nsMinutes = nsEnd.Sub(nsStart).Minutes()
-						nsHours := ConvertToHours(nsMinutes)
+						nsHours := utils.ConvertToHours(nsMinutes)
 						nsRAMBytes = nsRAMBytesHours / nsHours
 						nsRAMBytesRequest = nsRAMBytesRequest / nsMinutes
 					}

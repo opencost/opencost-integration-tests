@@ -268,7 +268,7 @@ func TestGPUCosts(t *testing.T) {
 						continue
 					}
 
-					runHours := ConvertToHours(runMinutes)
+					runHours := utils.ConvertToHours(runMinutes)
 					podData.Containers[container] = &ContainerGPUData{
 						Container:              container,
 						GPUCoresHours:          GPUCores * runHours,
@@ -303,7 +303,7 @@ func TestGPUCosts(t *testing.T) {
 						continue
 					}
 
-					runHours := ConvertToHours(runMinutes)
+					runHours := utils.ConvertToHours(runMinutes)
 
 					// if the container exists, you need to apply the opencost cost specification
 					if containerData, ok := podData.Containers[container]; ok {

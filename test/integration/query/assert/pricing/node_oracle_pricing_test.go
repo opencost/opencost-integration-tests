@@ -305,7 +305,7 @@ func TestOracleNodePricing(t *testing.T) {
 				t.Logf("Details: %s", nodeInfo.NodePartNumber)
 
 				// Verify Assets API with Prometheus
-				withinRange, diff_percent := utils.AreWithinPercentage(nodeInfo.AssetNodeTotalCost, nodeInfo.PromNodeCost, tolerance)
+				withinRange, diff_percent := utils.AreWithinPercentage(nodeInfo.AssetNodeTotalCost, nodeInfo.PromNodeCost, nodeOraclePricingTolerance)
 				if withinRange {
 					t.Logf("    - NodeTotalPromCost[Pass]: ~%0.2f", nodeInfo.AssetNodeTotalCost)
 				} else {
@@ -313,7 +313,7 @@ func TestOracleNodePricing(t *testing.T) {
 				}
 
 				// Verify Assets API with Oracle API
-				withinRange, diff_percent = utils.AreWithinPercentage(nodeInfo.AssetNodeTotalCost, nodeInfo.OracleNodeCost, tolerance)
+				withinRange, diff_percent = utils.AreWithinPercentage(nodeInfo.AssetNodeTotalCost, nodeInfo.OracleNodeCost, nodeOraclePricingTolerance)
 				if withinRange {
 					t.Logf("    - NodeTotalOracleCost[Pass]: ~%0.2f", nodeInfo.AssetNodeTotalCost)
 				} else {
