@@ -239,7 +239,7 @@ func TestLoadBalancerCost(t *testing.T) {
 			t.Logf("Load Balancer Costs by Services")
 			for service, LBServiceItem := range LBServiceMap {
 				t.Logf("Service %s", service)
-				withinRange, diff_percent := utils.AreWithinPercentage(LBServiceItem.PromLBCost, LBServiceItem.AllocLBCost, Tolerance)
+				withinRange, diff_percent := utils.AreWithinPercentage(LBServiceItem.PromLBCost, LBServiceItem.AllocLBCost, loadBalancerCostTolerance)
 				if !withinRange {
 					t.Errorf("  - LoadBalancerCost[Fail]: DifferencePercent %0.2f, Prometheus: %0.2f, /allocation: %0.2f", diff_percent, LBServiceItem.PromLBCost, LBServiceItem.AllocLBCost)
 				} else {
