@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/opencost/opencost-integration-tests/pkg/api"
+	"github.com/opencost/opencost-integration-tests/pkg/log"
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 	"github.com/opencost/opencost-integration-tests/pkg/utils"
 )
@@ -79,7 +80,7 @@ func OracleNodeCosts(SKU ProductPartNumber) (OracleCosts, error) {
 		// CPU Costs
 		cpuresp, err := oracleAPIObj.GetOracleBillingInformation(cpureq)
 		if err != nil {
-			fmt.Sprintf("Error while calling Oracle API %v", err)
+			log.Errorf("Error while calling Oracle API %v", err)
 			return OracleNodeCost, err
 		}
 		// In Oracle, 1 Oracle-CPU = 2 Virtual-CPU
@@ -98,7 +99,7 @@ func OracleNodeCosts(SKU ProductPartNumber) (OracleCosts, error) {
 		// Memory Costs
 		memresp, err := oracleAPIObj.GetOracleBillingInformation(memreq)
 		if err != nil {
-			fmt.Sprintf("Error while calling Oracle API %v", err)
+			log.Errorf("Error while calling Oracle API %v", err)
 			return OracleNodeCost, err
 		}
 		OracleNodeCost.Memory = memresp.Items[0].CurrencyCodeLocalizations[0].Prices[0].Value / CalCulateTimeCoeff(memresp.Items[0].MetricName)
@@ -114,7 +115,7 @@ func OracleNodeCosts(SKU ProductPartNumber) (OracleCosts, error) {
 		// GPU Costs
 		gpuresp, err := oracleAPIObj.GetOracleBillingInformation(gpureq)
 		if err != nil {
-			fmt.Sprintf("Error while calling Oracle API %v", err)
+			log.Errorf("Error while calling Oracle API %v", err)
 			return OracleNodeCost, err
 		}
 		OracleNodeCost.GPU = gpuresp.Items[0].CurrencyCodeLocalizations[0].Prices[0].Value / CalCulateTimeCoeff(gpuresp.Items[0].MetricName)
