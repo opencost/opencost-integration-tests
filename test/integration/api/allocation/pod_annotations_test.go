@@ -4,13 +4,14 @@ package allocation
 // Check Pod Annotations from API Match results from Prometheus
 
 import (
-	"github.com/opencost/opencost-integration-tests/pkg/api"
-	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 	"testing"
 	"time"
+
+	"github.com/opencost/opencost-integration-tests/pkg/api"
+	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 )
 
-func TestAnnotations(t *testing.T) {
+func TestPodAnnotations(t *testing.T) {
 	apiObj := api.NewAPI()
 
 	testCases := []struct {
@@ -62,7 +63,7 @@ func TestAnnotations(t *testing.T) {
 
 			// Store Results in a Pod Map
 			type PodData struct {
-				Pod         string
+				Pod              string
 				promAnnotations  map[string]string
 				AllocAnnotations map[string]string
 			}
@@ -75,7 +76,7 @@ func TestAnnotations(t *testing.T) {
 				Annotations := promAnnotation.Metric.Annotations
 
 				podMap[pod] = &PodData{
-					Pod:        pod,
+					Pod:             pod,
 					promAnnotations: Annotations,
 				}
 			}
@@ -128,7 +129,7 @@ func TestAnnotations(t *testing.T) {
 					}
 				}
 			}
-			if ! seenAnnotations {
+			if !seenAnnotations {
 				t.Fatalf("No Pod Annotations")
 			}
 		})

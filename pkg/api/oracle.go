@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"strings"
+
 	"github.com/opencost/opencost-integration-tests/pkg/env"
 )
 
@@ -43,7 +44,7 @@ type OracleResponse struct {
 				Value float64 `json:"value"`
 			} `json:"prices"`
 		} `json:"currencyCodeLocalizations"`
-	} `json:"items`
+	} `json:"items"`
 }
 
 type OracleRequest struct {
@@ -65,7 +66,6 @@ func (or OracleRequest) QueryString() string {
 	}
 	return fmt.Sprintf("?%s", strings.Join(params, "&"))
 }
-
 
 func NewOracleBillingAPI() *API {
 	return &API{

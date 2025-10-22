@@ -4,14 +4,15 @@ package prometheus
 
 import (
 	// "fmt"
+	"testing"
+	"time"
+
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 	"github.com/opencost/opencost-integration-tests/pkg/utils"
-	"testing"
-	"time"
 )
 
-const Tolerance = 0.05
+const gpuMaxTimeTolerance = 0.05
 
 func TestGPUMax(t *testing.T) {
 	apiObj := api.NewAPI()
@@ -153,7 +154,7 @@ func TestGPUMax(t *testing.T) {
 			// Windows are not accurate for prometheus and allocation
 			for namespace, gpuMaxUsageValues := range gpuUsageMaxNamespaceMap {
 				t.Logf("Namespace %s", namespace)
-				withinRange, diff_percent := utils.AreWithinPercentage(gpuMaxUsageValues.PrometheusUsageMax, gpuMaxUsageValues.AllocationUsageMax, Tolerance)
+				withinRange, diff_percent := utils.AreWithinPercentage(gpuMaxUsageValues.PrometheusUsageMax, gpuMaxUsageValues.AllocationUsageMax, gpuMaxTimeTolerance)
 				if !withinRange {
 					t.Errorf("GPUUsageMax[Fail]: DifferencePercent %0.2f, Prometheus: %0.2f, /allocation: %0.2f", diff_percent, gpuMaxUsageValues.PrometheusUsageMax, gpuMaxUsageValues.AllocationUsageMax)
 				} else {

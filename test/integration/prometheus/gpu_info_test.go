@@ -4,13 +4,12 @@ package prometheus
 
 import (
 	// "fmt"
-	"github.com/opencost/opencost-integration-tests/pkg/api"
-	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 	"testing"
 	"time"
-)
 
-const Tolerance = 0.05
+	"github.com/opencost/opencost-integration-tests/pkg/api"
+	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
+)
 
 func TestGPUInfo(t *testing.T) {
 	apiObj := api.NewAPI()

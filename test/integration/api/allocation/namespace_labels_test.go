@@ -4,13 +4,14 @@ package allocation
 // Check Namespace Labels from API Match results from Promethues
 
 import (
-	"github.com/opencost/opencost-integration-tests/pkg/api"
-	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 	"testing"
 	"time"
+
+	"github.com/opencost/opencost-integration-tests/pkg/api"
+	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 )
 
-func TestLabels(t *testing.T) {
+func TestNamespaceLabels(t *testing.T) {
 	apiObj := api.NewAPI()
 
 	testCases := []struct {
@@ -99,7 +100,7 @@ func TestLabels(t *testing.T) {
 				if namespace == "default" {
 					continue
 				}
-				
+
 				if _, ok := anyNamespacePodRunningStatus[namespace]; !ok || !(anyNamespacePodRunningStatus[namespace] > 0) {
 					continue
 				}

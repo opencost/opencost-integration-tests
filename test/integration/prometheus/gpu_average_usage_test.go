@@ -4,16 +4,17 @@ package prometheus
 
 import (
 	// "fmt"
+	"testing"
+	"time"
+
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 	"github.com/opencost/opencost-integration-tests/pkg/utils"
-	"testing"
-	"time"
 )
 
-const Resolution = "1m"
-const tolerance = 0.05
-const negligibleUsage = 0.01
+const gpuAverageUsageResolution = "1m"
+const gpuAverageUsageTolerance = 0.05
+const gpuAverageUsageNegligibleUsage = 0.01
 
 func TestGPUAvgUsage(t *testing.T) {
 	apiObj := api.NewAPI()
@@ -56,11 +57,11 @@ func TestGPUAvgUsage(t *testing.T) {
 				End:   queryEnd,
 			}
 
-			resolutionNumericVal, _ := utils.ExtractNumericPrefix(Resolution)
+			resolutionNumericVal, _ := utils.ExtractNumericPrefix(gpuAverageUsageResolution)
 			resolution := time.Duration(int(resolutionNumericVal) * int(time.Minute))
 			endTime := queryEnd.Unix()
 
-			windowRange := prometheus.GetOffsetAdjustedQueryWindow(tc.window, Resolution)
+			windowRange := prometheus.GetOffsetAdjustedQueryWindow(tc.window, gpuAverageUsageResolution)
 
 			client := prometheus.NewClient()
 			// Pod Info
@@ -70,7 +71,7 @@ func TestGPUAvgUsage(t *testing.T) {
 			promPodInfoInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
 			promPodInfoInput.Function = []string{"avg"}
 			promPodInfoInput.AggregateWindow = windowRange
-			promPodInfoInput.AggregateResolution = Resolution
+			promPodInfoInput.AggregateResolution = gpuAverageUsageResolution
 			promPodInfoInput.Time = &endTime
 
 			podInfo, err := client.RunPromQLQuery(promPodInfoInput)
@@ -194,13 +195,13 @@ func TestGPUAvgUsage(t *testing.T) {
 			t.Logf("\nAvg Values for Namespaces.\n")
 			// Windows are not accurate for prometheus and allocation
 			for namespace, GPUAvgUsageValues := range GPUUsageAvgNamespaceMap {
-				if GPUAvgUsageValues.AllocationUsageAvg < negligibleUsage {
+				if GPUAvgUsageValues.AllocationUsageAvg < gpuAverageUsageNegligibleUsage {
 					continue
 				} else {
 					seenUsage = true
 				}
 				t.Logf("Namespace %s", namespace)
-				withinRange, diff_percent := utils.AreWithinPercentage(GPUAvgUsageValues.PrometheusUsageAvg, GPUAvgUsageValues.AllocationUsageAvg, tolerance)
+				withinRange, diff_percent := utils.AreWithinPercentage(GPUAvgUsageValues.PrometheusUsageAvg, GPUAvgUsageValues.AllocationUsageAvg, gpuAverageUsageTolerance)
 				if !withinRange {
 					t.Errorf("GPUUsageAvg[Fail]: DifferencePercent %0.2f, Prometheus: %0.2f, /allocation: %0.2f", diff_percent, GPUAvgUsageValues.PrometheusUsageAvg, GPUAvgUsageValues.AllocationUsageAvg)
 				} else {

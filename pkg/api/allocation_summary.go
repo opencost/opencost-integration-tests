@@ -18,10 +18,10 @@ type AllocationSummaryResponse struct {
 
 type AllocationSummaryData struct {
 	Step int                         `json:"step"`
-	Sets []AllocationSummaryDataItem `json:"sets`
+	Sets []AllocationSummaryDataItem `json:"sets"`
 }
 
 type AllocationSummaryDataItem struct {
 	Allocations map[string]AllocationResponseItem `json:"allocations"`
-	Window      Window                            `json:"window`
+	Window      Window                            `json:"window"`
 }

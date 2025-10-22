@@ -1,4 +1,4 @@
-package validate_api
+package allocation
 
 // Description - Assert AllocationResponseItem.TotalCost is equal to the sum of Resource Costs like CPUCost, GPUCost, etc.
 // Specification - https://opencost.io/docs/specification#foundational-definitions
@@ -12,9 +12,10 @@ package validate_api
 // AllocationResponseItem.TotalCost and "CalculatedCost", when rounded to first two decimal places, must exhibit a variance not exceeding 0.5.
 
 import (
-	"github.com/opencost/opencost-integration-tests/pkg/api"
 	"math"
 	"testing"
+
+	"github.com/opencost/opencost-integration-tests/pkg/api"
 )
 
 func RoundUpToTwoDecimals(num float64) float64 {

@@ -19,22 +19,23 @@ package prometheus
 // 5. Compare results with a 5% error margin.
 
 import (
+	"testing"
+	"time"
+
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 	"github.com/opencost/opencost-integration-tests/pkg/utils"
-	"testing"
-	"time"
 )
 
 // 10 Minutes
-const ShortLivedPodsRunTime = 60
-const Resolution = "1m"
-const Tolerance = 0.05
+const gpuRequestAverageCostsShortLivedPodsRunTime = 60
+const gpuRequestAverageCostsResolution = "1m"
+const gpuRequestAverageCostsTolerance = 0.05
 
-func ConvertToHours(minutes float64) float64 {
-	// Convert Time from Minutes to Hours
-	return minutes / 60
-}
+// func ConvertToHours(minutes float64) float64 {
+// 	// Convert Time from Minutes to Hours
+// 	return minutes / 60
+// }
 
 func TestGPUCosts(t *testing.T) {
 	apiObj := api.NewAPI()
@@ -102,13 +103,13 @@ func TestGPUCosts(t *testing.T) {
 					End:   queryEnd,
 				}
 				// Note that in the Pod Query, we use a 5m resolution [THIS IS THE DEFAULT VALUE IN OPENCOST]
-				resolutionNumericVal, _ := utils.ExtractNumericPrefix(Resolution)
+				resolutionNumericVal, _ := utils.ExtractNumericPrefix(gpuRequestAverageCostsResolution)
 				resolution := time.Duration(int(resolutionNumericVal) * int(time.Minute))
 
 				// Query End Time for all Queries
 				endTime := queryEnd.Unix()
 
-				windowRange := prometheus.GetOffsetAdjustedQueryWindow(tc.window, Resolution)
+				windowRange := prometheus.GetOffsetAdjustedQueryWindow(tc.window, gpuRequestAverageCostsResolution)
 				// Metric: GPURequests
 				// avg(avg_over_time(
 				// 		kube_pod_container_resource_requests{
@@ -188,7 +189,7 @@ func TestGPUCosts(t *testing.T) {
 				promPodInfoInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
 				promPodInfoInput.Function = []string{"avg"}
 				promPodInfoInput.AggregateWindow = windowRange
-				promPodInfoInput.AggregateResolution = Resolution
+				promPodInfoInput.AggregateResolution = gpuRequestAverageCostsResolution
 				promPodInfoInput.Time = &endTime
 
 				podInfo, err := client.RunPromQLQuery(promPodInfoInput)
@@ -267,7 +268,7 @@ func TestGPUCosts(t *testing.T) {
 						continue
 					}
 
-					runHours := ConvertToHours(runMinutes)
+					runHours := utils.ConvertToHours(runMinutes)
 					podData.Containers[container] = &ContainerGPUData{
 						Container:              container,
 						GPUCoresHours:          GPUCores * runHours,
@@ -302,7 +303,7 @@ func TestGPUCosts(t *testing.T) {
 						continue
 					}
 
-					runHours := ConvertToHours(runMinutes)
+					runHours := utils.ConvertToHours(runMinutes)
 
 					// if the container exists, you need to apply the opencost cost specification
 					if containerData, ok := podData.Containers[container]; ok {
@@ -376,9 +377,9 @@ func TestGPUCosts(t *testing.T) {
 					}
 				}
 
-				if nsMinutes < ShortLivedPodsRunTime {
+				if nsMinutes < gpuRequestAverageCostsShortLivedPodsRunTime {
 					// Too short of a run time to assert results. ByteHours is very sensitive to run time.
-					t.Logf("[Skipped] Namespace %v: RunTime %v less than %v ", namespace, nsMinutes, ShortLivedPodsRunTime)
+					t.Logf("[Skipped] Namespace %v: RunTime %v less than %v ", namespace, nsMinutes, gpuRequestAverageCostsShortLivedPodsRunTime)
 					continue
 				}
 
@@ -387,13 +388,13 @@ func TestGPUCosts(t *testing.T) {
 				// ----------------------------------------------
 				t.Logf("Namespace: %s", namespace)
 				// 5 % Tolerance
-				withinRange, diff_percent := utils.AreWithinPercentage(nsGPUCoresHours, allocationResponseItem.GPUHours, Tolerance)
+				withinRange, diff_percent := utils.AreWithinPercentage(nsGPUCoresHours, allocationResponseItem.GPUHours, gpuRequestAverageCostsTolerance)
 				if withinRange {
 					t.Logf("    - GPUCoreHours[Pass]: ~%.2f", nsGPUCoresHours)
 				} else {
 					t.Errorf("    - GPUCoreHours[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsGPUCoresHours, allocationResponseItem.GPUHours)
 				}
-				withinRange, diff_percent = utils.AreWithinPercentage(nsGPUCoresRequest, allocationResponseItem.GPUAllocation.GPURequestAverage, Tolerance)
+				withinRange, diff_percent = utils.AreWithinPercentage(nsGPUCoresRequest, allocationResponseItem.GPUAllocation.GPURequestAverage, gpuRequestAverageCostsTolerance)
 				if withinRange {
 					t.Logf("    - GPUCoreRequestAverage[Pass]: ~%.2f", nsGPUCoresRequest)
 				} else {

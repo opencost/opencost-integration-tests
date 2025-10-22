@@ -13,8 +13,8 @@ import (
 	"github.com/opencost/opencost-integration-tests/pkg/utils"
 )
 
-const Tolerance = 0.05
-const negligibleCost = 0.01
+const nodeCostTolerance = 0.05
+const nodeCostNegligibleCost = 0.01
 
 func TestNodeInfo(t *testing.T) {
 	apiObj := api.NewAPI()
@@ -216,27 +216,27 @@ func TestNodeInfo(t *testing.T) {
 
 				seenCost := false
 
-				if allocationResponseItem.RAMCost > negligibleCost {
+				if allocationResponseItem.RAMCost > nodeCostNegligibleCost {
 					seenCost = true
-					withinRange, diff_percent := utils.AreWithinPercentage(ramCost, allocationResponseItem.RAMCost, Tolerance)
+					withinRange, diff_percent := utils.AreWithinPercentage(ramCost, allocationResponseItem.RAMCost, nodeCostTolerance)
 					if !withinRange {
 						t.Errorf("  - RAMCost[Fail]: DifferencePercent %0.2f, Prometheus: %0.4f, /allocation: %0.4f", diff_percent, ramCost, allocationResponseItem.RAMCost)
 					} else {
 						t.Logf("  - RAMCost[Pass]: ~ %0.2f", ramCost)
 					}
 				}
-				if allocationResponseItem.CPUCost > negligibleCost {
+				if allocationResponseItem.CPUCost > nodeCostNegligibleCost {
 					seenCost = true
-					withinRange, diff_percent := utils.AreWithinPercentage(cpuCost, allocationResponseItem.CPUCost, Tolerance)
+					withinRange, diff_percent := utils.AreWithinPercentage(cpuCost, allocationResponseItem.CPUCost, nodeCostTolerance)
 					if !withinRange {
 						t.Errorf("  - CPUCost[Fail]: DifferencePercent %0.2f, Prometheus: %0.4f, /allocation: %0.4f", diff_percent, cpuCost, allocationResponseItem.CPUCost)
 					} else {
 						t.Logf("  - CPUCost[Pass]: ~ %0.2f", cpuCost)
 					}
 				}
-				if allocationResponseItem.GPUCost > negligibleCost {
+				if allocationResponseItem.GPUCost > nodeCostNegligibleCost {
 					seenCost = true
-					withinRange, diff_percent := utils.AreWithinPercentage(gpuCost, allocationResponseItem.GPUCost, Tolerance)
+					withinRange, diff_percent := utils.AreWithinPercentage(gpuCost, allocationResponseItem.GPUCost, nodeCostTolerance)
 					if !withinRange {
 						t.Errorf("  - GPUCost[Fail]: DifferencePercent %0.2f, Prometheus: %0.4f, /allocation: %0.4f", diff_percent, gpuCost, allocationResponseItem.GPUCost)
 					} else {
@@ -268,14 +268,14 @@ func TestNodeInfo(t *testing.T) {
 				ramCost := assetsResponseItem.RAMCost
 				totalCost := assetsResponseItem.TotalCost
 
-				if totalCost < negligibleCost {
+				if totalCost < nodeCostNegligibleCost {
 					continue
 				}
 
 				calculatedTotalCost := cpuCost + gpuCost + ramCost
 
 				t.Logf("Node: %s", node)
-				withinRange, diff_percent := utils.AreWithinPercentage(calculatedTotalCost, totalCost, Tolerance)
+				withinRange, diff_percent := utils.AreWithinPercentage(calculatedTotalCost, totalCost, nodeCostTolerance)
 				if withinRange {
 					t.Logf("  - TotalNodeCost[Pass]: ~ %0.2f", totalCost)
 				} else {
