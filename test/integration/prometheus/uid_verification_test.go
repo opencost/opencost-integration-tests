@@ -58,6 +58,7 @@ var metricToResourceType = map[string]ResourceType{
 	"kube_pod_container_status_running":           ResourceTypePod,
 	"kube_pod_container_status_terminated_reason": ResourceTypePod,
 	"kube_pod_container_resource_requests":        ResourceTypePod,
+	"kube_pod_container_resource_limits":          ResourceTypePod,
 	// PVC metrics
 	"kube_persistentvolumeclaim_resource_requests_storage_bytes": ResourceTypePersistentVolumeClaim,
 	"kube_persistentvolumeclaim_info":                            ResourceTypePersistentVolumeClaim,
@@ -260,6 +261,11 @@ func TestPodContainerResourceRequestsMetricUID(t *testing.T) {
 	testSingleMetric(t, ctx, "kube_pod_container_resource_requests", ResourceTypePod)
 }
 
+func TestPodContainerResourceLimitsMetricUID(t *testing.T) {
+	ctx := NewTestContext()
+	testSingleMetric(t, ctx, "kube_pod_container_resource_limits", ResourceTypePod)
+}
+
 // Deployment Metrics Tests
 func TestDeploymentMatchLabelsMetricUID(t *testing.T) {
 	ctx := NewTestContext()
@@ -346,7 +352,6 @@ func TestServiceSelectorLabelsMetricUID(t *testing.T) {
 	ctx := NewTestContext()
 	testSingleMetric(t, ctx, "service_selector_labels", ResourceTypeService)
 }
-
 
 // TestAllMetricsUIDVerification runs UID verification for every individual metric
 // This provides the most granular test reporting
