@@ -35,6 +35,7 @@ func assertNamespaceInformation(apiSummary api.AllocationResponseItem, apiComput
 	// List of float64 fields to compare using areCostsWithinTolerance
 	floatFields := []string{
 		"CPUCoreRequestAverage",
+		"CPUCoreLimitAverage",
 		"CPUCoreUsageAverage",
 		"CPUCost",
 		"CPUCostIdle",
@@ -43,6 +44,7 @@ func assertNamespaceInformation(apiSummary api.AllocationResponseItem, apiComput
 		"NetworkCost",
 		"LoadBalancerCost",
 		"RAMBytesRequestAverage",
+		"RAMBytesLimitAverage",
 		"RAMBytesUsageAverage",
 		"RAMCost",
 		"RAMCostIdle",
