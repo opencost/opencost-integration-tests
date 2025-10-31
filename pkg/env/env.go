@@ -9,6 +9,7 @@ import (
 )
 
 const defaultURL = "http://localhost:9003"
+const defaultMCPURL = "http://localhost:8081"
 const defaultApproxThreshold = 0.0001 // 0.01%
 const defaultOracleBillingURL = "https://apexapps.oracle.com/"
 
@@ -55,6 +56,16 @@ func GetApproxThreshold() float64 {
 	}
 
 	return approxThreshold
+}
+
+func GetMCPURL() string {
+	url := defaultMCPURL
+
+	if os.Getenv("OPENCOST_MCP_URL") != "" {
+		url = os.Getenv("OPENCOST_MCP_URL")
+	}
+
+	return strings.TrimRight(url, "/")
 }
 
 func GetShowDiff() bool {
