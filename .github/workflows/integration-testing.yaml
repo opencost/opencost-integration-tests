@@ -42,6 +42,7 @@ jobs:
         env:
           PROMETHEUS_URL: "https://demo-prometheus.infra.opencost.io"
           OPENCOST_URL: "https://demo.infra.opencost.io/model"
+          OPENCOST_MCP_URL: "https://mcp-demo.infra.opencost.io/"
         run: |
           # Run bats and capture its exit code
           ./test/bats/bin/bats -T --no-parallelize-within-files --jobs 4 -r test/integration | tee results.txt
