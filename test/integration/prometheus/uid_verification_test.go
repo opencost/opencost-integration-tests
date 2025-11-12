@@ -35,6 +35,12 @@ const (
 // Default test time windows - can be easily modified for different test scenarios
 var defaultTestWindows = []string{"1h", "6h", "24h"}
 
+// optionalMetrics defines metrics that may not exist in a healthy cluster
+// These tests will be skipped rather than failed when no resources are found
+var optionalMetrics = map[string]bool{
+	"kube_job_status_failed": true, // Failed jobs only exist when jobs fail
+}
+
 // metricToResourceType maps each metric to its resource type for extracting resource names
 var metricToResourceType = map[string]ResourceType{
 	// Deployment metrics
@@ -176,7 +182,12 @@ func testSingleMetric(t *testing.T, ctx *TestContext, metric string, resourceTyp
 
 	// Report results
 	if !hasValidResources {
-		t.Errorf("No resources found for metric %s across any time windows", metric)
+		// For optional metrics, skip the test instead of failing
+		if optionalMetrics[metric] {
+			t.Skipf("Optional metric %s has no resources in cluster (this is expected for metrics like failed jobs)", metric)
+		} else {
+			t.Errorf("No resources found for metric %s across any time windows", metric)
+		}
 	} else if len(resourcesWithUIDs) == 0 {
 		t.Errorf("Found %d resources for metric %s but none have UIDs",
 			totalResourcesFound, metric)
