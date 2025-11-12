@@ -111,6 +111,7 @@ type AllocationResponseItem struct {
 	CPUCores                       float64                                 `json:"cpuCores"`
 	CPUCoreHours                   float64                                 `json:"cpuCoreHours"`
 	CPUCoreRequestAverage          float64                                 `json:"cpuCoreRequestAverage"`
+	CPUCoreLimitAverage            float64                                 `json:"cpuCoreLimitAverage"`
 	CPUCoreUsageAverage            float64                                 `json:"cpuCoreUsageAverage"`
 	CPUCost                        float64                                 `json:"cpuCost"`
 	CPUCostAdjustment              float64                                 `json:"cpuCostAdjustment"`
@@ -136,6 +137,7 @@ type AllocationResponseItem struct {
 	RAMBytes                       float64                                 `json:"ramBytes"`
 	RAMByteHours                   float64                                 `json:"ramByteHours"`
 	RAMBytesRequestAverage         float64                                 `json:"ramByteRequestAverage"`
+	RAMBytesLimitAverage           float64                                 `json:"ramByteLimitAverage"`
 	RAMBytesUsageAverage           float64                                 `json:"ramByteUsageAverage"`
 	RAMCost                        float64                                 `json:"ramCost"`
 	RAMCostAdjustment              float64                                 `json:"ramCostAdjustment"`

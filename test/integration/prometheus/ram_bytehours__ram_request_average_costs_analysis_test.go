@@ -4,6 +4,7 @@ package prometheus
 // - RAMBytes
 // - RAMBytesHours
 // - RAMBytesRequestAverage
+// - RAMBytesLimitAverage
 // - RAMMaxUsage
 
 // Testing Methodology
@@ -139,6 +140,39 @@ func TestRAMCosts(t *testing.T) {
 					t.Fatalf("Error while calling Prometheus API %v", err)
 				}
 
+				// Metric: RAMLimits
+				// avg(avg_over_time(
+				// 		kube_pod_container_resource_limits{
+				// 			resource="memory", unit="byte", container!="", container!="POD", node!=""
+				// 		}[24h])
+				// )
+				// by
+				// (container, pod, namespace, node)
+
+				// Q) What about Cluster Filter and Cluster Label?
+				promRAMLimitsInput := prometheus.PrometheusInput{}
+
+				promRAMLimitsInput.Metric = "kube_pod_container_resource_limits"
+				promRAMLimitsInput.Filters = map[string]string{
+					// "job": "opencost", Averaging all results negates this process
+					"resource":  "memory",
+					"unit":      "byte",
+					"namespace": namespace,
+				}
+				promRAMLimitsInput.IgnoreFilters = map[string][]string{
+					"container": {"", "POD"},
+					"node":      {""},
+				}
+				promRAMLimitsInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
+				promRAMLimitsInput.Function = []string{"avg_over_time", "avg"}
+				promRAMLimitsInput.QueryWindow = windowRange
+				promRAMLimitsInput.Time = &endTime
+
+				limitsRAM, err := client.RunPromQLQuery(promRAMLimitsInput)
+				if err != nil {
+					t.Fatalf("Error while calling Prometheus API %v", err)
+				}
+
 				// Metric: RAMAllocated
 				// avg(avg_over_time(
 				// 		container_memory_allocation_bytes{
@@ -199,6 +233,7 @@ func TestRAMCosts(t *testing.T) {
 				type ContainerRAMData struct {
 					Container              string
 					RAMBytesRequestAverage float64
+					RAMBytesLimitAverage   float64
 					RAMBytes               float64
 					RAMBytesHours          float64
 				}
@@ -271,6 +306,7 @@ func TestRAMCosts(t *testing.T) {
 						RAMBytesHours:          ramBytes * runHours,
 						RAMBytes:               ramBytes,
 						RAMBytesRequestAverage: 0.0,
+						RAMBytesLimitAverage:   0.0,
 					}
 				}
 
@@ -318,6 +354,30 @@ func TestRAMCosts(t *testing.T) {
 					podData.Containers[container].RAMBytesRequestAverage = ramBytesRequestedAverage
 				}
 
+				for _, ramLimitsItem := range limitsRAM.Data.Result {
+					container := ramLimitsItem.Metric.Container
+					pod := ramLimitsItem.Metric.Pod
+					if container == "" {
+						t.Logf("Skipping RAM allocation for empty container in pod %s in namespace: %s", pod, ramLimitsItem.Metric.Namespace)
+						continue
+					}
+					podData, ok := podMap[pod]
+					if !ok {
+						t.Logf("Failed to find namespace: %s and pod: %s in RAM allocated results", ramLimitsItem.Metric.Namespace, pod)
+						continue
+					}
+
+					ramBytesLimitAverage := ramLimitsItem.Value.Value
+
+					runMinutes := podData.Minutes
+					if runMinutes <= 0 {
+						t.Logf("Namespace: %s, Pod %s has a run duration of 0 minutes, skipping RAM allocation calculation", podData.Namespace, podData.Pod)
+						continue
+					}
+
+					podData.Containers[container].RAMBytesLimitAverage = ramBytesLimitAverage
+				}
+
 				// ----------------------------------------------
 				// Aggregate Container results to get Pod Output and Aggregate Pod Output to get Namespace results
 
@@ -328,6 +388,7 @@ func TestRAMCosts(t *testing.T) {
 				// NOTE: This is only for the average RAM values, RAMByteHours can be summed directly.
 				// ----------------------------------------------
 				nsRAMBytesRequest := 0.0
+				nsRAMBytesLimit := 0.0
 				nsRAMBytesHours := 0.0
 				nsRAMBytes := 0.0
 				nsMinutes := 0.0
@@ -340,15 +401,18 @@ func TestRAMCosts(t *testing.T) {
 					minutes := podData.Minutes
 
 					ramByteRequest := 0.0
+					ramByteLimit := 0.0
 					ramByteHours := 0.0
 
 					for _, containerData := range podData.Containers {
 						ramByteHours += containerData.RAMBytesHours
 						ramByteRequest += containerData.RAMBytesRequestAverage
+						ramByteLimit += containerData.RAMBytesLimitAverage
 					}
 					// t.Logf("Pod %s, ramByteHours %v", podData.Pod, ramByteHours)
 					// Sum up Pod Values
 					nsRAMBytesRequest += (ramByteRequest*minutes + nsRAMBytesRequest*nsMinutes)
+					nsRAMBytesLimit += (ramByteLimit*minutes + nsRAMBytesLimit*nsMinutes)
 					nsRAMBytesHours += ramByteHours
 
 					// only the first time
@@ -359,6 +423,7 @@ func TestRAMCosts(t *testing.T) {
 						nsHours := utils.ConvertToHours(nsMinutes)
 						nsRAMBytes = nsRAMBytesHours / nsHours
 						nsRAMBytesRequest = nsRAMBytesRequest / nsMinutes
+						nsRAMBytesLimit = nsRAMBytesLimit / nsMinutes
 						continue
 					} else {
 						if start.Before(nsStart) {
@@ -371,6 +436,7 @@ func TestRAMCosts(t *testing.T) {
 						nsHours := utils.ConvertToHours(nsMinutes)
 						nsRAMBytes = nsRAMBytesHours / nsHours
 						nsRAMBytesRequest = nsRAMBytesRequest / nsMinutes
+						nsRAMBytesLimit = nsRAMBytesLimit / nsMinutes
 					}
 				}
 
@@ -383,7 +449,7 @@ func TestRAMCosts(t *testing.T) {
 				// Compare Results with Allocation
 				// ----------------------------------------------
 				t.Logf("Namespace: %s", namespace)
-				// 5 % Tolerance
+
 				withinRange, diff_percent := utils.AreWithinPercentage(nsRAMBytes, allocationResponseItem.RAMBytes, ramByteVsRamAverageTolerance)
 				if withinRange {
 					t.Logf("    - RAMBytes[Pass]: ~%.2f", nsRAMBytes)
@@ -401,6 +467,12 @@ func TestRAMCosts(t *testing.T) {
 					t.Logf("    - RAMByteRequestAverage[Pass]: ~%.2f", nsRAMBytesRequest)
 				} else {
 					t.Errorf("    - RAMByteRequestAverage[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsRAMBytesRequest, allocationResponseItem.RAMBytesRequestAverage)
+				}
+				withinRange, diff_percent = utils.AreWithinPercentage(nsRAMBytesLimit, allocationResponseItem.RAMBytesLimitAverage, ramByteVsRamAverageTolerance)
+				if withinRange {
+					t.Logf("    - RAMBytesLimitAverage[Pass]: ~%.2f", nsRAMBytesLimit)
+				} else {
+					t.Errorf("    - RAMBytesLimitAverage[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsRAMBytesLimit, allocationResponseItem.RAMBytesLimitAverage)
 				}
 			}
 		})
