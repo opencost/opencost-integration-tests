@@ -29,7 +29,7 @@ import (
 )
 
 // 10 Minutes
-const ramByteVsRamAverageShortLivedPodsRunTime = 60
+const ramByteVsRamAverageShortLivedPodsRunTime = 120
 const ramByteVsRamAverageResolution = "1m"
 const ramByteVsRamAverageTolerance = 0.075
 
