@@ -30,7 +30,7 @@ import (
 
 // 10 Minutes
 const (
-	cpuCorevsCpuRequestShortLivedPodsRunTime = 60
+	cpuCorevsCpuRequestShortLivedPodsRunTime = 120
 	cpuCorevsCpuRequestResolution            = "1m"
 	cpuCorevsCpuRequestTolerance             = 0.07
 	cpuCorevsCpuRequestnegligibleCores       = 0.01
