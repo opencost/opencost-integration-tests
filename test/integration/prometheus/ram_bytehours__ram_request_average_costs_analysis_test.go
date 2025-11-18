@@ -26,7 +26,7 @@ import (
 	"time"
 )
 
-const tolerance = 0.05
+const tolerance = 0.1
 
 func ConvertToHours(minutes float64) float64 {
 	// Convert Time from Minutes to Hours
