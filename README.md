@@ -1,4 +1,12 @@
 # OpenCost Integration Tests
+[![Go Report Card](https://goreportcard.com/badge/github.com/opencost/opencost-integration-tests)](https://goreportcard.com/report/github.com/opencost/opencost-integration-tests)
+
+![CI Build Status](https://github.com/opencost/opencost-integration-tests/actions/workflows/integration-testing.yaml/badge.svg)
+
+[![Known Vulnerabilities](https://snyk.io/test/github/opencost/opencost-integration-tests/badge.svg)](https://snyk.io/test/github/opencost/opencost-integration-tests)
+
+
+[![Go Version](https://img.shields.io/github/go-mod/go-version/opencost/opencost-integration-tests)](https://github.com/opencost/opencost-integration-tests/go.mod)
 
 ## Setup
 
