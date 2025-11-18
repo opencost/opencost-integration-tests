@@ -1,0 +1,29 @@
+name: BugBot Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  bugbot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comment 'bugbot run' as ameijer
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.BUGBOT_COMMENTER_PAT }}
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: 'bugbot run'
+            })
+
