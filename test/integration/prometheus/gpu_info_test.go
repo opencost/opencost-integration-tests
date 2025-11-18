@@ -11,15 +11,6 @@ import (
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 )
 
-func TestGPUInfo(t *testing.T) {
-	apiObj := api.NewAPI()
-
-	testCases := []struct {
-		name       string
-		window     string
-		aggregate  string
-		accumulate string
-	}{
 		{
 			name:       "Yesterday",
 			window:     "24h",
