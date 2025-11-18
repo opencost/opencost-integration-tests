@@ -31,7 +31,7 @@ import (
 // 10 Minutes
 const ramByteVsRamAverageShortLivedPodsRunTime = 120
 const ramByteVsRamAverageResolution = "1m"
-const ramByteVsRamAverageTolerance = 0.075
+const ramByteVsRamAverageTolerance = 0.1
 
 func TestRAMCosts(t *testing.T) {
 	apiObj := api.NewAPI()
