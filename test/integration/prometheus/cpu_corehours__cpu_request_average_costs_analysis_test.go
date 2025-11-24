@@ -4,6 +4,7 @@ package prometheus
 // - CPUCores
 // - CPUCoresHours
 // - CPUCoresRequestAverage
+// - CPUCoresLimitAverage
 // - CPUMaxUsage
 
 // Testing Methodology
@@ -19,19 +20,22 @@ package prometheus
 // 5. Compare results with a 5% error margin.
 
 import (
+	"testing"
+	"time"
+
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 	"github.com/opencost/opencost-integration-tests/pkg/utils"
-	"testing"
-	"time"
 )
 
-const tolerance = 0.05
-
-func ConvertToHours(minutes float64) float64 {
-	// Convert Time from Minutes to Hours
-	return minutes / 60
-}
+// 10 Minutes
+const (
+	cpuCorevsCpuRequestShortLivedPodsRunTime = 120
+	cpuCorevsCpuRequestResolution            = "1m"
+	cpuCorevsCpuRequestTolerance             = 0.07
+	cpuCorevsCpuRequestnegligibleCores       = 0.01
+	cpuCorevsCpuLimitnegligibleCores         = 0.01
+)
 
 func TestCPUCosts(t *testing.T) {
 	apiObj := api.NewAPI()
@@ -46,6 +50,12 @@ func TestCPUCosts(t *testing.T) {
 		{
 			name:       "Yesterday",
 			window:     "24h",
+			aggregate:  "namespace",
+			accumulate: "false",
+		},
+		{
+			name:       "Last Two Days",
+			window:     "48h",
 			aggregate:  "namespace",
 			accumulate: "false",
 		},
@@ -83,17 +93,23 @@ func TestCPUCosts(t *testing.T) {
 
 				// Use this information to find start and end time of pod
 				queryEnd := time.Now().UTC().Truncate(time.Hour).Add(time.Hour)
-				queryStart := queryEnd.Add(-24 * time.Hour)
+				// Get Time Duration
+				timeNumericVal, _ := utils.ExtractNumericPrefix(tc.window)
+				// Assume the minumum unit is an hour
+				negativeDuration := time.Duration(timeNumericVal*float64(time.Hour)) * -1
+				queryStart := queryEnd.Add(negativeDuration)
 				window24h := api.Window{
 					Start: queryStart,
 					End:   queryEnd,
 				}
 				// Note that in the Pod Query, we use a 5m resolution [THIS IS THE DEFAULT VALUE IN OPENCOST]
-				resolution := 5 * time.Minute
+				resolutionNumericVal, _ := utils.ExtractNumericPrefix(cpuCorevsCpuRequestResolution)
+				resolution := time.Duration(int(resolutionNumericVal) * int(time.Minute))
 
 				// Query End Time for all Queries
 				endTime := queryEnd.Unix()
 
+				windowRange := prometheus.GetOffsetAdjustedQueryWindow(tc.window, cpuCorevsCpuRequestResolution)
 				// Metric: CPURequests
 				// avg(avg_over_time(
 				// 		kube_pod_container_resource_requests{
@@ -119,10 +135,43 @@ func TestCPUCosts(t *testing.T) {
 				}
 				promCPURequestedInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
 				promCPURequestedInput.Function = []string{"avg_over_time", "avg"}
-				promCPURequestedInput.QueryWindow = tc.window
+				promCPURequestedInput.QueryWindow = windowRange
 				promCPURequestedInput.Time = &endTime
 
 				requestedCPU, err := client.RunPromQLQuery(promCPURequestedInput)
+				if err != nil {
+					t.Fatalf("Error while calling Prometheus API %v", err)
+				}
+
+				// Metric: CPULimits
+				// avg(avg_over_time(
+				// 		kube_pod_container_resource_limits{
+				// 			resource="cpu", unit="core", container!="", container!="POD", node!=""
+				// 		}[24h])
+				// )
+				// by
+				// (container, pod, namespace, node)
+
+				// Q) What about Cluster Filter and Cluster Label?
+				promCPULimitsInput := prometheus.PrometheusInput{}
+
+				promCPULimitsInput.Metric = "kube_pod_container_resource_limits"
+				promCPULimitsInput.Filters = map[string]string{
+					// "job": "opencost", Averaging all results negates this process
+					"resource":  "cpu",
+					"unit":      "core",
+					"namespace": namespace,
+				}
+				promCPULimitsInput.IgnoreFilters = map[string][]string{
+					"container": {"", "POD"},
+					"node":      {""},
+				}
+				promCPULimitsInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
+				promCPULimitsInput.Function = []string{"avg_over_time", "avg"}
+				promCPULimitsInput.QueryWindow = windowRange
+				promCPULimitsInput.Time = &endTime
+
+				limitsCPU, err := client.RunPromQLQuery(promCPULimitsInput)
 				if err != nil {
 					t.Fatalf("Error while calling Prometheus API %v", err)
 				}
@@ -150,7 +199,7 @@ func TestCPUCosts(t *testing.T) {
 				}
 				promCPUAllocatedInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
 				promCPUAllocatedInput.Function = []string{"avg_over_time", "avg"}
-				promCPUAllocatedInput.QueryWindow = tc.window
+				promCPUAllocatedInput.QueryWindow = windowRange
 				promCPUAllocatedInput.Time = &endTime
 
 				allocatedCPU, err := client.RunPromQLQuery(promCPUAllocatedInput)
@@ -173,8 +222,8 @@ func TestCPUCosts(t *testing.T) {
 				promPodInfoInput.MetricNotEqualTo = "0"
 				promPodInfoInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
 				promPodInfoInput.Function = []string{"avg"}
-				promPodInfoInput.AggregateWindow = tc.window
-				promPodInfoInput.AggregateResolution = "5m"
+				promPodInfoInput.AggregateWindow = windowRange
+				promPodInfoInput.AggregateResolution = cpuCorevsCpuRequestResolution
 				promPodInfoInput.Time = &endTime
 
 				podInfo, err := client.RunPromQLQuery(promPodInfoInput)
@@ -187,6 +236,7 @@ func TestCPUCosts(t *testing.T) {
 				type ContainerCPUData struct {
 					Container              string
 					CPUCoresRequestAverage float64
+					CPUCoresLimitAverage   float64
 					CPUCores               float64
 					CPUCoresHours          float64
 				}
@@ -253,12 +303,13 @@ func TestCPUCosts(t *testing.T) {
 						continue
 					}
 
-					runHours := ConvertToHours(runMinutes)
+					runHours := utils.ConvertToHours(runMinutes)
 					podData.Containers[container] = &ContainerCPUData{
 						Container:              container,
 						CPUCoresHours:          CPUCores * runHours,
 						CPUCores:               CPUCores,
 						CPUCoresRequestAverage: 0.0,
+						CPUCoresLimitAverage:   0.0,
 					}
 				}
 
@@ -276,7 +327,7 @@ func TestCPUCosts(t *testing.T) {
 					}
 					podData, ok := podMap[pod]
 					if !ok {
-						t.Logf("Failed to find namespace: %s and pod: %s in CPU allocated results", CPURequestedItem.Metric.Namespace, pod)
+						t.Logf("[Skipping] Failed to find namespace: %s and pod: %s in CPU allocated results", CPURequestedItem.Metric.Namespace, pod)
 						continue
 					}
 
@@ -288,7 +339,7 @@ func TestCPUCosts(t *testing.T) {
 						continue
 					}
 
-					runHours := ConvertToHours(runMinutes)
+					runHours := utils.ConvertToHours(runMinutes)
 
 					// if the container exists, you need to apply the opencost cost specification
 					if containerData, ok := podData.Containers[container]; ok {
@@ -307,6 +358,33 @@ func TestCPUCosts(t *testing.T) {
 				}
 
 				// ----------------------------------------------
+				// Gather CPULimitAverage (CPULimits) for every container in a Pod
+
+				for _, CPULimitsItem := range limitsCPU.Data.Result {
+					container := CPULimitsItem.Metric.Container
+					pod := CPULimitsItem.Metric.Pod
+					if container == "" {
+						t.Logf("Skipping CPU allocation for empty container in pod %s in namespace: %s", pod, CPULimitsItem.Metric.Namespace)
+						continue
+					}
+					podData, ok := podMap[pod]
+					if !ok {
+						t.Logf("[Skipping] Failed to find namespace: %s and pod: %s in CPU allocated results", CPULimitsItem.Metric.Namespace, pod)
+						continue
+					}
+
+					CPUCoresLimitAverage := CPULimitsItem.Value.Value
+
+					runMinutes := podData.Minutes
+					if runMinutes <= 0 {
+						t.Logf("Namespace: %s, Pod %s has a run duration of 0 minutes, skipping CPU allocation calculation", podData.Namespace, podData.Pod)
+						continue
+					}
+
+					podData.Containers[container].CPUCoresLimitAverage = CPUCoresLimitAverage
+				}
+
+				// ----------------------------------------------
 				// Aggregate Container results to get Pod Output and Aggregate Pod Output to get Namespace results
 
 				// Aggregating the AVG CPU values is not as simple as just summing them up because we have to consider that
@@ -316,6 +394,7 @@ func TestCPUCosts(t *testing.T) {
 				// NOTE: This is only for the average CPU values, CPUCoreHours can be summed directly.
 				// ----------------------------------------------
 				nsCPUCoresRequest := 0.0
+				nsCPUCoresLimit := 0.0
 				nsCPUCoresHours := 0.0
 				nsCPUCores := 0.0
 				nsMinutes := 0.0
@@ -328,15 +407,18 @@ func TestCPUCosts(t *testing.T) {
 					minutes := podData.Minutes
 
 					CPUCoreRequest := 0.0
+					CPUCoreLimit := 0.0
 					CPUCoreHours := 0.0
 
 					for _, containerData := range podData.Containers {
 						CPUCoreHours += containerData.CPUCoresHours
 						CPUCoreRequest += containerData.CPUCoresRequestAverage
+						CPUCoreLimit += containerData.CPUCoresLimitAverage
 					}
 					// t.Logf("Pod %s, CPUCoreHours %v", podData.Pod, CPUCoreHours)
 					// Sum up Pod Values
 					nsCPUCoresRequest += (CPUCoreRequest*minutes + nsCPUCoresRequest*nsMinutes)
+					nsCPUCoresLimit += (CPUCoreLimit*minutes + nsCPUCoresLimit*nsMinutes)
 					nsCPUCoresHours += CPUCoreHours
 
 					// only the first time
@@ -344,9 +426,10 @@ func TestCPUCosts(t *testing.T) {
 						nsStart = start
 						nsEnd = end
 						nsMinutes = nsEnd.Sub(nsStart).Minutes()
-						nsHours := ConvertToHours(nsMinutes)
+						nsHours := utils.ConvertToHours(nsMinutes)
 						nsCPUCores = nsCPUCoresHours / nsHours
 						nsCPUCoresRequest = nsCPUCoresRequest / nsMinutes
+						nsCPUCoresLimit = nsCPUCoresLimit / nsMinutes
 						continue
 					} else {
 						if start.Before(nsStart) {
@@ -356,34 +439,55 @@ func TestCPUCosts(t *testing.T) {
 							nsEnd = end
 						}
 						nsMinutes = nsEnd.Sub(nsStart).Minutes()
-						nsHours := ConvertToHours(nsMinutes)
+						nsHours := utils.ConvertToHours(nsMinutes)
 						nsCPUCores = nsCPUCoresHours / nsHours
 						nsCPUCoresRequest = nsCPUCoresRequest / nsMinutes
+						nsCPUCoresLimit = nsCPUCoresLimit / nsMinutes
 					}
+				}
+
+				if nsMinutes < cpuCorevsCpuRequestShortLivedPodsRunTime {
+					// Too short of a run time to assert results. ByteHours is very sensitive to run time.
+					t.Logf("[Skipped] Namespace %v: RunTime %v less than %v ", namespace, nsMinutes, cpuCorevsCpuRequestShortLivedPodsRunTime)
+					continue
 				}
 
 				// ----------------------------------------------
 				// Compare Results with Allocation
 				// ----------------------------------------------
 				t.Logf("Namespace: %s", namespace)
-				// 5 % Tolerance
-				withinRange, diff_percent := utils.AreWithinPercentage(nsCPUCores, allocationResponseItem.CPUCores, tolerance)
-				if withinRange {
-					t.Logf("    - CPUCores[Pass]: ~%.2f", nsCPUCores)
-				} else {
-					t.Errorf("    - CPUCores[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsCPUCores, allocationResponseItem.CPUCores)
+
+				if allocationResponseItem.CPUCores > cpuCorevsCpuRequestnegligibleCores {
+					withinRange, diff_percent := utils.AreWithinPercentage(nsCPUCores, allocationResponseItem.CPUCores, cpuCorevsCpuRequestTolerance)
+					if withinRange {
+						t.Logf("    - CPUCores[Pass]: ~%.2f", nsCPUCores)
+					} else {
+						t.Errorf("    - CPUCores[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsCPUCores, allocationResponseItem.CPUCores)
+					}
 				}
-				withinRange, diff_percent = utils.AreWithinPercentage(nsCPUCoresHours, allocationResponseItem.CPUCoreHours, tolerance)
-				if withinRange {
-					t.Logf("    - CPUCoreHours[Pass]: ~%.2f", nsCPUCoresHours)
-				} else {
-					t.Errorf("    - CPUCoreHours[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsCPUCoresHours, allocationResponseItem.CPUCoreHours)
+				if allocationResponseItem.CPUCoreHours > cpuCorevsCpuRequestnegligibleCores {
+					withinRange, diff_percent := utils.AreWithinPercentage(nsCPUCoresHours, allocationResponseItem.CPUCoreHours, cpuCorevsCpuRequestTolerance)
+					if withinRange {
+						t.Logf("    - CPUCoreHours[Pass]: ~%.2f", nsCPUCoresHours)
+					} else {
+						t.Errorf("    - CPUCoreHours[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsCPUCoresHours, allocationResponseItem.CPUCoreHours)
+					}
 				}
-				withinRange, diff_percent = utils.AreWithinPercentage(nsCPUCoresRequest, allocationResponseItem.CPUCoreRequestAverage, tolerance)
-				if withinRange {
-					t.Logf("    - CPUCoreRequestAverage[Pass]: ~%.2f", nsCPUCoresRequest)
-				} else {
-					t.Errorf("    - CPUCoreRequestAverage[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsCPUCoresRequest, allocationResponseItem.CPUCoreRequestAverage)
+				if allocationResponseItem.CPUCoreRequestAverage > cpuCorevsCpuRequestnegligibleCores {
+					withinRange, diff_percent := utils.AreWithinPercentage(nsCPUCoresRequest, allocationResponseItem.CPUCoreRequestAverage, cpuCorevsCpuRequestTolerance)
+					if withinRange {
+						t.Logf("    - CPUCoreRequestAverage[Pass]: ~%.2f", nsCPUCoresRequest)
+					} else {
+						t.Errorf("    - CPUCoreRequestAverage[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsCPUCoresRequest, allocationResponseItem.CPUCoreRequestAverage)
+					}
+				}
+				if allocationResponseItem.CPUCoreLimitAverage > cpuCorevsCpuLimitnegligibleCores {
+					withinRange, diff_percent := utils.AreWithinPercentage(nsCPUCoresLimit, allocationResponseItem.CPUCoreLimitAverage, cpuCorevsCpuRequestTolerance)
+					if withinRange {
+						t.Logf("    - CPUCoreLimitAverage[Pass]: ~%.2f", nsCPUCoresLimit)
+					} else {
+						t.Errorf("    - CPUCoreLimitAverage[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsCPUCoresLimit, allocationResponseItem.CPUCoreLimitAverage)
+					}
 				}
 			}
 		})

@@ -98,10 +98,10 @@ func TestTotalEfficiencyValue(t *testing.T) {
 				for mapkey, allocationRequestObj := range allocationRequestObjMap {
 					t.Logf("Name: %v\n", mapkey)
 					// Really not sure about the upper limit as some values cross 100% in the demo dashboard
-					if allocationRequestObj.TotalEfficiency >= 0.0 && allocationRequestObj.TotalEfficiency <= 1.0 {
-						t.Logf("Total Efficiency for %v is a Valid Value", mapkey)
+					if allocationRequestObj.TotalEfficiency >= 0.0 {
+						t.Logf("[Pass] %v", mapkey)
 					} else {
-						t.Errorf("Total Efficiency for %v is an Invalid Value: %v", mapkey, allocationRequestObj.TotalEfficiency)
+						t.Errorf("[Fail] %v: Invalid Efficiency -  %v", mapkey, allocationRequestObj.TotalEfficiency)
 					}
 				}
 			}

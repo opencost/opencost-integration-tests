@@ -2,9 +2,10 @@ package allocation
 
 import (
 	"fmt"
-	util "github.com/opencost/opencost-integration-tests/test/comparison/helper"
 	"testing"
 	"time"
+
+	util "github.com/opencost/opencost-integration-tests/test/comparison/helper"
 
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 )
@@ -76,6 +77,8 @@ func compareAllocationResponses(t *testing.T, resp1, resp2 *api.AllocationRespon
 				alloc1.CPUCoreHours, alloc2.CPUCoreHours, tolerancePercent)
 			util.CompareValues(t, fmt.Sprintf("%s CPU Core Request Average", podName),
 				alloc1.CPUCoreRequestAverage, alloc2.CPUCoreRequestAverage, tolerancePercent)
+			util.CompareValues(t, fmt.Sprintf("%s CPU Core Limit Average", podName),
+				alloc1.CPUCoreLimitAverage, alloc2.CPUCoreLimitAverage, tolerancePercent)
 			util.CompareValues(t, fmt.Sprintf("%s CPU Core Usage Average", podName),
 				alloc1.CPUCoreUsageAverage, alloc2.CPUCoreUsageAverage, tolerancePercent)
 			util.CompareValues(t, fmt.Sprintf("%s CPU Cost", podName),
@@ -86,6 +89,8 @@ func compareAllocationResponses(t *testing.T, resp1, resp2 *api.AllocationRespon
 				alloc1.RAMByteHours, alloc2.RAMByteHours, tolerancePercent)
 			util.CompareValues(t, fmt.Sprintf("%s RAM Bytes Request Average", podName),
 				alloc1.RAMBytesRequestAverage, alloc2.RAMBytesRequestAverage, tolerancePercent)
+			util.CompareValues(t, fmt.Sprintf("%s RAM Bytes Limit Average", podName),
+				alloc1.RAMBytesLimitAverage, alloc2.RAMBytesLimitAverage, tolerancePercent)
 			util.CompareValues(t, fmt.Sprintf("%s RAM Bytes Usage Average", podName),
 				alloc1.RAMBytesUsageAverage, alloc2.RAMBytesUsageAverage, tolerancePercent)
 			util.CompareValues(t, fmt.Sprintf("%s RAM Cost", podName),

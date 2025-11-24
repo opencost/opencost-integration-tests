@@ -4,6 +4,7 @@ package prometheus
 // - RAMBytes
 // - RAMBytesHours
 // - RAMBytesRequestAverage
+// - RAMBytesLimitAverage
 // - RAMMaxUsage
 
 // Testing Methodology
@@ -19,19 +20,18 @@ package prometheus
 // 5. Compare results with a 5% error margin.
 
 import (
+	"testing"
+	"time"
+
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 	"github.com/opencost/opencost-integration-tests/pkg/utils"
-	"testing"
-	"time"
 )
 
-const tolerance = 0.05
-
-func ConvertToHours(minutes float64) float64 {
-	// Convert Time from Minutes to Hours
-	return minutes / 60
-}
+// 10 Minutes
+const ramByteVsRamAverageShortLivedPodsRunTime = 120
+const ramByteVsRamAverageResolution = "1m"
+const ramByteVsRamAverageTolerance = 0.1
 
 func TestRAMCosts(t *testing.T) {
 	apiObj := api.NewAPI()
@@ -46,6 +46,12 @@ func TestRAMCosts(t *testing.T) {
 		{
 			name:       "Yesterday",
 			window:     "24h",
+			aggregate:  "namespace",
+			accumulate: "false",
+		},
+		{
+			name:       "Last Two Days",
+			window:     "48h",
 			aggregate:  "namespace",
 			accumulate: "false",
 		},
@@ -83,16 +89,23 @@ func TestRAMCosts(t *testing.T) {
 
 				// Use this information to find start and end time of pod
 				queryEnd := time.Now().UTC().Truncate(time.Hour).Add(time.Hour)
-				queryStart := queryEnd.Add(-24 * time.Hour)
+				// Get Time Duration
+				timeNumericVal, _ := utils.ExtractNumericPrefix(tc.window)
+				// Assume the minumum unit is an hour
+				negativeDuration := time.Duration(timeNumericVal*float64(time.Hour)) * -1
+				queryStart := queryEnd.Add(negativeDuration)
 				window24h := api.Window{
 					Start: queryStart,
 					End:   queryEnd,
 				}
 				// Note that in the Pod Query, we use a 5m resolution [THIS IS THE DEFAULT VALUE IN OPENCOST]
-				resolution := 5 * time.Minute
+				resolutionNumericVal, _ := utils.ExtractNumericPrefix(ramByteVsRamAverageResolution)
+				resolution := time.Duration(int(resolutionNumericVal) * int(time.Minute))
 
 				// Query End Time for all Queries
 				endTime := queryEnd.Unix()
+
+				windowRange := prometheus.GetOffsetAdjustedQueryWindow(tc.window, ramByteVsRamAverageResolution)
 
 				// Metric: RAMRequests
 				// avg(avg_over_time(
@@ -119,10 +132,43 @@ func TestRAMCosts(t *testing.T) {
 				}
 				promRAMRequestedInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
 				promRAMRequestedInput.Function = []string{"avg_over_time", "avg"}
-				promRAMRequestedInput.QueryWindow = tc.window
+				promRAMRequestedInput.QueryWindow = windowRange
 				promRAMRequestedInput.Time = &endTime
 
 				requestedRAM, err := client.RunPromQLQuery(promRAMRequestedInput)
+				if err != nil {
+					t.Fatalf("Error while calling Prometheus API %v", err)
+				}
+
+				// Metric: RAMLimits
+				// avg(avg_over_time(
+				// 		kube_pod_container_resource_limits{
+				// 			resource="memory", unit="byte", container!="", container!="POD", node!=""
+				// 		}[24h])
+				// )
+				// by
+				// (container, pod, namespace, node)
+
+				// Q) What about Cluster Filter and Cluster Label?
+				promRAMLimitsInput := prometheus.PrometheusInput{}
+
+				promRAMLimitsInput.Metric = "kube_pod_container_resource_limits"
+				promRAMLimitsInput.Filters = map[string]string{
+					// "job": "opencost", Averaging all results negates this process
+					"resource":  "memory",
+					"unit":      "byte",
+					"namespace": namespace,
+				}
+				promRAMLimitsInput.IgnoreFilters = map[string][]string{
+					"container": {"", "POD"},
+					"node":      {""},
+				}
+				promRAMLimitsInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
+				promRAMLimitsInput.Function = []string{"avg_over_time", "avg"}
+				promRAMLimitsInput.QueryWindow = windowRange
+				promRAMLimitsInput.Time = &endTime
+
+				limitsRAM, err := client.RunPromQLQuery(promRAMLimitsInput)
 				if err != nil {
 					t.Fatalf("Error while calling Prometheus API %v", err)
 				}
@@ -150,7 +196,7 @@ func TestRAMCosts(t *testing.T) {
 				}
 				promRAMAllocatedInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
 				promRAMAllocatedInput.Function = []string{"avg_over_time", "avg"}
-				promRAMAllocatedInput.QueryWindow = tc.window
+				promRAMAllocatedInput.QueryWindow = windowRange
 				promRAMAllocatedInput.Time = &endTime
 
 				allocatedRAM, err := client.RunPromQLQuery(promRAMAllocatedInput)
@@ -173,8 +219,8 @@ func TestRAMCosts(t *testing.T) {
 				promPodInfoInput.MetricNotEqualTo = "0"
 				promPodInfoInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
 				promPodInfoInput.Function = []string{"avg"}
-				promPodInfoInput.AggregateWindow = tc.window
-				promPodInfoInput.AggregateResolution = "5m"
+				promPodInfoInput.AggregateWindow = windowRange
+				promPodInfoInput.AggregateResolution = ramByteVsRamAverageResolution
 				promPodInfoInput.Time = &endTime
 
 				podInfo, err := client.RunPromQLQuery(promPodInfoInput)
@@ -187,6 +233,7 @@ func TestRAMCosts(t *testing.T) {
 				type ContainerRAMData struct {
 					Container              string
 					RAMBytesRequestAverage float64
+					RAMBytesLimitAverage   float64
 					RAMBytes               float64
 					RAMBytesHours          float64
 				}
@@ -206,7 +253,7 @@ func TestRAMCosts(t *testing.T) {
 				// Create a map of PodData for each pod, and calculate the runtime.
 				// The query we make for pods is _NOT_ an average over time "range" vector. Instead, it's a range vector
 				// that returns _ALL_ samples for the pod over the last 24 hours. So, when you see <metric>[24h:5m] the
-				// number after the ':' (5m) is the resolution of the samples. So for the pod query, we get 24h / 5m
+				// number after the ':' (1m) is the resolution of the samples. So for the pod query, we get 24h / 1m
 				// ----------------------------------------------
 
 				// Pointers to modify in place
@@ -253,12 +300,13 @@ func TestRAMCosts(t *testing.T) {
 						continue
 					}
 
-					runHours := ConvertToHours(runMinutes)
+					runHours := utils.ConvertToHours(runMinutes)
 					podData.Containers[container] = &ContainerRAMData{
 						Container:              container,
 						RAMBytesHours:          ramBytes * runHours,
 						RAMBytes:               ramBytes,
 						RAMBytesRequestAverage: 0.0,
+						RAMBytesLimitAverage:   0.0,
 					}
 				}
 
@@ -288,7 +336,7 @@ func TestRAMCosts(t *testing.T) {
 						continue
 					}
 
-					runHours := ConvertToHours(runMinutes)
+					runHours := utils.ConvertToHours(runMinutes)
 
 					// if the container exists, you need to apply the opencost cost specification
 					if containerData, ok := podData.Containers[container]; ok {
@@ -306,6 +354,30 @@ func TestRAMCosts(t *testing.T) {
 					podData.Containers[container].RAMBytesRequestAverage = ramBytesRequestedAverage
 				}
 
+				for _, ramLimitsItem := range limitsRAM.Data.Result {
+					container := ramLimitsItem.Metric.Container
+					pod := ramLimitsItem.Metric.Pod
+					if container == "" {
+						t.Logf("Skipping RAM allocation for empty container in pod %s in namespace: %s", pod, ramLimitsItem.Metric.Namespace)
+						continue
+					}
+					podData, ok := podMap[pod]
+					if !ok {
+						t.Logf("Failed to find namespace: %s and pod: %s in RAM allocated results", ramLimitsItem.Metric.Namespace, pod)
+						continue
+					}
+
+					ramBytesLimitAverage := ramLimitsItem.Value.Value
+
+					runMinutes := podData.Minutes
+					if runMinutes <= 0 {
+						t.Logf("Namespace: %s, Pod %s has a run duration of 0 minutes, skipping RAM allocation calculation", podData.Namespace, podData.Pod)
+						continue
+					}
+
+					podData.Containers[container].RAMBytesLimitAverage = ramBytesLimitAverage
+				}
+
 				// ----------------------------------------------
 				// Aggregate Container results to get Pod Output and Aggregate Pod Output to get Namespace results
 
@@ -316,6 +388,7 @@ func TestRAMCosts(t *testing.T) {
 				// NOTE: This is only for the average RAM values, RAMByteHours can be summed directly.
 				// ----------------------------------------------
 				nsRAMBytesRequest := 0.0
+				nsRAMBytesLimit := 0.0
 				nsRAMBytesHours := 0.0
 				nsRAMBytes := 0.0
 				nsMinutes := 0.0
@@ -328,15 +401,18 @@ func TestRAMCosts(t *testing.T) {
 					minutes := podData.Minutes
 
 					ramByteRequest := 0.0
+					ramByteLimit := 0.0
 					ramByteHours := 0.0
 
 					for _, containerData := range podData.Containers {
 						ramByteHours += containerData.RAMBytesHours
 						ramByteRequest += containerData.RAMBytesRequestAverage
+						ramByteLimit += containerData.RAMBytesLimitAverage
 					}
 					// t.Logf("Pod %s, ramByteHours %v", podData.Pod, ramByteHours)
 					// Sum up Pod Values
 					nsRAMBytesRequest += (ramByteRequest*minutes + nsRAMBytesRequest*nsMinutes)
+					nsRAMBytesLimit += (ramByteLimit*minutes + nsRAMBytesLimit*nsMinutes)
 					nsRAMBytesHours += ramByteHours
 
 					// only the first time
@@ -344,9 +420,10 @@ func TestRAMCosts(t *testing.T) {
 						nsStart = start
 						nsEnd = end
 						nsMinutes = nsEnd.Sub(nsStart).Minutes()
-						nsHours := ConvertToHours(nsMinutes)
+						nsHours := utils.ConvertToHours(nsMinutes)
 						nsRAMBytes = nsRAMBytesHours / nsHours
 						nsRAMBytesRequest = nsRAMBytesRequest / nsMinutes
+						nsRAMBytesLimit = nsRAMBytesLimit / nsMinutes
 						continue
 					} else {
 						if start.Before(nsStart) {
@@ -356,34 +433,46 @@ func TestRAMCosts(t *testing.T) {
 							nsEnd = end
 						}
 						nsMinutes = nsEnd.Sub(nsStart).Minutes()
-						nsHours := ConvertToHours(nsMinutes)
+						nsHours := utils.ConvertToHours(nsMinutes)
 						nsRAMBytes = nsRAMBytesHours / nsHours
 						nsRAMBytesRequest = nsRAMBytesRequest / nsMinutes
+						nsRAMBytesLimit = nsRAMBytesLimit / nsMinutes
 					}
 				}
 
+				if nsMinutes < ramByteVsRamAverageShortLivedPodsRunTime {
+					// Too short of a run time to assert results. ByteHours is very sensitive to run time.
+					t.Logf("[Skipped] Namespace %v: RunTime %v less than %v ", namespace, nsMinutes, ramByteVsRamAverageShortLivedPodsRunTime)
+					continue
+				}
 				// ----------------------------------------------
 				// Compare Results with Allocation
 				// ----------------------------------------------
 				t.Logf("Namespace: %s", namespace)
-				// 5 % Tolerance
-				withinRange, diff_percent := utils.AreWithinPercentage(nsRAMBytes, allocationResponseItem.RAMBytes, tolerance)
+
+				withinRange, diff_percent := utils.AreWithinPercentage(nsRAMBytes, allocationResponseItem.RAMBytes, ramByteVsRamAverageTolerance)
 				if withinRange {
 					t.Logf("    - RAMBytes[Pass]: ~%.2f", nsRAMBytes)
 				} else {
 					t.Errorf("    - RAMBytes[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsRAMBytes, allocationResponseItem.RAMBytes)
 				}
-				withinRange, diff_percent = utils.AreWithinPercentage(nsRAMBytesHours, allocationResponseItem.RAMByteHours, tolerance)
+				withinRange, diff_percent = utils.AreWithinPercentage(nsRAMBytesHours, allocationResponseItem.RAMByteHours, ramByteVsRamAverageTolerance)
 				if withinRange {
 					t.Logf("    - RAMByteHours[Pass]: ~%.2f", nsRAMBytesHours)
 				} else {
 					t.Errorf("    - RAMByteHours[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsRAMBytesHours, allocationResponseItem.RAMByteHours)
 				}
-				withinRange, diff_percent = utils.AreWithinPercentage(nsRAMBytesRequest, allocationResponseItem.RAMBytesRequestAverage, tolerance)
+				withinRange, diff_percent = utils.AreWithinPercentage(nsRAMBytesRequest, allocationResponseItem.RAMBytesRequestAverage, ramByteVsRamAverageTolerance)
 				if withinRange {
 					t.Logf("    - RAMByteRequestAverage[Pass]: ~%.2f", nsRAMBytesRequest)
 				} else {
 					t.Errorf("    - RAMByteRequestAverage[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsRAMBytesRequest, allocationResponseItem.RAMBytesRequestAverage)
+				}
+				withinRange, diff_percent = utils.AreWithinPercentage(nsRAMBytesLimit, allocationResponseItem.RAMBytesLimitAverage, ramByteVsRamAverageTolerance)
+				if withinRange {
+					t.Logf("    - RAMBytesLimitAverage[Pass]: ~%.2f", nsRAMBytesLimit)
+				} else {
+					t.Errorf("    - RAMBytesLimitAverage[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsRAMBytesLimit, allocationResponseItem.RAMBytesLimitAverage)
 				}
 			}
 		})

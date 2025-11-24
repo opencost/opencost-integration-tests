@@ -1,10 +1,10 @@
 package utils
 
 import (
-	"math"
 	"fmt"
-	"strconv"
+	"math"
 	"regexp"
+	"strconv"
 )
 
 func AreWithinPercentage(num1, num2, tolerance float64) (bool, float64) {
@@ -18,8 +18,13 @@ func AreWithinPercentage(num1, num2, tolerance float64) (bool, float64) {
 	reference := math.Max(math.Abs(num1), math.Abs(num2))
 
 	diff_percent := (diff / reference) * 100
-	
+
 	return (diff <= (reference * tolerance)), diff_percent
+}
+
+func ConvertToHours(minutes float64) float64 {
+	// Convert Time from Minutes to Hours
+	return minutes / 60
 }
 
 func RoundUpToTwoDecimals(num float64) float64 {

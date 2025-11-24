@@ -26,8 +26,9 @@ type AllocationRequest struct {
 	Filter                     string
 	Idle                       string
 	IdleByNode                 string
-	IncludeIdle				   string
+	IncludeIdle                string
 	IncludeSharedCostBreakdown string
+	IncludeAggregatedMetadata  string
 	ShareCost                  string
 	ShareIdle                  string
 	ShareLabels                string
@@ -63,6 +64,9 @@ func (ar AllocationRequest) QueryString() string {
 	}
 	if ar.IncludeSharedCostBreakdown != "" {
 		params = append(params, fmt.Sprintf("includeSharedCostBreakdown=%s", ar.IncludeSharedCostBreakdown))
+	}
+	if ar.IncludeAggregatedMetadata != "" {
+		params = append(params, fmt.Sprintf("includeAggregatedMetadata=%s", ar.IncludeAggregatedMetadata))
 	}
 	if ar.ShareCost != "" {
 		params = append(params, fmt.Sprintf("shareCost=%s", ar.ShareCost))
@@ -103,9 +107,11 @@ type AllocationResponseItem struct {
 	Window                         Window                                  `json:"window"`
 	Start                          time.Time                               `json:"start"`
 	End                            time.Time                               `json:"end"`
+	Minutes                        float64                                 `json:"minutes"`
 	CPUCores                       float64                                 `json:"cpuCores"`
 	CPUCoreHours                   float64                                 `json:"cpuCoreHours"`
 	CPUCoreRequestAverage          float64                                 `json:"cpuCoreRequestAverage"`
+	CPUCoreLimitAverage            float64                                 `json:"cpuCoreLimitAverage"`
 	CPUCoreUsageAverage            float64                                 `json:"cpuCoreUsageAverage"`
 	CPUCost                        float64                                 `json:"cpuCost"`
 	CPUCostAdjustment              float64                                 `json:"cpuCostAdjustment"`
@@ -114,6 +120,7 @@ type AllocationResponseItem struct {
 	GPUCost                        float64                                 `json:"gpuCost"`
 	GPUCostAdjustment              float64                                 `json:"gpuCostAdjustment"`
 	GPUCostIdle                    float64                                 `json:"gpuCostIdle"`
+	GPUCount                       float64                                 `json:"gpuCount"`
 	NetworkTransferBytes           float64                                 `json:"networkTransferBytes"`
 	NetworkReceiveBytes            float64                                 `json:"networkReceiveBytes"`
 	NetworkCost                    float64                                 `json:"networkCost"`
@@ -123,13 +130,14 @@ type AllocationResponseItem struct {
 	NetworkCostAdjustment          float64                                 `json:"networkCostAdjustment"`
 	LoadBalancerCost               float64                                 `json:"loadBalancerCost"`
 	LoadBalancerCostAdjustment     float64                                 `json:"loadBalancerCostAdjustment"`
-	PVBytes						   float64								   `json:"pvBytes"`
-	PVByteHours					   float64								   `json:"pvByteHours"`
+	PVBytes                        float64                                 `json:"pvBytes"`
+	PVByteHours                    float64                                 `json:"pvByteHours"`
 	PersistentVolumes              AllocationResponseItemPersistentVolumes `json:"pvs"`
 	PersistentVolumeCostAdjustment float64                                 `json:"pvCostAdjustment"`
-	RAMBytes                       float64								   `json:"ramBytes"`
+	RAMBytes                       float64                                 `json:"ramBytes"`
 	RAMByteHours                   float64                                 `json:"ramByteHours"`
 	RAMBytesRequestAverage         float64                                 `json:"ramByteRequestAverage"`
+	RAMBytesLimitAverage           float64                                 `json:"ramByteLimitAverage"`
 	RAMBytesUsageAverage           float64                                 `json:"ramByteUsageAverage"`
 	RAMCost                        float64                                 `json:"ramCost"`
 	RAMCostAdjustment              float64                                 `json:"ramCostAdjustment"`
@@ -137,34 +145,33 @@ type AllocationResponseItem struct {
 	SharedCost                     float64                                 `json:"sharedCost"`
 	TotalCost                      float64                                 `json:"totalCost"`
 	TotalEfficiency                float64                                 `json:"totalEfficiency"`
-	LoadBalancerAllocations		   map[string]LoadBalancerProperties	   `json:"lbAllocations"`
+	LoadBalancerAllocations        map[string]LoadBalancerProperties       `json:"lbAllocations"`
 	GPUAllocation                  GPUAllocationItemProperties             `json:"gpuAllocation"`
-	RawAllocationsOnly			   RawAllocationsProperties				   `json:"rawAllocationOnly"`
+	RawAllocationsOnly             RawAllocationsProperties                `json:"rawAllocationOnly"`
 }
 
 type RawAllocationsProperties struct {
-	CPUCoreUsageMax float64		    `json:"cpuCoreUsageMax"`
-	RAMByteUsageMax float64		    `json:"ramByteUsageMax"`
-	GPUUsageMax float64				`json:"gpuUsageMax"`
+	CPUCoreUsageMax float64 `json:"cpuCoreUsageMax"`
+	RAMByteUsageMax float64 `json:"ramByteUsageMax"`
+	GPUUsageMax     float64 `json:"gpuUsageMax"`
 }
 type GPUAllocationItemProperties struct {
-	GPUDevice			string 		`json:gpuDevice`
-	GPUModel			string		`json:gpuModel`
-	GPUUUID				string		`json:gpuUUID`
-	ISGPUShared			bool		`json:"isGPUShared"`
-	GPUUsageAverage		float64		`json:"gpuUsageAverage"`
-	GPURequestAverage	float64		`json:"gpuRequestAverage"`
+	GPUDevice         string  `json:"gpuDevice"`
+	GPUModel          string  `json:"gpuModel"`
+	GPUUUID           string  `json:"gpuUUID"`
+	ISGPUShared       bool    `json:"isGPUShared"`
+	GPUUsageAverage   float64 `json:"gpuUsageAverage"`
+	GPURequestAverage float64 `json:"gpuRequestAverage"`
 }
 
 type LoadBalancerProperties struct {
-	Service		string		`json:"service"`
-	Cost		float64		`json:"cost"`
-	Private     bool		`json:"private`
-	IP          string		`json:"ip"`
-	Hours		float64		`json:"hours"`
-	Adjustment	float64		`json:"adjustment"`
+	Service    string  `json:"service"`
+	Cost       float64 `json:"cost"`
+	Private    bool    `json:"private"`
+	IP         string  `json:"ip"`
+	Hours      float64 `json:"hours"`
+	Adjustment float64 `json:"adjustment"`
 }
-
 
 func (ari AllocationResponseItem) PersistentVolumeCost() float64 {
 	if ari.PersistentVolumes == nil {

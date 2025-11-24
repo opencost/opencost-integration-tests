@@ -14,3 +14,7 @@ teardown() {
     go test ./test/integration/query/count/allocations_summary_running_pods_test.go
 }
 
+@test "Query: Number of Assets" {
+    go test ./test/integration/query/count/assets_count_test.go
+}
+

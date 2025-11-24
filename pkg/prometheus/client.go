@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/opencost/opencost-integration-tests/pkg/utils"
 )
 
 const (
@@ -51,24 +53,302 @@ type PrometheusResponse struct {
 	Data   struct {
 		ResultType string `json:"resultType"`
 		Result     []struct {
-			Metric struct {
-
-				Pod       string `json:"pod"`
-				PodName   string `json:"pod_name"`
-				Namespace string `json:"namespace"`
-				Container string `json:"container"`
-				// Load Balancer Specific Costs
-				ServiceName string    `json:"service_name"`
-				IngressIP   string    `json:"ingress_ip"`
-				// GPU Specific Fields (Optional Result)
-				Device    string `json:"device`
-				ModelName string `json:"modelName`
-				UUID 	  string `json:UUID`
-			} `json:"metric"`
+			Metric Metric      `json:"metric"`
 			Value  DataPoint   `json:"value"`
 			Values []DataPoint `json:"values"`
 		} `json:"result"`
 	} `json:"data"`
+}
+
+type KubernetesResources struct {
+	Deployment  string `json:"deployment"`
+	StatefulSet string `json:"statefulset"`
+	Service     string `json:"service"`
+	JobName     string `json:"job_name"`
+	ReplicaSet  string `json:"replicaset"`
+	DaemonSet   string `json:"daemonset"`
+}
+
+type Metric struct {
+	Pod       string `json:"pod"`
+	UID       string `json:"uid"`
+	Namespace string `json:"namespace"`
+	Container string `json:"container"`
+
+	PersistentVolume      string `json:"persistentvolume"`
+	PersistentVolumeClaim string `json:"persistentvolumeclaim"`
+	StorageClass          string `json:"storageclass"`
+
+	Node         string `json:"node"`
+	Instance     string `json:"instance"`
+	InstanceType string `json:"instance_type"`
+
+	// Load Balancer Specific Costs
+	ServiceName string `json:"service_name"`
+	IngressIP   string `json:"ingress_ip"`
+
+	// GPU Specific Fields (Optional Result)
+	Device     string `json:"device"`
+	ModelName  string `json:"modelName"`
+	UUID       string `json:"UUID"`
+	ProviderID string `json:"provider_id"`
+
+	// PersistentVolume Specific
+	VolumeName string `json:"volumename"`
+
+	// Kubernetes Resources
+	KubernetesResources KubernetesResources `json:"kubernetes_resources"`
+
+	// Labels will capture all fields that start with "label_" from the Prometheus metric.
+	// The `label_` prefix will be removed from the key when stored here.
+	Labels map[string]string `json:"labels"` // This field will be populated manually
+
+	Annotations map[string]string `json:"annotations"`
+	// UnhandledFields will capture any other fields that are not explicitly defined
+	// and do not start with "label_".
+	UnhandledFields map[string]string `json:"-"` // Use json:"-" to prevent default unmarshaling
+}
+
+// ToString returns a string representation of all non-empty fields in the metric
+func (m *Metric) ToString() string {
+	var parts []string
+
+	if m.Pod != "" {
+		parts = append(parts, fmt.Sprintf("pod=%s", m.Pod))
+	}
+	if m.UID != "" {
+		parts = append(parts, fmt.Sprintf("uid=%s", m.UID))
+	}
+	if m.Namespace != "" {
+		parts = append(parts, fmt.Sprintf("namespace=%s", m.Namespace))
+	}
+	if m.Container != "" {
+		parts = append(parts, fmt.Sprintf("container=%s", m.Container))
+	}
+	if m.PersistentVolume != "" {
+		parts = append(parts, fmt.Sprintf("persistentvolume=%s", m.PersistentVolume))
+	}
+	if m.PersistentVolumeClaim != "" {
+		parts = append(parts, fmt.Sprintf("persistentvolumeclaim=%s", m.PersistentVolumeClaim))
+	}
+	if m.StorageClass != "" {
+		parts = append(parts, fmt.Sprintf("storageclass=%s", m.StorageClass))
+	}
+	if m.Node != "" {
+		parts = append(parts, fmt.Sprintf("node=%s", m.Node))
+	}
+	if m.Instance != "" {
+		parts = append(parts, fmt.Sprintf("instance=%s", m.Instance))
+	}
+	if m.InstanceType != "" {
+		parts = append(parts, fmt.Sprintf("instance_type=%s", m.InstanceType))
+	}
+	if m.ServiceName != "" {
+		parts = append(parts, fmt.Sprintf("service_name=%s", m.ServiceName))
+	}
+	if m.IngressIP != "" {
+		parts = append(parts, fmt.Sprintf("ingress_ip=%s", m.IngressIP))
+	}
+	if m.Device != "" {
+		parts = append(parts, fmt.Sprintf("device=%s", m.Device))
+	}
+	if m.ModelName != "" {
+		parts = append(parts, fmt.Sprintf("modelName=%s", m.ModelName))
+	}
+	if m.UUID != "" {
+		parts = append(parts, fmt.Sprintf("UUID=%s", m.UUID))
+	}
+	if m.ProviderID != "" {
+		parts = append(parts, fmt.Sprintf("provider_id=%s", m.ProviderID))
+	}
+	if m.VolumeName != "" {
+		parts = append(parts, fmt.Sprintf("volumename=%s", m.VolumeName))
+	}
+	if m.KubernetesResources.Deployment != "" {
+		parts = append(parts, fmt.Sprintf("deployment=%s", m.KubernetesResources.Deployment))
+	}
+	if m.KubernetesResources.StatefulSet != "" {
+		parts = append(parts, fmt.Sprintf("statefulset=%s", m.KubernetesResources.StatefulSet))
+	}
+	if m.KubernetesResources.Service != "" {
+		parts = append(parts, fmt.Sprintf("service=%s", m.KubernetesResources.Service))
+	}
+	if m.KubernetesResources.JobName != "" {
+		parts = append(parts, fmt.Sprintf("job_name=%s", m.KubernetesResources.JobName))
+	}
+	if m.KubernetesResources.ReplicaSet != "" {
+		parts = append(parts, fmt.Sprintf("replicaset=%s", m.KubernetesResources.ReplicaSet))
+	}
+	if m.KubernetesResources.DaemonSet != "" {
+		parts = append(parts, fmt.Sprintf("daemonset=%s", m.KubernetesResources.DaemonSet))
+	}
+
+	for k, v := range m.Labels {
+		if v != "" {
+			parts = append(parts, fmt.Sprintf("label_%s=%s", k, v))
+		}
+	}
+
+	for k, v := range m.Annotations {
+		if v != "" {
+			parts = append(parts, fmt.Sprintf("annotation_%s=%s", k, v))
+		}
+	}
+
+	for k, v := range m.UnhandledFields {
+		if v != "" {
+			parts = append(parts, fmt.Sprintf("%s=%s", k, v))
+		}
+	}
+
+	return strings.Join(parts, ", ")
+}
+
+// GetResourceName returns the resource name for a given resource type, with namespace if namespace-scoped
+func (m *Metric) GetResourceName(resourceType string) string {
+	switch resourceType {
+	case "deployment":
+		if m.KubernetesResources.Deployment != "" && m.Namespace != "" {
+			return fmt.Sprintf("%s/%s", m.Namespace, m.KubernetesResources.Deployment)
+		}
+	case "statefulset":
+		if m.KubernetesResources.StatefulSet != "" && m.Namespace != "" {
+			return fmt.Sprintf("%s/%s", m.Namespace, m.KubernetesResources.StatefulSet)
+		}
+	case "service":
+		if m.KubernetesResources.Service != "" && m.Namespace != "" {
+			return fmt.Sprintf("%s/%s", m.Namespace, m.KubernetesResources.Service)
+		}
+	case "job":
+		if m.KubernetesResources.JobName != "" && m.Namespace != "" {
+			return fmt.Sprintf("%s/%s", m.Namespace, m.KubernetesResources.JobName)
+		}
+	case "replicaset":
+		if m.KubernetesResources.ReplicaSet != "" && m.Namespace != "" {
+			return fmt.Sprintf("%s/%s", m.Namespace, m.KubernetesResources.ReplicaSet)
+		}
+	case "daemonset":
+		if m.KubernetesResources.DaemonSet != "" && m.Namespace != "" {
+			return fmt.Sprintf("%s/%s", m.Namespace, m.KubernetesResources.DaemonSet)
+		}
+	case "pod":
+		if m.Pod != "" && m.Namespace != "" {
+			return fmt.Sprintf("%s/%s", m.Namespace, m.Pod)
+		}
+	case "namespace":
+		if m.Namespace != "" {
+			return m.Namespace // cluster-scoped
+		}
+	case "node":
+		if m.Node != "" {
+			return m.Node // cluster-scoped
+		}
+	case "persistentvolume":
+		if m.PersistentVolume != "" {
+			return m.PersistentVolume // cluster-scoped
+		}
+	case "persistentvolumeclaim":
+		if m.PersistentVolumeClaim != "" && m.Namespace != "" {
+			return fmt.Sprintf("%s/%s", m.Namespace, m.PersistentVolumeClaim)
+		}
+	}
+	return ""
+}
+
+// This allows us to parse known fields directly and dynamic 'label_' fields into a map.
+func (m *Metric) UnmarshalJSON(data []byte) error {
+	// Create a temporary map to hold all raw JSON fields.
+
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return fmt.Errorf("failed to unmarshal raw metric data into map: %w", err)
+	}
+
+	m.Labels = make(map[string]string)
+
+	m.Annotations = make(map[string]string)
+
+	m.UnhandledFields = make(map[string]string)
+
+	// Iterate over all fields found in the JSON payload for "metric"
+	for key, value := range raw {
+		var strVal string
+		// Attempt to unmarshal every value as a string.
+		// Prometheus labels are typically strings. If a value is not a string,
+		// it's unexpected for a label, so we'll skip it with a warning.
+		if err := json.Unmarshal(value, &strVal); err != nil {
+			fmt.Printf("Warning: Value for key '%s' is not a string (%T), skipping. Raw: %s\n", key, value, string(value))
+			continue // Skip this field if its value cannot be unmarshaled as a string
+		}
+
+		// Use a switch statement to handle explicitly defined fields
+		switch key {
+		case "pod":
+			m.Pod = strVal
+		case "uid":
+			m.UID = strVal
+		case "persistentvolume":
+			m.PersistentVolume = strVal
+		case "persistentvolumeclaim":
+			m.PersistentVolumeClaim = strVal
+		case "storageclass":
+			m.StorageClass = strVal
+		case "namespace":
+			m.Namespace = strVal
+		case "container":
+			m.Container = strVal
+		case "node":
+			m.Node = strVal
+		case "instance":
+			m.Instance = strVal
+		case "instance_type":
+			m.InstanceType = strVal
+		case "service_name":
+			m.ServiceName = strVal
+		case "ingress_ip":
+			m.IngressIP = strVal
+		case "device":
+			m.Device = strVal
+		case "modelName": // Case-sensitive match for "modelName"
+			m.ModelName = strVal
+		case "provider_id":
+			m.ProviderID = strVal
+		case "UUID": // Case-sensitive match for "UUID"
+			m.UUID = strVal
+		case "volumename": // Case-sensitive match for "VolumeName"
+			m.VolumeName = strVal
+		case "deployment":
+			m.KubernetesResources.Deployment = strVal
+		case "statefulset":
+			m.KubernetesResources.StatefulSet = strVal
+		case "service":
+			m.KubernetesResources.Service = strVal
+		case "job_name":
+			m.KubernetesResources.JobName = strVal
+		case "replicaset":
+			m.KubernetesResources.ReplicaSet = strVal
+		case "daemonset":
+			m.KubernetesResources.DaemonSet = strVal
+		default:
+			// If the key is not one of the explicitly defined fields,
+			// check if it starts with "label_"
+			if strings.HasPrefix(key, "label_") {
+				// Extract the part of the key after "label_"
+				newKey := strings.TrimPrefix(key, "label_")
+				m.Labels[newKey] = strVal
+
+			} else if strings.HasPrefix(key, "annotation_") {
+				// If it does not start with "label_" and is not explicitly defined,
+				newKey := strings.TrimPrefix(key, "annotation_")
+				m.Annotations[newKey] = strVal
+
+			} else {
+				// If it does not start with "label_" and is not explicitly defined,
+				m.UnhandledFields[key] = strVal
+			}
+		}
+	}
+	return nil
 }
 
 // NewClient creates a new Prometheus client
@@ -179,7 +459,7 @@ func (c *Client) ConstructPromQLQueryURL(promQLArgs PrometheusInput) string {
 		return strings.ToLower(ignoreFilterParts[i]) < strings.ToLower(ignoreFilterParts[j])
 	})
 	ignoreFiltersString := strings.Join(ignoreFilterParts, ", ")
-	
+
 	allFilters := ""
 	if filtersString != "" {
 		allFilters = filtersString
@@ -255,4 +535,17 @@ func (c *Client) RunPromQLQuery(promQLArgs PrometheusInput) (PrometheusResponse,
 	}
 
 	return promData, nil
+}
+
+func GetOffsetAdjustedQueryWindow(window string, resolution string) string {
+
+	// This function is specifically designed for window is [0-9]h format and resolution in [0-9]m.
+	// Please upgrade this function if you want to support more time ranges or special keywords.
+	window_int, _ := utils.ExtractNumericPrefix(window)
+	resolution_int, _ := utils.ExtractNumericPrefix(resolution)
+
+	window_offset := strconv.Itoa(int(window_int)*60 + int(resolution_int))
+	window_offset_string := fmt.Sprintf("%sm", window_offset)
+
+	return window_offset_string
 }

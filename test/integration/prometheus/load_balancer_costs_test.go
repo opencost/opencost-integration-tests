@@ -6,14 +6,15 @@ package prometheus
 
 import (
 	// "fmt"
+	"testing"
+	"time"
+
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 	"github.com/opencost/opencost-integration-tests/pkg/utils"
-	"testing"
-	"time"
 )
 
-const tolerance = 0.05
+const loadBalancerCostTolerance = 0.05
 
 func TestLoadBalancerCost(t *testing.T) {
 	apiObj := api.NewAPI()
@@ -48,7 +49,7 @@ func TestLoadBalancerCost(t *testing.T) {
 			// Get Time Duration
 			timeMumericVal, _ := utils.ExtractNumericPrefix(tc.window)
 			// Assume the minumum unit is an hour
-			negativeDuration := time.Duration(timeMumericVal * float64(time.Hour)) * -1
+			negativeDuration := time.Duration(timeMumericVal*float64(time.Hour)) * -1
 			queryStart := queryEnd.Add(negativeDuration)
 			window24h := api.Window{
 				Start: queryStart,
@@ -83,9 +84,9 @@ func TestLoadBalancerCost(t *testing.T) {
 				RunTime           float64
 			}
 			type LoadBalancerData struct {
-				AllocLBCost      float64
-				PromLBCost 		 float64
-				Services     	 map[string]*LBServiceData
+				AllocLBCost float64
+				PromLBCost  float64
+				Services    map[string]*LBServiceData
 			}
 
 			// Namespace
@@ -103,21 +104,20 @@ func TestLoadBalancerCost(t *testing.T) {
 				if !ok {
 					LBNamespaceMap[namespace] = &LoadBalancerData{
 						AllocLBCost: 0.0,
-						PromLBCost: 0.0,
-						Services: make(map[string]*LBServiceData),
+						PromLBCost:  0.0,
+						Services:    make(map[string]*LBServiceData),
 					}
-					LBNamespaceMap[namespace].Services[namespace + "/" + serviceName] = &LBServiceData{
-						RunTime: serviceRunTime,
+					LBNamespaceMap[namespace].Services[namespace+"/"+serviceName] = &LBServiceData{
+						RunTime:           serviceRunTime,
 						ServicePricePerHr: 0.0,
 					}
 					continue
 				}
-				LBNamespace.Services[namespace + "/" + serviceName] = &LBServiceData{
-					RunTime: serviceRunTime,
+				LBNamespace.Services[namespace+"/"+serviceName] = &LBServiceData{
+					RunTime:           serviceRunTime,
 					ServicePricePerHr: 0.0,
 				}
 			}
-
 
 			////////////////////////////////////////////////////////////////////////////
 			// Load Balancer Price Per Hour
@@ -153,7 +153,7 @@ func TestLoadBalancerCost(t *testing.T) {
 				if !ok {
 					t.Errorf("Namespace missing from Prom Response %s", namespace)
 				}
-				LBServiceItem, ok := LBNamespaceItem.Services[namespace + "/" + serviceName]
+				LBServiceItem, ok := LBNamespaceItem.Services[namespace+"/"+serviceName]
 				if !ok {
 					t.Errorf("Service missing from Prom Response %s", serviceName)
 				}
@@ -169,7 +169,7 @@ func TestLoadBalancerCost(t *testing.T) {
 					namespaceLBCost += serviceCost
 
 					LBServiceMap[serviceName] = &LoadBalancerData{
-						PromLBCost: serviceCost / 60,
+						PromLBCost:  serviceCost / 60,
 						AllocLBCost: 0.0,
 					}
 				}
@@ -195,15 +195,14 @@ func TestLoadBalancerCost(t *testing.T) {
 				t.Errorf("API returned non-200 code")
 			}
 
-			
 			for namespace, allocationResponseItem := range apiResponse.Data[0] {
 				// For Namespace
 				allocLBItem, ok := LBNamespaceMap[namespace]
 				if !ok {
 					LBNamespaceMap[namespace] = &LoadBalancerData{
-						PromLBCost: 0.0,
+						PromLBCost:  0.0,
 						AllocLBCost: allocationResponseItem.LoadBalancerCost,
-						Services: make(map[string]*LBServiceData),
+						Services:    make(map[string]*LBServiceData),
 					}
 					continue
 				}
@@ -215,7 +214,7 @@ func TestLoadBalancerCost(t *testing.T) {
 					allocLBItem, ok := LBServiceMap[service]
 					if !ok {
 						LBServiceMap[service] = &LoadBalancerData{
-							PromLBCost: 0.0,
+							PromLBCost:  0.0,
 							AllocLBCost: loadBalancerItem.Cost,
 						}
 						continue
@@ -224,12 +223,11 @@ func TestLoadBalancerCost(t *testing.T) {
 				}
 			}
 
-			
 			// By Namespace
 			t.Logf("Load Balancer Costs by Namespace")
 			for namespace, LBNamespaceItem := range LBNamespaceMap {
 				t.Logf("Namespace %s", namespace)
-				withinRange, diff_percent := utils.AreWithinPercentage(LBNamespaceItem.PromLBCost, LBNamespaceItem.AllocLBCost, tolerance)
+				withinRange, diff_percent := utils.AreWithinPercentage(LBNamespaceItem.PromLBCost, LBNamespaceItem.AllocLBCost, loadBalancerCostTolerance)
 				if !withinRange {
 					t.Errorf("  - LoadBalancerCost[Fail]: DifferencePercent %0.2f, Prometheus: %0.2f, /allocation: %0.2f", diff_percent, LBNamespaceItem.PromLBCost, LBNamespaceItem.AllocLBCost)
 				} else {
@@ -241,7 +239,7 @@ func TestLoadBalancerCost(t *testing.T) {
 			t.Logf("Load Balancer Costs by Services")
 			for service, LBServiceItem := range LBServiceMap {
 				t.Logf("Service %s", service)
-				withinRange, diff_percent := utils.AreWithinPercentage(LBServiceItem.PromLBCost, LBServiceItem.AllocLBCost, tolerance)
+				withinRange, diff_percent := utils.AreWithinPercentage(LBServiceItem.PromLBCost, LBServiceItem.AllocLBCost, loadBalancerCostTolerance)
 				if !withinRange {
 					t.Errorf("  - LoadBalancerCost[Fail]: DifferencePercent %0.2f, Prometheus: %0.2f, /allocation: %0.2f", diff_percent, LBServiceItem.PromLBCost, LBServiceItem.AllocLBCost)
 				} else {

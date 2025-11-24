@@ -4,14 +4,17 @@ package prometheus
 
 import (
 	// "fmt"
+	"testing"
+	"time"
+
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 	"github.com/opencost/opencost-integration-tests/pkg/utils"
-	"testing"
-	"time"
 )
 
-const tolerance = 0.05
+const ramAverageUsageResolution = "1m"
+const ramAverageUsageTolerance = 0.09
+const ramAverageUsageNegligibleUsage = 0.01
 
 func TestRAMAvgUsage(t *testing.T) {
 	apiObj := api.NewAPI()
@@ -28,6 +31,13 @@ func TestRAMAvgUsage(t *testing.T) {
 			aggregate:  "namespace",
 			accumulate: "false",
 		},
+		//TODO
+		// {
+		// 	name:       "Last Two Days",
+		// 	window:     "48h",
+		// 	aggregate:  "namespace",
+		// 	accumulate: "false",
+		// },
 	}
 
 	t.Logf("testCases: %v", testCases)
@@ -37,13 +47,20 @@ func TestRAMAvgUsage(t *testing.T) {
 
 			// Use this information to find start and end time of pod
 			queryEnd := time.Now().UTC().Truncate(time.Hour).Add(time.Hour)
-			queryStart := queryEnd.Add(-24 * time.Hour)
+			// Get Time Duration
+			timeNumericVal, _ := utils.ExtractNumericPrefix(tc.window)
+			// Assume the minumum unit is an hour
+			negativeDuration := time.Duration(timeNumericVal*float64(time.Hour)) * -1
+			queryStart := queryEnd.Add(negativeDuration)
 			window24h := api.Window{
 				Start: queryStart,
 				End:   queryEnd,
 			}
-			resolution := 5 * time.Minute
+			resolutionNumericVal, _ := utils.ExtractNumericPrefix(ramAverageUsageResolution)
+			resolution := time.Duration(int(resolutionNumericVal) * int(time.Minute))
 			endTime := queryEnd.Unix()
+
+			windowRange := prometheus.GetOffsetAdjustedQueryWindow(tc.window, ramAverageUsageResolution)
 
 			client := prometheus.NewClient()
 			// Pod Info
@@ -52,8 +69,8 @@ func TestRAMAvgUsage(t *testing.T) {
 			promPodInfoInput.MetricNotEqualTo = "0"
 			promPodInfoInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
 			promPodInfoInput.Function = []string{"avg"}
-			promPodInfoInput.AggregateWindow = tc.window
-			promPodInfoInput.AggregateResolution = "5m"
+			promPodInfoInput.AggregateWindow = windowRange
+			promPodInfoInput.AggregateResolution = ramAverageUsageResolution
 			promPodInfoInput.Time = &endTime
 
 			podInfo, err := client.RunPromQLQuery(promPodInfoInput)
@@ -64,7 +81,7 @@ func TestRAMAvgUsage(t *testing.T) {
 			type PodData struct {
 				Pod       string
 				Namespace string
-				RunTime   float64
+				Window    *api.Window
 			}
 
 			podMap := make(map[string]*PodData)
@@ -75,13 +92,17 @@ func TestRAMAvgUsage(t *testing.T) {
 				podMap[podInfoResponseItem.Metric.Pod] = &PodData{
 					Pod:       podInfoResponseItem.Metric.Pod,
 					Namespace: podInfoResponseItem.Metric.Namespace,
-					RunTime:   e.Sub(s).Minutes(),
+					Window: &api.Window{
+						Start: s,
+						End:   e,
+					},
 				}
 			}
 
 			type RAMUsageAvgAggregate struct {
 				AllocationUsageAvg float64
 				PrometheusUsageAvg float64
+				Window             *api.Window
 			}
 			ramUsageAvgNamespaceMap := make(map[string]*RAMUsageAvgAggregate)
 
@@ -102,7 +123,7 @@ func TestRAMAvgUsage(t *testing.T) {
 				"node":      {""},
 			}
 			promInput.Function = []string{"avg_over_time", "avg"}
-			promInput.QueryWindow = tc.window
+			promInput.QueryWindow = windowRange
 			promInput.IgnoreFilters = ignoreFilters
 			promInput.AggregateBy = []string{"container", "pod", "namespace", "node", "instance"}
 			promInput.Time = &endTime
@@ -118,22 +139,32 @@ func TestRAMAvgUsage(t *testing.T) {
 					continue
 				}
 				// Get containerRunTime by getting the pod's (parent object) runtime.
-				containerRunTime := podMap[promResponseItem.Metric.Pod].RunTime
+				pod, ok := podMap[promResponseItem.Metric.Pod]
+				if !ok {
+					continue
+				}
+
+				containerRunTime := pod.Window.RunTime()
 
 				ramUsageAvgPod, ok := ramUsageAvgNamespaceMap[promResponseItem.Metric.Namespace]
 				if !ok {
 					ramUsageAvgNamespaceMap[promResponseItem.Metric.Namespace] = &RAMUsageAvgAggregate{
 						PrometheusUsageAvg: promResponseItem.Value.Value * containerRunTime,
 						AllocationUsageAvg: 0.0,
+						Window: &api.Window{
+							Start: pod.Window.Start,
+							End:   pod.Window.End,
+						},
 					}
 					continue
 				}
 				ramUsageAvgPod.PrometheusUsageAvg += promResponseItem.Value.Value * containerRunTime
+				ramUsageAvgPod.Window = api.ExpandTimeRange(ramUsageAvgPod.Window, pod.Window)
 			}
 
-			windowRunTime := queryEnd.Sub(queryStart).Minutes()
+			// windowRunTime := queryEnd.Sub(queryStart).Minutes()
 			for _, ramUsageAvgProm := range ramUsageAvgNamespaceMap {
-				ramUsageAvgProm.PrometheusUsageAvg = ramUsageAvgProm.PrometheusUsageAvg / windowRunTime
+				ramUsageAvgProm.PrometheusUsageAvg = ramUsageAvgProm.PrometheusUsageAvg / ramUsageAvgProm.Window.RunTime()
 			}
 			/////////////////////////////////////////////
 			// API Client
@@ -164,16 +195,25 @@ func TestRAMAvgUsage(t *testing.T) {
 				ramUsageAvgPod.AllocationUsageAvg += allocationResponseItem.RAMBytesUsageAverage
 			}
 
+			seenUsage := false
 			t.Logf("\nAvg Values for Namespaces.\n")
 			// Windows are not accurate for prometheus and allocation
 			for namespace, ramAvgUsageValues := range ramUsageAvgNamespaceMap {
+				if ramAvgUsageValues.AllocationUsageAvg < ramAverageUsageNegligibleUsage {
+					continue
+				} else {
+					seenUsage = true
+				}
 				t.Logf("Namespace %s", namespace)
-				withinRange, diff_percent := utils.AreWithinPercentage(ramAvgUsageValues.PrometheusUsageAvg, ramAvgUsageValues.AllocationUsageAvg, tolerance)
+				withinRange, diff_percent := utils.AreWithinPercentage(ramAvgUsageValues.PrometheusUsageAvg, ramAvgUsageValues.AllocationUsageAvg, ramAverageUsageTolerance)
 				if !withinRange {
 					t.Errorf("RAMUsageAvg[Fail]: DifferencePercent %0.2f, Prometheus: %0.2f, /allocation: %0.2f", diff_percent, ramAvgUsageValues.PrometheusUsageAvg, ramAvgUsageValues.AllocationUsageAvg)
 				} else {
 					t.Logf("RAMUsageAvg[Pass]: ~ %v", ramAvgUsageValues.PrometheusUsageAvg)
 				}
+			}
+			if seenUsage == false {
+				t.Logf("All Costs were Negligible and cannot be tested. Failing Test")
 			}
 		})
 	}

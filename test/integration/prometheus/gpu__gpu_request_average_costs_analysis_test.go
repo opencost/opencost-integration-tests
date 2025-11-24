@@ -19,19 +19,23 @@ package prometheus
 // 5. Compare results with a 5% error margin.
 
 import (
+	"testing"
+	"time"
+
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 	"github.com/opencost/opencost-integration-tests/pkg/utils"
-	"testing"
-	"time"
 )
 
-const tolerance = 0.05
+// 10 Minutes
+const gpuRequestAverageCostsShortLivedPodsRunTime = 60
+const gpuRequestAverageCostsResolution = "1m"
+const gpuRequestAverageCostsTolerance = 0.05
 
-func ConvertToHours(minutes float64) float64 {
-	// Convert Time from Minutes to Hours
-	return minutes / 60
-}
+// func ConvertToHours(minutes float64) float64 {
+// 	// Convert Time from Minutes to Hours
+// 	return minutes / 60
+// }
 
 func TestGPUCosts(t *testing.T) {
 	apiObj := api.NewAPI()
@@ -46,6 +50,12 @@ func TestGPUCosts(t *testing.T) {
 		{
 			name:       "Yesterday",
 			window:     "24h",
+			aggregate:  "namespace",
+			accumulate: "false",
+		},
+		{
+			name:       "Yesterday",
+			window:     "48h",
 			aggregate:  "namespace",
 			accumulate: "false",
 		},
@@ -83,17 +93,23 @@ func TestGPUCosts(t *testing.T) {
 
 				// Use this information to find start and end time of pod
 				queryEnd := time.Now().UTC().Truncate(time.Hour).Add(time.Hour)
-				queryStart := queryEnd.Add(-24 * time.Hour)
+				// Get Time Duration
+				timeNumericVal, _ := utils.ExtractNumericPrefix(tc.window)
+				// Assume the minumum unit is an hour
+				negativeDuration := time.Duration(timeNumericVal*float64(time.Hour)) * -1
+				queryStart := queryEnd.Add(negativeDuration)
 				window24h := api.Window{
 					Start: queryStart,
 					End:   queryEnd,
 				}
 				// Note that in the Pod Query, we use a 5m resolution [THIS IS THE DEFAULT VALUE IN OPENCOST]
-				resolution := 5 * time.Minute
+				resolutionNumericVal, _ := utils.ExtractNumericPrefix(gpuRequestAverageCostsResolution)
+				resolution := time.Duration(int(resolutionNumericVal) * int(time.Minute))
 
 				// Query End Time for all Queries
 				endTime := queryEnd.Unix()
 
+				windowRange := prometheus.GetOffsetAdjustedQueryWindow(tc.window, gpuRequestAverageCostsResolution)
 				// Metric: GPURequests
 				// avg(avg_over_time(
 				// 		kube_pod_container_resource_requests{
@@ -118,7 +134,7 @@ func TestGPUCosts(t *testing.T) {
 				}
 				promGPURequestedInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
 				promGPURequestedInput.Function = []string{"avg_over_time", "avg"}
-				promGPURequestedInput.QueryWindow = tc.window
+				promGPURequestedInput.QueryWindow = windowRange
 				promGPURequestedInput.Time = &endTime
 
 				requestedGPU, err := client.RunPromQLQuery(promGPURequestedInput)
@@ -149,7 +165,7 @@ func TestGPUCosts(t *testing.T) {
 				}
 				promGPUAllocatedInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
 				promGPUAllocatedInput.Function = []string{"avg_over_time", "avg"}
-				promGPUAllocatedInput.QueryWindow = tc.window
+				promGPUAllocatedInput.QueryWindow = windowRange
 				promGPUAllocatedInput.Time = &endTime
 
 				allocatedGPU, err := client.RunPromQLQuery(promGPUAllocatedInput)
@@ -172,8 +188,8 @@ func TestGPUCosts(t *testing.T) {
 				promPodInfoInput.MetricNotEqualTo = "0"
 				promPodInfoInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
 				promPodInfoInput.Function = []string{"avg"}
-				promPodInfoInput.AggregateWindow = tc.window
-				promPodInfoInput.AggregateResolution = "5m"
+				promPodInfoInput.AggregateWindow = windowRange
+				promPodInfoInput.AggregateResolution = gpuRequestAverageCostsResolution
 				promPodInfoInput.Time = &endTime
 
 				podInfo, err := client.RunPromQLQuery(promPodInfoInput)
@@ -252,7 +268,7 @@ func TestGPUCosts(t *testing.T) {
 						continue
 					}
 
-					runHours := ConvertToHours(runMinutes)
+					runHours := utils.ConvertToHours(runMinutes)
 					podData.Containers[container] = &ContainerGPUData{
 						Container:              container,
 						GPUCoresHours:          GPUCores * runHours,
@@ -287,7 +303,7 @@ func TestGPUCosts(t *testing.T) {
 						continue
 					}
 
-					runHours := ConvertToHours(runMinutes)
+					runHours := utils.ConvertToHours(runMinutes)
 
 					// if the container exists, you need to apply the opencost cost specification
 					if containerData, ok := podData.Containers[container]; ok {
@@ -361,18 +377,24 @@ func TestGPUCosts(t *testing.T) {
 					}
 				}
 
+				if nsMinutes < gpuRequestAverageCostsShortLivedPodsRunTime {
+					// Too short of a run time to assert results. ByteHours is very sensitive to run time.
+					t.Logf("[Skipped] Namespace %v: RunTime %v less than %v ", namespace, nsMinutes, gpuRequestAverageCostsShortLivedPodsRunTime)
+					continue
+				}
+
 				// ----------------------------------------------
 				// Compare Results with Allocation
 				// ----------------------------------------------
 				t.Logf("Namespace: %s", namespace)
 				// 5 % Tolerance
-				withinRange, diff_percent := utils.AreWithinPercentage(nsGPUCoresHours, allocationResponseItem.GPUHours, tolerance)
+				withinRange, diff_percent := utils.AreWithinPercentage(nsGPUCoresHours, allocationResponseItem.GPUHours, gpuRequestAverageCostsTolerance)
 				if withinRange {
 					t.Logf("    - GPUCoreHours[Pass]: ~%.2f", nsGPUCoresHours)
 				} else {
 					t.Errorf("    - GPUCoreHours[Fail]: DifferencePercent: %0.2f, Prom Results: %.2f, API Results: %.2f", diff_percent, nsGPUCoresHours, allocationResponseItem.GPUHours)
 				}
-				withinRange, diff_percent = utils.AreWithinPercentage(nsGPUCoresRequest, allocationResponseItem.GPUAllocation.GPURequestAverage, tolerance)
+				withinRange, diff_percent = utils.AreWithinPercentage(nsGPUCoresRequest, allocationResponseItem.GPUAllocation.GPURequestAverage, gpuRequestAverageCostsTolerance)
 				if withinRange {
 					t.Logf("    - GPUCoreRequestAverage[Pass]: ~%.2f", nsGPUCoresRequest)
 				} else {

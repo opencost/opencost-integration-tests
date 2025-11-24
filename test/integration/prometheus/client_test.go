@@ -2,11 +2,12 @@ package prometheus
 
 import (
 	"fmt"
-	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 	"net/url"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 )
 
 /////////////////////
