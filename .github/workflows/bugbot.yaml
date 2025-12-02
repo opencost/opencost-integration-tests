@@ -5,6 +5,8 @@ on:
     types: [opened, synchronize]
     branches:
       - main
+  issue_comment:
+    types: [created]
 
 permissions:
   contents: read
@@ -17,29 +19,151 @@ jobs:
     steps:
       - name: Comment 'bugbot run' as ameijer
         uses: actions/github-script@v7
-        if: github.event.pull_request.user.login != 'ameijer'
+        if: |
+          (github.event_name == 'pull_request_target' && github.event.pull_request.user.login != 'ameijer') ||
+          (github.event_name == 'issue_comment' && github.event.issue.pull_request && github.event.comment.user.login != 'ameijer')
         with:
           github-token: ${{ secrets.BUGBOT_COMMENTER_PAT }}
           script: |
+            console.log('=== BugBot Workflow Started ===');
+            console.log(`Event Name: ${context.eventName}`);
+            console.log(`Repository: ${context.repo.owner}/${context.repo.repo}`);
+            
+            // Get PR number - handle both PR events and comment events
+            const prNumber = context.payload.pull_request 
+              ? context.payload.pull_request.number 
+              : context.payload.issue.number;
+            console.log(`PR Number: ${prNumber}`);
+            
+            if (context.eventName === 'pull_request_target') {
+              console.log(`PR Action: ${context.payload.action}`);
+              console.log(`PR Author: ${context.payload.pull_request.user.login}`);
+            }
+            
+            if (context.eventName === 'issue_comment') {
+              console.log(`Comment Author: ${context.payload.comment.user.login}`);
+              console.log(`Comment Body: ${context.payload.comment.body}`);
+            }
+            
             // Get all comments on the PR
+            console.log('Fetching all comments on PR...');
             const comments = await github.rest.issues.listComments({
-              issue_number: context.issue.number,
+              issue_number: prNumber,
               owner: context.repo.owner,
               repo: context.repo.repo,
             });
+            console.log(`Total comments found: ${comments.data.length}`);
             
-            // Check if 'bugbot run' comment already exists
-            const commentExists = comments.data.some(
+            // Sort comments by creation time
+            const sortedComments = comments.data.sort((a, b) => 
+              new Date(a.created_at) - new Date(b.created_at)
+            );
+            console.log('Comments sorted by creation time');
+            
+            // Log all comment bodies for debugging
+            console.log('All comment bodies:');
+            sortedComments.forEach((comment, index) => {
+              console.log(`  [${index}] ${comment.user.login}: "${comment.body.trim()}" (created: ${comment.created_at}, id: ${comment.id})`);
+            });
+            
+            // Check if initial 'bugbot run' comment exists
+            const initialBugbotRunExists = sortedComments.some(
               comment => comment.body.trim() === 'bugbot run'
             );
+            console.log(`Initial 'bugbot run' comment exists: ${initialBugbotRunExists}`);
             
-            // Only post comment if it doesn't already exist
-            if (!commentExists) {
-              await github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: 'bugbot run'
-              });
+            // Check if instruction message exists
+            const instructionMessage = "reply 'AI code re-review requested' to have bugbot scan again";
+            const instructionExists = sortedComments.some(
+              comment => comment.body.trim() === instructionMessage
+            );
+            console.log(`Instruction message exists: ${instructionExists}`);
+            
+            // Handle initial PR event - post initial comment and instruction
+            if (context.eventName === 'pull_request_target') {
+              console.log('Processing pull_request_target event...');
+              
+              if (!initialBugbotRunExists) {
+                console.log("Posting initial 'bugbot run' comment...");
+                await github.rest.issues.createComment({
+                  issue_number: prNumber,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: 'bugbot run'
+                });
+                console.log("Successfully posted 'bugbot run' comment");
+              } else {
+                console.log("Skipping 'bugbot run' comment - already exists");
+              }
+              
+              // Post instruction message if it doesn't exist
+              if (!instructionExists) {
+                console.log('Posting instruction message...');
+                await github.rest.issues.createComment({
+                  issue_number: prNumber,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: instructionMessage
+                });
+                console.log('Successfully posted instruction message');
+              } else {
+                console.log('Skipping instruction message - already exists');
+              }
             }
+            
+            // Handle comment event - check for 'AI code re-review requested'
+            if (context.eventName === 'issue_comment') {
+              console.log('Processing issue_comment event...');
+              const commentBody = context.payload.comment.body.trim();
+              console.log(`Processing comment: "${commentBody}"`);
+              
+              // Check if comment contains the re-review request
+              const isReReviewRequest = commentBody === 'AI code re-review requested' || 
+                  commentBody.toLowerCase().includes('ai code re-review requested');
+              console.log(`Is re-review request: ${isReReviewRequest}`);
+              
+              if (isReReviewRequest) {
+                const requestCommentId = context.payload.comment.id;
+                const requestCommentTime = new Date(context.payload.comment.created_at);
+                console.log(`Re-review request comment ID: ${requestCommentId}`);
+                console.log(`Re-review request comment time: ${requestCommentTime.toISOString()}`);
+                
+                // Check if a 'bugbot run' comment was posted after this request
+                console.log('Checking for existing response to this re-review request...');
+                const hasResponse = sortedComments.some(comment => {
+                  const commentTime = new Date(comment.created_at);
+                  const commentId = comment.id;
+                  const isBugbotRun = comment.body.trim() === 'bugbot run';
+                  const isAfterRequest = commentTime > requestCommentTime;
+                  const isNotRequestComment = commentId !== requestCommentId;
+                  
+                  if (isBugbotRun && isAfterRequest && isNotRequestComment) {
+                    console.log(`  Found response comment: ID ${commentId}, time ${commentTime.toISOString()}`);
+                  }
+                  
+                  // Check if this is a 'bugbot run' comment posted after the request
+                  return isBugbotRun && isAfterRequest && isNotRequestComment;
+                });
+                
+                console.log(`Has response to re-review request: ${hasResponse}`);
+                
+                // Post 'bugbot run' if no response exists for this request
+                if (!hasResponse) {
+                  console.log("Posting 'bugbot run' comment in response to re-review request...");
+                  await github.rest.issues.createComment({
+                    issue_number: prNumber,
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    body: 'bugbot run'
+                  });
+                  console.log("Successfully posted 'bugbot run' comment");
+                } else {
+                  console.log("Skipping 'bugbot run' comment - response already exists for this request");
+                }
+              } else {
+                console.log('Comment is not a re-review request - no action taken');
+              }
+            }
+            
+            console.log('=== BugBot Workflow Completed ===');
 
