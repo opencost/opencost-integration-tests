@@ -21,10 +21,25 @@ jobs:
         with:
           github-token: ${{ secrets.BUGBOT_COMMENTER_PAT }}
           script: |
-            github.rest.issues.createComment({
+            // Get all comments on the PR
+            const comments = await github.rest.issues.listComments({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: 'bugbot run'
-            })
+            });
+            
+            // Check if 'bugbot run' comment already exists
+            const commentExists = comments.data.some(
+              comment => comment.body.trim() === 'bugbot run'
+            );
+            
+            // Only post comment if it doesn't already exist
+            if (!commentExists) {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: 'bugbot run'
+              });
+            }
 
