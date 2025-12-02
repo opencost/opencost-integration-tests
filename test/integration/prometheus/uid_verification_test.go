@@ -10,6 +10,7 @@ package prometheus
 
 import (
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -39,6 +40,24 @@ var defaultTestWindows = []string{"1h", "6h", "24h"}
 // These tests will be skipped rather than failed when no resources are found
 var optionalMetrics = map[string]bool{
 	"kube_job_status_failed": true, // Failed jobs only exist when jobs fail
+}
+
+// recreatableResourcePrefixes defines resource name prefixes for test resources that may be
+// recreated during cluster setup or CI/CD runs. These resources will skip cross-window UID
+// consistency checks since recreation causes new UIDs, but Prometheus retains historical data.
+var recreatableResourcePrefixes = []string{
+	"iperf-demo", // Test namespace and its resources may be recreated
+}
+
+// isRecreatableTestResource checks if a resource name matches any known test resource prefix
+// that may be recreated. Such resources skip cross-window UID consistency validation.
+func isRecreatableTestResource(resourceName string) bool {
+	for _, prefix := range recreatableResourcePrefixes {
+		if strings.HasPrefix(resourceName, prefix) || strings.Contains(resourceName, "/"+prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 // metricToResourceType maps each metric to its resource type for extracting resource names
@@ -143,10 +162,16 @@ func testSingleMetric(t *testing.T, ctx *TestContext, metric string, resourceTyp
 				allResourceUIDs[resourceName] = append(allResourceUIDs[resourceName], uid)
 			} else {
 				// For stable resources, enforce UID consistency across windows
+				// Skip consistency check for known recreatable test resources
 				if existingUID, exists := resourcesWithUIDs[resourceName]; exists {
 					if existingUID != uid {
-						t.Errorf("UID mismatch for %s %s in metric %s: %s vs %s (window: %s)",
-							resourceType, resourceName, metric, existingUID, uid, window)
+						if isRecreatableTestResource(resourceName) {
+							log.Infof("Skipping UID consistency check for recreatable test resource %s %s (UIDs: %s vs %s, window: %s)",
+								resourceType, resourceName, existingUID, uid, window)
+						} else {
+							t.Errorf("UID mismatch for %s %s in metric %s: %s vs %s (window: %s)",
+								resourceType, resourceName, metric, existingUID, uid, window)
+						}
 					}
 				} else {
 					resourcesWithUIDs[resourceName] = uid
