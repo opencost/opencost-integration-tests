@@ -247,7 +247,15 @@ func (ctx *TestContext) shouldSkipUIDCheck(resourceName string, resourceType Res
 		return true
 	}
 
-	// Check if the resource is in a young namespace
+	// For namespace resources, the resourceName IS the namespace (no "/" separator)
+	// Check directly against YoungNamespaces
+	if resourceType == ResourceTypeNamespace {
+		if ctx.YoungNamespaces[resourceName] {
+			return true
+		}
+	}
+
+	// Check if the resource is in a young namespace (for namespaced resources like "namespace/name")
 	if idx := strings.Index(resourceName, "/"); idx != -1 {
 		namespace := resourceName[:idx]
 		if ctx.YoungNamespaces[namespace] {
