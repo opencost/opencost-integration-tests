@@ -8,7 +8,6 @@ import (
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 	"time"
 	"testing"
-	"strings"
 )
 
 func TestSpotNodes(t *testing.T) {
@@ -100,10 +99,9 @@ func TestSpotNodes(t *testing.T) {
 					continue
 				}
 
-				isPreemptibleLabel, ok := assetResponseItem.Labels["oci_oraclecloud_com_oke_is_preemptible"]
 				var isSpot bool
 				
-				if ok && strings.ToLower(isPreemptibleLabel) == "true" {
+				if assetResponseItem.Preemptible == 1 {
 					isSpot = true
 				} else {
 					isSpot = false
