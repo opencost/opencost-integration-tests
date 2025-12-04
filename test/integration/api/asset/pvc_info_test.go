@@ -84,7 +84,10 @@ func TestPVCInfo(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}
-
+			
+			if len(pvcInfo.Data.Result) == 0 {
+				t.Fatalf("No Disks Found. Failing Test")
+			}
 			// Store Results in a Node Map
 			type DiskPVCInfo struct {
 				Volume			string
