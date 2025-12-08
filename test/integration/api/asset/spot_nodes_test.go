@@ -94,7 +94,11 @@ func TestSpotNodes(t *testing.T) {
 
 			// Store Allocation Pod Label Results
 			for _, assetResponseItem := range apiResponse.Data {
-				node := assetResponseItem.Properties.Name
+				
+				node, ok := assetResponseItem.Properties.Name
+				if !ok {
+					continue
+				}
 				spotNode, ok := spotNodeMap[node]
 				if !ok {
 					t.Logf("Node Information Missing in Prometheus %s", node)
