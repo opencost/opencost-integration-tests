@@ -1,4 +1,5 @@
 # OpenCost Integration Tests
+
 [![Go Report Card](https://goreportcard.com/badge/github.com/opencost/opencost-integration-tests)](https://goreportcard.com/report/github.com/opencost/opencost-integration-tests)
 
 ![CI Build Status](https://github.com/opencost/opencost-integration-tests/actions/workflows/integration-testing.yaml/badge.svg)
