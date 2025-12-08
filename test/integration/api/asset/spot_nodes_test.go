@@ -51,9 +51,10 @@ func TestSpotNodes(t *testing.T) {
 
 			// Store Results in a Node Map
 			type SpotNodeData struct {
-				Node			string
-				IsSpotNodeAsset	bool
-				IsSpotNodeProm	bool
+				Node					string
+				IsSpotNodeAsset			bool
+				IsSpotNodeProm			bool
+				IsNodeAvailableInBoth	bool
 			}
 
 			spotNodeMap := make(map[string]*SpotNodeData)
@@ -74,6 +75,7 @@ func TestSpotNodes(t *testing.T) {
 				spotNodeMap[node] = &SpotNodeData{
 					Node: node,
 					IsSpotNodeProm: isSpot,
+					IsNodeAvailableInBoth: false, // We set it to True if we see the node in assets API
 				}
 			}
 
@@ -95,7 +97,7 @@ func TestSpotNodes(t *testing.T) {
 				node := assetResponseItem.Properties.Name
 				spotNode, ok := spotNodeMap[node]
 				if !ok {
-					t.Logf("Node Information Missing from Prometheus %s", node)
+					t.Logf("Node Information Missing in Prometheus %s", node)
 					continue
 				}
 
@@ -107,12 +109,19 @@ func TestSpotNodes(t *testing.T) {
 					isSpot = false
 				}
 				spotNode.IsSpotNodeAsset = isSpot
+				spotNode.IsNodeAvailableInBoth = true
+			}
+
+			if len(spotNodeMap) == 0 {
+				t.Fatalf("No nodes found in Assets and Prometheus")
 			}
 
 			// Compare Results
 			for node, spotNodeValues := range spotNodeMap{
+				if spotNodeValues.IsNodeAvailableInBoth == false {
+					t.Errorf("Node %s Information missing in Assets", node)
+				}
 				t.Logf("Node: %s", node)
-
 				if spotNodeValues.IsSpotNodeAsset == spotNodeValues.IsSpotNodeProm {
 					t.Logf("  - [Pass]: Is it SpotNode?: %t", spotNodeValues.IsSpotNodeProm)
 				} else {
