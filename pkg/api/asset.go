@@ -60,9 +60,9 @@ type AssetsResponseItem struct {
 	Local        float64                       `json:"local"`
 	ByteHours    float64                       `json:"byteHours"`
 	NodeType     string                        `json:"nodeType"`
-	Preemptible  float64					             `json:"preemptible"`							
-	VolumeName   string						             `json:"volumeName"`
-	ClaimName    string						             `json:"claimName"`
+	Preemptible  float64					   `json:"preemptible"`							
+	VolumeName   string						   `json:"volumeName"`
+	ClaimName    string						   `json:"claimName"`
 }
 
 type AssetsResponseItemProperties struct {
