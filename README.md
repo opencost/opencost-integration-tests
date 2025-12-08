@@ -69,6 +69,7 @@ There is a `setup` function and a `teardown` function, which may be used to perf
 
 WIP TESTS 
 
+
 | Complete | Description | Prometheus Query | API Endpoint | Description | Difficulty |
 |:----------:|-------------|--------------------|--------------|------------|------------|
 | ✅       | Query Number of Allocations | kube_pod_container_status_running | /allocation | For each aggregate, query Prometheus for the expected number of aggregated results. Query the API. Then confirm number of results match expected | Low |
