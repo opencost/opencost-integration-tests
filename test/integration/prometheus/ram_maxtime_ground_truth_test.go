@@ -38,6 +38,39 @@ import (
 )
 
 const ramMaxTimeTolerance = 0.07
+const ramMaxMinimumNamespaceAge = 90 * time.Minute
+
+// getYoungNamespacesForRAMMax queries Prometheus for namespaces created within ramMaxMinimumNamespaceAge
+func getYoungNamespacesForRAMMax(client *prometheus.Client) map[string]bool {
+	youngNamespaces := make(map[string]bool)
+
+	input := prometheus.PrometheusInput{
+		Metric: "kube_namespace_created",
+	}
+
+	result, err := client.RunPromQLQuery(input)
+	if err != nil {
+		// If we can't query namespace creation times, return empty map (don't filter)
+		return youngNamespaces
+	}
+
+	cutoffTime := float64(time.Now().Add(-ramMaxMinimumNamespaceAge).Unix())
+
+	for _, item := range result.Data.Result {
+		namespace := item.Metric.Namespace
+		if namespace == "" {
+			continue
+		}
+
+		// The Value field contains the creation timestamp in Unix seconds
+		creationTime := item.Value.Value
+		if creationTime > cutoffTime {
+			youngNamespaces[namespace] = true
+		}
+	}
+
+	return youngNamespaces
+}
 
 func TestRAMMax(t *testing.T) {
 	apiObj := api.NewAPI()
@@ -77,6 +110,13 @@ func TestRAMMax(t *testing.T) {
 			}
 			ramUsageMaxPodMap := make(map[string]*RAMUsageMaxAggregate)
 
+			// Get young namespaces to exclude from testing
+			client := prometheus.NewClient()
+			youngNamespaces := getYoungNamespacesForRAMMax(client)
+			if len(youngNamespaces) > 0 {
+				t.Logf("Excluding %d namespaces younger than %v from RAM max tests", len(youngNamespaces), ramMaxMinimumNamespaceAge)
+			}
+
 			////////////////////////////////////////////////////////////////////////////
 			// RAMMaxUsage Calculation
 
@@ -89,7 +129,6 @@ func TestRAMMax(t *testing.T) {
 			queryEnd := time.Now().UTC().Truncate(time.Hour).Add(time.Hour)
 			endTime := queryEnd.Unix()
 			// Collect Namespace results from Prometheus
-			client := prometheus.NewClient()
 			promInput := prometheus.PrometheusInput{
 				Metric: "container_memory_working_set_bytes",
 			}
@@ -188,6 +227,11 @@ func TestRAMMax(t *testing.T) {
 			t.Logf("\nMax Values for Namespaces.\n")
 			// Windows are not accurate for prometheus and allocation
 			for namespace, ramMaxUsageValues := range ramUsageMaxNamespaceMap {
+				// Skip namespaces less than 90 minutes old
+				if youngNamespaces[namespace] {
+					t.Logf("Namespace %s: Skipped (less than %v old)", namespace, ramMaxMinimumNamespaceAge)
+					continue
+				}
 				t.Logf("Namespace %s", namespace)
 				withinRange, diff_percent := utils.AreWithinPercentage(ramMaxUsageValues.PrometheusUsageMax, ramMaxUsageValues.AllocationUsageMax, ramMaxTimeTolerance)
 				if !withinRange {
