@@ -196,6 +196,11 @@ func TestRAMMax(t *testing.T) {
 
 			// Windows are not accurate for prometheus and allocation
 			for pod, ramMaxUsageValues := range ramUsageMaxPodMap {
+				// Skip namespaces less than 90 minutes old
+				if youngNamespaces[ramMaxUsageValues.Namespace] {
+					t.Logf("pod maxes %s: Skipped namespace (less than %v old)", ramMaxUsageValues.Namespace, ramMaxMinimumNamespaceAge)
+					continue
+				}
 				t.Logf("Pod %s", pod)
 				// Ignore Zero Max Value Pods
 				if ramMaxUsageValues.AllocationUsageMax == 0 {
