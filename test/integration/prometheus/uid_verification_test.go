@@ -118,7 +118,7 @@ func NewTestContext() *TestContext {
 }
 
 // NewTestContextWithNamespaceFiltering creates a test context and queries for young namespaces and resources to exclude
-func NewTestContextWithNamespaceFiltering(_ *testing.T) *TestContext {
+func NewTestContextWithNamespaceFiltering(t *testing.T) *TestContext {
 	ctx := NewTestContext()
 
 	// Get young namespaces
