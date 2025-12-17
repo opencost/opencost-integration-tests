@@ -50,7 +50,7 @@ func TestGPUCount(t *testing.T) {
 			promNodeGPUCountInput.QueryWindow = tc.window
 			promNodeGPUCountInput.Time = &endTime
 
-			nodeGPUCount, err := client.RunPromQLQuery(promNodeGPUCountInput)
+			nodeGPUCount, err := client.RunPromQLQuery(promNodeGPUCountInput, t)
 			if err != nil {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}

@@ -4,24 +4,25 @@ package assets
 // Check Spot Nodes from Assets API Match results from Promethues
 
 import (
+	"testing"
+	"time"
+
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
-	"time"
-	"testing"
 )
 
 func TestSpotNodes(t *testing.T) {
 	apiObj := api.NewAPI()
 
 	testCases := []struct {
-		name        				string
-		window      				string
-		assetType					string
+		name      string
+		window    string
+		assetType string
 	}{
 		{
-			name:        "Today",
-			window:      "24h",
-			assetType:   "node",
+			name:      "Today",
+			window:    "24h",
+			assetType: "node",
 		},
 	}
 
@@ -29,7 +30,7 @@ func TestSpotNodes(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-	
+
 			queryEnd := time.Now().UTC().Truncate(time.Hour).Add(time.Hour)
 			endTime := queryEnd.Unix()
 
@@ -44,17 +45,17 @@ func TestSpotNodes(t *testing.T) {
 			promSpotNodeInfoInput.QueryWindow = tc.window
 			promSpotNodeInfoInput.Time = &endTime
 
-			promSpotNodeInfo, err := client.RunPromQLQuery(promSpotNodeInfoInput)
+			promSpotNodeInfo, err := client.RunPromQLQuery(promSpotNodeInfoInput, t)
 			if err != nil {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}
 
 			// Store Results in a Node Map
 			type SpotNodeData struct {
-				Node					string
-				IsSpotNodeAsset			bool
-				IsSpotNodeProm			bool
-				IsNodeAvailableInBoth	bool
+				Node                  string
+				IsSpotNodeAsset       bool
+				IsSpotNodeProm        bool
+				IsNodeAvailableInBoth bool
 			}
 
 			spotNodeMap := make(map[string]*SpotNodeData)
@@ -65,7 +66,7 @@ func TestSpotNodes(t *testing.T) {
 				isSpotNode := promSpotNode.Value.Value
 
 				var isSpot bool
-				
+
 				if isSpotNode > 0.0 {
 					isSpot = true
 				} else {
@@ -73,16 +74,16 @@ func TestSpotNodes(t *testing.T) {
 				}
 
 				spotNodeMap[node] = &SpotNodeData{
-					Node: node,
-					IsSpotNodeProm: isSpot,
+					Node:                  node,
+					IsSpotNodeProm:        isSpot,
 					IsNodeAvailableInBoth: false, // We set it to True if we see the node in assets API
 				}
 			}
 
 			// API Response
 			apiResponse, err := apiObj.GetAssets(api.AssetsRequest{
-				Window:     tc.window,
-				Filter:		tc.assetType,
+				Window: tc.window,
+				Filter: tc.assetType,
 			})
 
 			if err != nil {
@@ -94,7 +95,7 @@ func TestSpotNodes(t *testing.T) {
 
 			// Store Allocation Pod Label Results
 			for _, assetResponseItem := range apiResponse.Data {
-				
+
 				if assetResponseItem.Properties == nil {
 					continue
 				}
@@ -106,7 +107,7 @@ func TestSpotNodes(t *testing.T) {
 				}
 
 				var isSpot bool
-				
+
 				if assetResponseItem.Preemptible == 1 {
 					isSpot = true
 				} else {
@@ -121,7 +122,7 @@ func TestSpotNodes(t *testing.T) {
 			}
 
 			// Compare Results
-			for node, spotNodeValues := range spotNodeMap{
+			for node, spotNodeValues := range spotNodeMap {
 				if spotNodeValues.IsNodeAvailableInBoth == false {
 					t.Errorf("Node %s Information missing in Assets", node)
 				}

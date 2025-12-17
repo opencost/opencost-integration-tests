@@ -135,7 +135,7 @@ func TestRAMCosts(t *testing.T) {
 				promRAMRequestedInput.QueryWindow = windowRange
 				promRAMRequestedInput.Time = &endTime
 
-				requestedRAM, err := client.RunPromQLQuery(promRAMRequestedInput)
+				requestedRAM, err := client.RunPromQLQuery(promRAMRequestedInput, t)
 				if err != nil {
 					t.Fatalf("Error while calling Prometheus API %v", err)
 				}
@@ -168,7 +168,7 @@ func TestRAMCosts(t *testing.T) {
 				promRAMLimitsInput.QueryWindow = windowRange
 				promRAMLimitsInput.Time = &endTime
 
-				limitsRAM, err := client.RunPromQLQuery(promRAMLimitsInput)
+				limitsRAM, err := client.RunPromQLQuery(promRAMLimitsInput, t)
 				if err != nil {
 					t.Fatalf("Error while calling Prometheus API %v", err)
 				}
@@ -199,7 +199,7 @@ func TestRAMCosts(t *testing.T) {
 				promRAMAllocatedInput.QueryWindow = windowRange
 				promRAMAllocatedInput.Time = &endTime
 
-				allocatedRAM, err := client.RunPromQLQuery(promRAMAllocatedInput)
+				allocatedRAM, err := client.RunPromQLQuery(promRAMAllocatedInput, t)
 				if err != nil {
 					t.Fatalf("Error while calling Prometheus API %v", err)
 				}
@@ -223,7 +223,7 @@ func TestRAMCosts(t *testing.T) {
 				promPodInfoInput.AggregateResolution = ramByteVsRamAverageResolution
 				promPodInfoInput.Time = &endTime
 
-				podInfo, err := client.RunPromQLQuery(promPodInfoInput)
+				podInfo, err := client.RunPromQLQuery(promPodInfoInput, t)
 				if err != nil {
 					t.Fatalf("Error while calling Prometheus API %v", err)
 				}

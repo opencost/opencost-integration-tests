@@ -137,7 +137,7 @@ func TestGPUCosts(t *testing.T) {
 				promGPURequestedInput.QueryWindow = windowRange
 				promGPURequestedInput.Time = &endTime
 
-				requestedGPU, err := client.RunPromQLQuery(promGPURequestedInput)
+				requestedGPU, err := client.RunPromQLQuery(promGPURequestedInput, t)
 				if err != nil {
 					t.Fatalf("Error while calling Prometheus API %v", err)
 				}
@@ -168,7 +168,7 @@ func TestGPUCosts(t *testing.T) {
 				promGPUAllocatedInput.QueryWindow = windowRange
 				promGPUAllocatedInput.Time = &endTime
 
-				allocatedGPU, err := client.RunPromQLQuery(promGPUAllocatedInput)
+				allocatedGPU, err := client.RunPromQLQuery(promGPUAllocatedInput, t)
 				if err != nil {
 					t.Fatalf("Error while calling Prometheus API %v", err)
 				}
@@ -192,7 +192,7 @@ func TestGPUCosts(t *testing.T) {
 				promPodInfoInput.AggregateResolution = gpuRequestAverageCostsResolution
 				promPodInfoInput.Time = &endTime
 
-				podInfo, err := client.RunPromQLQuery(promPodInfoInput)
+				podInfo, err := client.RunPromQLQuery(promPodInfoInput, t)
 				if err != nil {
 					t.Fatalf("Error while calling Prometheus API %v", err)
 				}

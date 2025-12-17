@@ -56,7 +56,7 @@ func TestNamespaceAnnotations(t *testing.T) {
 			promAnnotationInfoInput.QueryWindow = tc.window
 			promAnnotationInfoInput.Time = &endTime
 
-			promannotationInfo, err := client.RunPromQLQuery(promAnnotationInfoInput)
+			promannotationInfo, err := client.RunPromQLQuery(promAnnotationInfoInput, t)
 			if err != nil {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}

@@ -41,14 +41,14 @@ const ramMaxTimeTolerance = 0.07
 const ramMaxMinimumNamespaceAge = 90 * time.Minute
 
 // getYoungNamespacesForRAMMax queries Prometheus for namespaces created within ramMaxMinimumNamespaceAge
-func getYoungNamespacesForRAMMax(client *prometheus.Client) map[string]bool {
+func getYoungNamespacesForRAMMax(client *prometheus.Client, t *testing.T) map[string]bool {
 	youngNamespaces := make(map[string]bool)
 
 	input := prometheus.PrometheusInput{
 		Metric: "kube_namespace_created",
 	}
 
-	result, err := client.RunPromQLQuery(input)
+	result, err := client.RunPromQLQuery(input, t)
 	if err != nil {
 		// If we can't query namespace creation times, return empty map (don't filter)
 		return youngNamespaces
@@ -112,7 +112,7 @@ func TestRAMMax(t *testing.T) {
 
 			// Get young namespaces to exclude from testing
 			client := prometheus.NewClient()
-			youngNamespaces := getYoungNamespacesForRAMMax(client)
+			youngNamespaces := getYoungNamespacesForRAMMax(client, t)
 			if len(youngNamespaces) > 0 {
 				t.Logf("Excluding %d namespaces younger than %v from RAM max tests", len(youngNamespaces), ramMaxMinimumNamespaceAge)
 			}
@@ -142,7 +142,7 @@ func TestRAMMax(t *testing.T) {
 			promInput.AggregateBy = []string{"container", "pod", "namespace", "node", "instance"}
 			promInput.Time = &endTime
 
-			promResponse, err := client.RunPromQLQuery(promInput)
+			promResponse, err := client.RunPromQLQuery(promInput, t)
 			// Do we need container_name and pod_name
 			if err != nil {
 				t.Fatalf("Error while calling Prometheus API %v", err)

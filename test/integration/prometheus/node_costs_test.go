@@ -65,7 +65,7 @@ func TestNodeInfo(t *testing.T) {
 			promNodeCPUCostInput.AggregateBy = []string{"node", "instance_type", "provider_id"}
 			promNodeCPUCostInput.Time = &endTime
 
-			promNodeCPUCostResponse, err := client.RunPromQLQuery(promNodeCPUCostInput)
+			promNodeCPUCostResponse, err := client.RunPromQLQuery(promNodeCPUCostInput, t)
 			if err != nil {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}
@@ -84,7 +84,7 @@ func TestNodeInfo(t *testing.T) {
 			promNodeGPUCostInput.AggregateBy = []string{"node", "instance_type", "provider_id"}
 			promNodeGPUCostInput.Time = &endTime
 
-			promNodeGPUCostResponse, err := client.RunPromQLQuery(promNodeGPUCostInput)
+			promNodeGPUCostResponse, err := client.RunPromQLQuery(promNodeGPUCostInput, t)
 			if err != nil {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}
@@ -103,7 +103,7 @@ func TestNodeInfo(t *testing.T) {
 			promNodeRAMCostInput.AggregateBy = []string{"node", "instance_type", "provider_id"}
 			promNodeRAMCostInput.Time = &endTime
 
-			promNodeRAMCostResponse, err := client.RunPromQLQuery(promNodeRAMCostInput)
+			promNodeRAMCostResponse, err := client.RunPromQLQuery(promNodeRAMCostInput, t)
 			if err != nil {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}
