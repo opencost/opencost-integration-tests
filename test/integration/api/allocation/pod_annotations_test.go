@@ -56,7 +56,7 @@ func TestPodAnnotations(t *testing.T) {
 			promAnnotationInfoInput.QueryWindow = tc.window
 			promAnnotationInfoInput.Time = &endTime
 
-			promAnnotationInfo, err := client.RunPromQLQuery(promAnnotationInfoInput)
+			promAnnotationInfo, err := client.RunPromQLQuery(promAnnotationInfoInput, t)
 			if err != nil {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}

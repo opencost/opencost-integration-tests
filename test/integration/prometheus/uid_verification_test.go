@@ -118,11 +118,11 @@ func NewTestContext() *TestContext {
 }
 
 // NewTestContextWithNamespaceFiltering creates a test context and queries for young namespaces and resources to exclude
-func NewTestContextWithNamespaceFiltering(_ *testing.T) *TestContext {
+func NewTestContextWithNamespaceFiltering(t *testing.T) *TestContext {
 	ctx := NewTestContext()
 
 	// Get young namespaces
-	ctx.YoungNamespaces = getYoungNamespaces(ctx.Client, ctx.EndTime)
+	ctx.YoungNamespaces = getYoungNamespaces(ctx.Client, ctx.EndTime, t)
 	if len(ctx.YoungNamespaces) > 0 {
 		log.Infof("Excluding %d namespaces younger than %v from UID consistency checks", len(ctx.YoungNamespaces), minimumNamespaceAge)
 		for ns := range ctx.YoungNamespaces {
@@ -131,7 +131,7 @@ func NewTestContextWithNamespaceFiltering(_ *testing.T) *TestContext {
 	}
 
 	// Get young and existing resources (deployments and services)
-	ctx.YoungResources, ctx.ExistingResources = getYoungResources(ctx.Client, ctx.EndTime)
+	ctx.YoungResources, ctx.ExistingResources = getYoungResources(ctx.Client, ctx.EndTime, t)
 	if len(ctx.YoungResources) > 0 {
 		log.Infof("Excluding %d resources younger than %v from UID consistency checks", len(ctx.YoungResources), minimumNamespaceAge)
 		for res := range ctx.YoungResources {
@@ -144,7 +144,7 @@ func NewTestContextWithNamespaceFiltering(_ *testing.T) *TestContext {
 }
 
 // getYoungNamespaces queries Prometheus for namespaces created within minimumNamespaceAge
-func getYoungNamespaces(client *prometheus.Client, _ int64) map[string]bool {
+func getYoungNamespaces(client *prometheus.Client, _ int64, t *testing.T) map[string]bool {
 	youngNamespaces := make(map[string]bool)
 
 	// Use current time (not the future endTime) to get latest data
@@ -152,7 +152,7 @@ func getYoungNamespaces(client *prometheus.Client, _ int64) map[string]bool {
 		Metric: "kube_namespace_created",
 	}
 
-	result, err := client.RunPromQLQuery(input)
+	result, err := client.RunPromQLQuery(input, t)
 	if err != nil {
 		log.Warnf("Could not query namespace creation times, skipping namespace age filtering: %v", err)
 		return youngNamespaces
@@ -178,7 +178,7 @@ func getYoungNamespaces(client *prometheus.Client, _ int64) map[string]bool {
 
 // getYoungResources queries Prometheus for deployments and services created within minimumNamespaceAge
 // It returns two maps: young resources (created within cutoff) and all existing resources
-func getYoungResources(client *prometheus.Client, _ int64) (youngResources map[string]bool, existingResources map[string]bool) {
+func getYoungResources(client *prometheus.Client, _ int64, t *testing.T) (youngResources map[string]bool, existingResources map[string]bool) {
 	youngResources = make(map[string]bool)
 	existingResources = make(map[string]bool)
 	cutoffTime := float64(time.Now().Add(-minimumNamespaceAge).Unix())
@@ -189,7 +189,7 @@ func getYoungResources(client *prometheus.Client, _ int64) (youngResources map[s
 		Metric: "kube_deployment_created",
 	}
 
-	deploymentResult, err := client.RunPromQLQuery(deploymentInput)
+	deploymentResult, err := client.RunPromQLQuery(deploymentInput, t)
 	if err != nil {
 		log.Warnf("Could not query deployment creation times: %v", err)
 	} else {
@@ -214,7 +214,7 @@ func getYoungResources(client *prometheus.Client, _ int64) (youngResources map[s
 		Metric: "kube_service_created",
 	}
 
-	serviceResult, err := client.RunPromQLQuery(serviceInput)
+	serviceResult, err := client.RunPromQLQuery(serviceInput, t)
 	if err != nil {
 		log.Warnf("Could not query service creation times: %v", err)
 	} else {
@@ -382,7 +382,7 @@ func queryResourceWithUID(t *testing.T, client *prometheus.Client, metric string
 		Time:        endTime,
 	}
 
-	result, err := client.RunPromQLQuery(input)
+	result, err := client.RunPromQLQuery(input, t)
 	if err != nil {
 		t.Fatalf("Error querying Prometheus for %s: %v", metric, err)
 	}

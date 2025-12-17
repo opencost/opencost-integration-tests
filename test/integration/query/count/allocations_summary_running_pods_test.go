@@ -5,14 +5,15 @@ package count
 
 import (
 	// "fmt"
-	"github.com/opencost/opencost-integration-tests/pkg/api"
-	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
-	"github.com/pmezard/go-difflib/difflib"
 	"slices"
 	"sort"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/opencost/opencost-integration-tests/pkg/api"
+	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
+	"github.com/pmezard/go-difflib/difflib"
 )
 
 func TestQueryAllocationSummary(t *testing.T) {
@@ -67,7 +68,7 @@ func TestQueryAllocationSummary(t *testing.T) {
 				Time:        &endTime,
 			}
 
-			promResponse, err := client.RunPromQLQuery(promInput)
+			promResponse, err := client.RunPromQLQuery(promInput, t)
 
 			if err != nil {
 				t.Fatalf("Error while calling Prometheus API %v", err)

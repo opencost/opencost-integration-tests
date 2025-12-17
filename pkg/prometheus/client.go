@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"testing"
 	"time"
 
 	"github.com/opencost/opencost-integration-tests/pkg/utils"
@@ -518,9 +519,10 @@ func (c *Client) ConstructPromQLQueryURL(promQLArgs PrometheusInput) string {
 	return promURL
 }
 
-func (c *Client) RunPromQLQuery(promQLArgs PrometheusInput) (PrometheusResponse, error) {
+func (c *Client) RunPromQLQuery(promQLArgs PrometheusInput, t *testing.T) (PrometheusResponse, error) {
 
 	promURL := c.ConstructPromQLQueryURL(promQLArgs)
+	t.Logf("Running PromQL Query: %s", promURL)
 	promResp, err := c.httpClient.Get(promURL)
 
 	var promData PrometheusResponse

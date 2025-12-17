@@ -4,11 +4,12 @@ package count
 
 import (
 	// "fmt"
+	"testing"
+	"time"
+
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 	"github.com/opencost/opencost-integration-tests/pkg/utils"
-	"testing"
-	"time"
 )
 
 const tolerance = 0.07
@@ -89,7 +90,7 @@ func TestQueryAssets(t *testing.T) {
 			}
 
 			// LoadBalancer Prom Output
-			promNodeResponse, err := client.RunPromQLQuery(promNodeInput)
+			promNodeResponse, err := client.RunPromQLQuery(promNodeInput, t)
 			if err != nil {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}
@@ -101,7 +102,7 @@ func TestQueryAssets(t *testing.T) {
 				Time:        &endTime,
 			}
 
-			promLBResponse, err := client.RunPromQLQuery(promLBInput)
+			promLBResponse, err := client.RunPromQLQuery(promLBInput, t)
 			if err != nil {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}
@@ -113,7 +114,7 @@ func TestQueryAssets(t *testing.T) {
 				Time:        &endTime,
 			}
 
-			promPVResponse, err := client.RunPromQLQuery(promPVInput)
+			promPVResponse, err := client.RunPromQLQuery(promPVInput, t)
 			if err != nil {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}

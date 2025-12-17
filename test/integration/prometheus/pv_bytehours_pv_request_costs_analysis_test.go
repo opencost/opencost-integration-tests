@@ -19,15 +19,16 @@ package prometheus
 
 import (
 	"fmt"
-	"github.com/opencost/opencost-integration-tests/pkg/api"
-	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
-	"github.com/opencost/opencost-integration-tests/pkg/utils"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/opencost/opencost-integration-tests/pkg/api"
+	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
+	"github.com/opencost/opencost-integration-tests/pkg/utils"
 )
 
 // This should be adjusted later
@@ -296,7 +297,7 @@ func getOffsetAdjustedQueryWindow(window string) string {
 	return window_offset_string
 }
 
-func queryPods(window string, endTime int64) (prometheus.PrometheusResponse, error) {
+func queryPods(window string, endTime int64, t *testing.T) (prometheus.PrometheusResponse, error) {
 	// --------------------------------------
 	// Build Pod Map
 	// --------------------------------------
@@ -318,11 +319,11 @@ func queryPods(window string, endTime int64) (prometheus.PrometheusResponse, err
 	promPodInfoInput.AggregateResolution = Resolution
 	promPodInfoInput.Time = &endTime
 
-	podInfo, err := client.RunPromQLQuery(promPodInfoInput)
+	podInfo, err := client.RunPromQLQuery(promPodInfoInput, t)
 	return podInfo, err
 }
 
-func queryPodsUID(window string, endTime int64) (prometheus.PrometheusResponse, error) {
+func queryPodsUID(window string, endTime int64, t *testing.T) (prometheus.PrometheusResponse, error) {
 	// --------------------------------------
 	// Build UID Pod Map
 	// --------------------------------------
@@ -344,12 +345,12 @@ func queryPodsUID(window string, endTime int64) (prometheus.PrometheusResponse, 
 	promPodInfoInput.AggregateResolution = Resolution
 	promPodInfoInput.Time = &endTime
 
-	podInfo, err := client.RunPromQLQuery(promPodInfoInput)
+	podInfo, err := client.RunPromQLQuery(promPodInfoInput, t)
 
 	return podInfo, err
 }
 
-func queryContainers(window string, endTime int64) (prometheus.PrometheusResponse, error) {
+func queryContainers(window string, endTime int64, t *testing.T) (prometheus.PrometheusResponse, error) {
 	// --------------------------------------
 	// Get Number of Running Containers in Pod
 	// --------------------------------------
@@ -371,12 +372,12 @@ func queryContainers(window string, endTime int64) (prometheus.PrometheusRespons
 	promPodInfoInput.AggregateResolution = Resolution
 	promPodInfoInput.Time = &endTime
 
-	podInfo, err := client.RunPromQLQuery(promPodInfoInput)
+	podInfo, err := client.RunPromQLQuery(promPodInfoInput, t)
 
 	return podInfo, err
 }
 
-func queryPVActiveMins(window string, endTime int64) (prometheus.PrometheusResponse, error) {
+func queryPVActiveMins(window string, endTime int64, t *testing.T) (prometheus.PrometheusResponse, error) {
 	// ----------------------------------------------
 	// Metric: PVActiveMins
 	// Description: Get Alive Time for the Persistent Volume
@@ -394,12 +395,12 @@ func queryPVActiveMins(window string, endTime int64) (prometheus.PrometheusRespo
 	promPVRunTime.AggregateResolution = Resolution
 	promPVRunTime.Time = &endTime
 
-	pvRunTime, err := client.RunPromQLQuery(promPVRunTime)
+	pvRunTime, err := client.RunPromQLQuery(promPVRunTime, t)
 
 	return pvRunTime, err
 }
 
-func queryPVCapacityBytes(window string, endTime int64) (prometheus.PrometheusResponse, error) {
+func queryPVCapacityBytes(window string, endTime int64, t *testing.T) (prometheus.PrometheusResponse, error) {
 	// ----------------------------------------------
 	// Metric: PVBytes
 	// Description: Get PersistentVolume Capacity
@@ -418,12 +419,12 @@ func queryPVCapacityBytes(window string, endTime int64) (prometheus.PrometheusRe
 	promPVBytes.QueryWindow = getOffsetAdjustedQueryWindow(window)
 	promPVBytes.Time = &endTime
 
-	pvBytes, err := client.RunPromQLQuery(promPVBytes)
+	pvBytes, err := client.RunPromQLQuery(promPVBytes, t)
 
 	return pvBytes, err
 }
 
-func queryPVCostPerGibHour(window string, endTime int64) (prometheus.PrometheusResponse, error) {
+func queryPVCostPerGibHour(window string, endTime int64, t *testing.T) (prometheus.PrometheusResponse, error) {
 	// ----------------------------------------------
 	// Metric: PVCostPerGibHour
 	// Description: Get Cost for Every Byte Used in an Hour in GigaBytes
@@ -442,12 +443,12 @@ func queryPVCostPerGibHour(window string, endTime int64) (prometheus.PrometheusR
 	promCostPerGiBHour.QueryWindow = getOffsetAdjustedQueryWindow(window)
 	promCostPerGiBHour.Time = &endTime
 
-	pvCostPerGiBHour, err := client.RunPromQLQuery(promCostPerGiBHour)
+	pvCostPerGiBHour, err := client.RunPromQLQuery(promCostPerGiBHour, t)
 
 	return pvCostPerGiBHour, err
 }
 
-func queryPVMeta(window string, endTime int64) (prometheus.PrometheusResponse, error) {
+func queryPVMeta(window string, endTime int64, t *testing.T) (prometheus.PrometheusResponse, error) {
 	// ----------------------------------------------
 	// Metric: PVMeta
 	// Description: Persistent Volume Information
@@ -466,12 +467,12 @@ func queryPVMeta(window string, endTime int64) (prometheus.PrometheusResponse, e
 	promPVMeta.QueryWindow = getOffsetAdjustedQueryWindow(window)
 	promPVMeta.Time = &endTime
 
-	pvMeta, err := client.RunPromQLQuery(promPVMeta)
+	pvMeta, err := client.RunPromQLQuery(promPVMeta, t)
 
 	return pvMeta, err
 }
 
-func queryPVCInfo(window string, endTime int64) (prometheus.PrometheusResponse, error) {
+func queryPVCInfo(window string, endTime int64, t *testing.T) (prometheus.PrometheusResponse, error) {
 
 	// ----------------------------------------------
 	// Metric: PVCInfo
@@ -495,12 +496,12 @@ func queryPVCInfo(window string, endTime int64) (prometheus.PrometheusResponse, 
 	promPVCInfo.AggregateResolution = Resolution
 	promPVCInfo.Time = &endTime
 
-	pvcInfo, err := client.RunPromQLQuery(promPVCInfo)
+	pvcInfo, err := client.RunPromQLQuery(promPVCInfo, t)
 
 	return pvcInfo, err
 }
 
-func queryPVCRequestedBytes(window string, endTime int64) (prometheus.PrometheusResponse, error) {
+func queryPVCRequestedBytes(window string, endTime int64, t *testing.T) (prometheus.PrometheusResponse, error) {
 	// ----------------------------------------------
 	// Metric: PVCRequestedBytes
 	// Description: Persistent Volume Claim Requested Bytes
@@ -519,12 +520,12 @@ func queryPVCRequestedBytes(window string, endTime int64) (prometheus.Prometheus
 	promPVCRequestedBytes.QueryWindow = getOffsetAdjustedQueryWindow(window)
 	promPVCRequestedBytes.Time = &endTime
 
-	pvcRequestedBytes, err := client.RunPromQLQuery(promPVCRequestedBytes)
+	pvcRequestedBytes, err := client.RunPromQLQuery(promPVCRequestedBytes, t)
 
 	return pvcRequestedBytes, err
 }
 
-func queryPodPVCAllocation(window string, endTime int64) (prometheus.PrometheusResponse, error) {
+func queryPodPVCAllocation(window string, endTime int64, t *testing.T) (prometheus.PrometheusResponse, error) {
 	// ----------------------------------------------
 	// Metric: PodPVCAllocation
 	// Description: Pod Persistent Volume Claim Allocation
@@ -543,7 +544,7 @@ func queryPodPVCAllocation(window string, endTime int64) (prometheus.PrometheusR
 	promPodPVCAllocation.QueryWindow = getOffsetAdjustedQueryWindow(window)
 	promPodPVCAllocation.Time = &endTime
 
-	podPVCAllocation, err := client.RunPromQLQuery(promPodPVCAllocation)
+	podPVCAllocation, err := client.RunPromQLQuery(promPodPVCAllocation, t)
 
 	return podPVCAllocation, err
 }
@@ -554,9 +555,9 @@ func buildPodMap(IngestUID bool, window string, endTime int64, resolution time.D
 	var err error
 
 	if !IngestUID {
-		podInfo, err = queryPods(window, endTime)
+		podInfo, err = queryPods(window, endTime, t)
 	} else {
-		podInfo, err = queryPodsUID(window, endTime)
+		podInfo, err = queryPodsUID(window, endTime, t)
 	}
 
 	if err != nil {
@@ -619,22 +620,22 @@ func buildPodMap(IngestUID bool, window string, endTime int64, resolution time.D
 
 func buildPVMap(window string, endTime int64, resolution time.Duration, queryWindow api.Window, t *testing.T) map[string]*PersistentVolume {
 
-	pvRunTime, err := queryPVActiveMins(window, endTime)
+	pvRunTime, err := queryPVActiveMins(window, endTime, t)
 	if err != nil {
 		t.Fatalf("Error Occured while querying PromQL kube_persistentvolume_capacity_bytes: %v", err)
 	}
 
-	pvCostPerGiBHour, err := queryPVCostPerGibHour(window, endTime)
+	pvCostPerGiBHour, err := queryPVCostPerGibHour(window, endTime, t)
 	if err != nil {
 		t.Fatalf("Error Occured while querying PromQL pv_hourly_cost: %v", err)
 	}
 
-	pvBytes, err := queryPVCapacityBytes(window, endTime)
+	pvBytes, err := queryPVCapacityBytes(window, endTime, t)
 	if err != nil {
 		t.Fatalf("Error Occured while querying PromQL kube_persistentvolume_capacity_bytes: %v", err)
 	}
 
-	pvMeta, err := queryPVMeta(window, endTime)
+	pvMeta, err := queryPVMeta(window, endTime, t)
 	if err != nil {
 		t.Fatalf("Error Occured while querying PromQL kubecost_pv_info: %v", err)
 	}
@@ -701,12 +702,12 @@ func buildPVMap(window string, endTime int64, resolution time.Duration, queryWin
 
 func buildPVCMap(window string, endTime int64, resolution time.Duration, queryWindow api.Window, persistentVolumeMap map[string]*PersistentVolume, t *testing.T) map[PersistentVolumeClaimKey]*PersistentVolumeClaim {
 
-	pvcInfo, err := queryPVCInfo(window, endTime)
+	pvcInfo, err := queryPVCInfo(window, endTime, t)
 	if err != nil {
 		t.Fatalf("Error Occured while querying PromQL kube_persistentvolumeclaim_info: %v", err)
 	}
 
-	pvcRequestedBytes, err := queryPVCRequestedBytes(window, endTime)
+	pvcRequestedBytes, err := queryPVCRequestedBytes(window, endTime, t)
 	if err != nil {
 		t.Fatalf("Error Occured while querying PromQL kube_persistentvolumeclaim_resource_requests_storage_byte: %v", err)
 	}
@@ -776,7 +777,7 @@ func buildPVCMap(window string, endTime int64, resolution time.Duration, queryWi
 
 func buildPodPVCMap(window string, endTime int64, podMap map[PodKey]*PodData, persistentVolumeMap map[string]*PersistentVolume, persistentVolumeClaimMap map[PersistentVolumeClaimKey]*PersistentVolumeClaim, IngestUID bool, podUIDKeyMap map[PodKey][]PodKey, t *testing.T) map[PodKey][]*PersistentVolumeClaim {
 
-	podPVCAllocation, err := queryPodPVCAllocation(window, endTime)
+	podPVCAllocation, err := queryPodPVCAllocation(window, endTime, t)
 	if err != nil {
 		t.Fatalf("Error Occured while querying PromQL pod_pvc_allocation: %v", err)
 	}
@@ -935,7 +936,7 @@ func applyContainerInfotoPodMap(podMap map[PodKey]*PodData, window string, endTi
 	var containerInfo prometheus.PrometheusResponse
 	var err error
 
-	containerInfo, err = queryContainers(window, endTime)
+	containerInfo, err = queryContainers(window, endTime, t)
 
 	if err != nil {
 		t.Fatalf("Prometheus Query kube_pod_container_status_running failed: %v", err)

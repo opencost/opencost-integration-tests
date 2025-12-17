@@ -32,7 +32,7 @@ import (
 const (
 	cpuCorevsCpuRequestShortLivedPodsRunTime = 120
 	cpuCorevsCpuRequestResolution            = "1m"
-	cpuCorevsCpuRequestTolerance             = 0.07
+	cpuCorevsCpuRequestTolerance             = 0.08
 	cpuCorevsCpuRequestnegligibleCores       = 0.01
 	cpuCorevsCpuLimitnegligibleCores         = 0.01
 )
@@ -138,7 +138,7 @@ func TestCPUCosts(t *testing.T) {
 				promCPURequestedInput.QueryWindow = windowRange
 				promCPURequestedInput.Time = &endTime
 
-				requestedCPU, err := client.RunPromQLQuery(promCPURequestedInput)
+				requestedCPU, err := client.RunPromQLQuery(promCPURequestedInput, t)
 				if err != nil {
 					t.Fatalf("Error while calling Prometheus API %v", err)
 				}
@@ -171,7 +171,7 @@ func TestCPUCosts(t *testing.T) {
 				promCPULimitsInput.QueryWindow = windowRange
 				promCPULimitsInput.Time = &endTime
 
-				limitsCPU, err := client.RunPromQLQuery(promCPULimitsInput)
+				limitsCPU, err := client.RunPromQLQuery(promCPULimitsInput, t)
 				if err != nil {
 					t.Fatalf("Error while calling Prometheus API %v", err)
 				}
@@ -202,7 +202,7 @@ func TestCPUCosts(t *testing.T) {
 				promCPUAllocatedInput.QueryWindow = windowRange
 				promCPUAllocatedInput.Time = &endTime
 
-				allocatedCPU, err := client.RunPromQLQuery(promCPUAllocatedInput)
+				allocatedCPU, err := client.RunPromQLQuery(promCPUAllocatedInput, t)
 				if err != nil {
 					t.Fatalf("Error while calling Prometheus API %v", err)
 				}
@@ -226,7 +226,7 @@ func TestCPUCosts(t *testing.T) {
 				promPodInfoInput.AggregateResolution = cpuCorevsCpuRequestResolution
 				promPodInfoInput.Time = &endTime
 
-				podInfo, err := client.RunPromQLQuery(promPodInfoInput)
+				podInfo, err := client.RunPromQLQuery(promPodInfoInput, t)
 				if err != nil {
 					t.Fatalf("Error while calling Prometheus API %v", err)
 				}

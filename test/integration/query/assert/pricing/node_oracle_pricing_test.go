@@ -222,7 +222,7 @@ func TestOracleNodePricing(t *testing.T) {
 			promNodeTotalCostHrInput.QueryWindow = tc.window
 			promNodeTotalCostHrInput.Time = &endTime
 
-			promNodeTotalCostHr, err := client.RunPromQLQuery(promNodeTotalCostHrInput)
+			promNodeTotalCostHr, err := client.RunPromQLQuery(promNodeTotalCostHrInput, t)
 			if err != nil {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}

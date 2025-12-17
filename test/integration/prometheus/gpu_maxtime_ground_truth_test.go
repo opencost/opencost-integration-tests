@@ -68,7 +68,7 @@ func TestGPUMax(t *testing.T) {
 			promInput.AggregateBy = []string{"container", "pod", "namespace"}
 			promInput.Time = &endTime
 
-			promResponse, err := client.RunPromQLQuery(promInput)
+			promResponse, err := client.RunPromQLQuery(promInput, t)
 			// Do we need container_name and pod_name
 			if err != nil {
 				t.Fatalf("Error while calling Prometheus API %v", err)

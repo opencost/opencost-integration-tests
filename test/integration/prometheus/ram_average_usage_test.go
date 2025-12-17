@@ -73,7 +73,7 @@ func TestRAMAvgUsage(t *testing.T) {
 			promPodInfoInput.AggregateResolution = ramAverageUsageResolution
 			promPodInfoInput.Time = &endTime
 
-			podInfo, err := client.RunPromQLQuery(promPodInfoInput)
+			podInfo, err := client.RunPromQLQuery(promPodInfoInput, t)
 			if err != nil {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}
@@ -128,7 +128,7 @@ func TestRAMAvgUsage(t *testing.T) {
 			promInput.AggregateBy = []string{"container", "pod", "namespace", "node", "instance"}
 			promInput.Time = &endTime
 
-			promResponse, err := client.RunPromQLQuery(promInput)
+			promResponse, err := client.RunPromQLQuery(promInput, t)
 			// Do we need container_name and pod_name
 			if err != nil {
 				t.Fatalf("Error while calling Prometheus API %v", err)

@@ -4,13 +4,14 @@ package assets
 // Compare PVC Disks from Assets API and from Promethues
 
 import (
+	"fmt"
+	"strconv"
+	"testing"
+	"time"
+
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 	"github.com/opencost/opencost-integration-tests/pkg/utils"
-	"strconv"
-	"fmt"
-	"time"
-	"testing"
 )
 
 const Resolution = "5m"
@@ -28,7 +29,7 @@ func getOffsetAdjustedQueryWindow(window string) string {
 	return window_offset_string
 }
 
-func queryPVCInfo(window string, endTime int64) (prometheus.PrometheusResponse, error) {
+func queryPVCInfo(window string, endTime int64, t *testing.T) (prometheus.PrometheusResponse, error) {
 
 	// ----------------------------------------------
 	// Metric: PVCInfo
@@ -52,7 +53,7 @@ func queryPVCInfo(window string, endTime int64) (prometheus.PrometheusResponse, 
 	promPVCInfo.AggregateResolution = Resolution
 	promPVCInfo.Time = &endTime
 
-	pvcInfo, err := client.RunPromQLQuery(promPVCInfo)
+	pvcInfo, err := client.RunPromQLQuery(promPVCInfo, t)
 
 	return pvcInfo, err
 }
@@ -61,14 +62,14 @@ func TestPVCInfo(t *testing.T) {
 	apiObj := api.NewAPI()
 
 	testCases := []struct {
-		name        				string
-		window      				string
-		assetType					string
+		name      string
+		window    string
+		assetType string
 	}{
 		{
-			name:        "Today",
-			window:      "24h",
-			assetType:   "disk",
+			name:      "Today",
+			window:    "24h",
+			assetType: "disk",
 		},
 	}
 
@@ -76,24 +77,24 @@ func TestPVCInfo(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-	
+
 			queryEnd := time.Now().UTC().Truncate(time.Hour).Add(time.Hour)
 			endTime := queryEnd.Unix()
 
-			pvcInfo, err := queryPVCInfo(tc.window, endTime)
+			pvcInfo, err := queryPVCInfo(tc.window, endTime, t)
 			if err != nil {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}
-			
+
 			if len(pvcInfo.Data.Result) == 0 {
 				t.Fatalf("No Disks Found. Failing Test")
 			}
 			// Store Results in a Node Map
 			type DiskPVCInfo struct {
-				Volume			string
-				ClaimNameProm	string
-				ClaimNameAsset	string
-				IsVolumeInBoth	bool
+				Volume         string
+				ClaimNameProm  string
+				ClaimNameAsset string
+				IsVolumeInBoth bool
 			}
 
 			diskPVCInfoMap := make(map[string]*DiskPVCInfo)
@@ -111,16 +112,16 @@ func TestPVCInfo(t *testing.T) {
 				}
 
 				diskPVCInfoMap[persistentVolumeName] = &DiskPVCInfo{
-					Volume: persistentVolumeName,
-					ClaimNameProm: persistentVolumeClaimName,
+					Volume:         persistentVolumeName,
+					ClaimNameProm:  persistentVolumeClaimName,
 					IsVolumeInBoth: false,
 				}
 			}
 
 			// API Response
 			apiResponse, err := apiObj.GetAssets(api.AssetsRequest{
-				Window:     tc.window,
-				Filter:		tc.assetType,
+				Window: tc.window,
+				Filter: tc.assetType,
 			})
 
 			if err != nil {
@@ -141,17 +142,17 @@ func TestPVCInfo(t *testing.T) {
 					continue
 				}
 
-				if (volume == disk.Volume) &&  (disk.ClaimNameProm == claimName) {
+				if (volume == disk.Volume) && (disk.ClaimNameProm == claimName) {
 					disk.IsVolumeInBoth = true
 				}
 				disk.ClaimNameAsset = claimName
 			}
 
 			// Compare Results
-			for volume, diskPVCValues := range diskPVCInfoMap{
+			for volume, diskPVCValues := range diskPVCInfoMap {
 				t.Logf("Volume: %s", volume)
 
-				if diskPVCValues.IsVolumeInBoth ==  true {
+				if diskPVCValues.IsVolumeInBoth == true {
 					t.Logf("  - [Pass]: ClaimName: %s", diskPVCValues.ClaimNameAsset)
 				} else {
 					t.Errorf("  - [Fail]: Claim Alloc %s != Claim Prom %s", diskPVCValues.ClaimNameAsset, diskPVCValues.ClaimNameProm)

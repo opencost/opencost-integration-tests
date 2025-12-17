@@ -4,24 +4,25 @@ package assets
 // Check Node Labels from Assets API Match results from Promethues
 
 import (
+	"testing"
+	"time"
+
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
-	"time"
-	"testing"
 )
 
 func TestLabels(t *testing.T) {
 	apiObj := api.NewAPI()
 
 	testCases := []struct {
-		name        				string
-		window      				string
-		assetType					string
+		name      string
+		window    string
+		assetType string
 	}{
 		{
-			name:        "Today",
-			window:      "24h",
-			assetType:   "node",
+			name:      "Today",
+			window:    "24h",
+			assetType: "node",
 		},
 	}
 
@@ -29,7 +30,7 @@ func TestLabels(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-	
+
 			queryEnd := time.Now().UTC().Truncate(time.Hour).Add(time.Hour)
 			endTime := queryEnd.Unix()
 
@@ -44,16 +45,16 @@ func TestLabels(t *testing.T) {
 			promLabelInfoInput.QueryWindow = tc.window
 			promLabelInfoInput.Time = &endTime
 
-			promLabelInfo, err := client.RunPromQLQuery(promLabelInfoInput)
+			promLabelInfo, err := client.RunPromQLQuery(promLabelInfoInput, t)
 			if err != nil {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}
 
 			// Store Results in a Node Map
 			type NodeData struct {
-				Node		string
-				PromLabels	map[string]string
-				AllocLabels	map[string]string
+				Node        string
+				PromLabels  map[string]string
+				AllocLabels map[string]string
 			}
 
 			nodeMap := make(map[string]*NodeData)
@@ -63,15 +64,15 @@ func TestLabels(t *testing.T) {
 				node := promlabel.Metric.Node
 				labels := promlabel.Metric.Labels
 				nodeMap[node] = &NodeData{
-					Node: node,
+					Node:       node,
 					PromLabels: labels,
 				}
 			}
 
 			// API Response
 			apiResponse, err := apiObj.GetAssets(api.AssetsRequest{
-				Window:     tc.window,
-				Filter:		tc.assetType,
+				Window: tc.window,
+				Filter: tc.assetType,
 			})
 
 			if err != nil {
@@ -93,7 +94,7 @@ func TestLabels(t *testing.T) {
 			}
 
 			// Compare Results
-			for node, nodeLabels := range nodeMap{
+			for node, nodeLabels := range nodeMap {
 				t.Logf("Node: %s", node)
 
 				// Prometheus Result will have fewer labels.

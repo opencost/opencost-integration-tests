@@ -74,7 +74,7 @@ func TestLoadBalancerCost(t *testing.T) {
 			promLBInfoInput.AggregateResolution = "5m"
 			promLBInfoInput.Time = &endTime
 
-			promLBInfo, err := client.RunPromQLQuery(promLBInfoInput)
+			promLBInfo, err := client.RunPromQLQuery(promLBInfoInput, t)
 			if err != nil {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}
@@ -134,7 +134,7 @@ func TestLoadBalancerCost(t *testing.T) {
 			promLBInput.AggregateBy = []string{"namespace", "service_name", "ingress_ip"}
 			promLBInput.Time = &endTime
 
-			promLBResponse, err := client.RunPromQLQuery(promLBInput)
+			promLBResponse, err := client.RunPromQLQuery(promLBInput, t)
 			// Do we need container_name and pod_name
 			if err != nil {
 				t.Fatalf("Error while calling Prometheus API %v", err)

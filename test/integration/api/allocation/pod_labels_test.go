@@ -50,7 +50,7 @@ func TestPodLabels(t *testing.T) {
 			promPodRunningInfoInput.AggregateBy = []string{"pod"}
 			promPodRunningInfoInput.Time = &endTime
 
-			promPodRunningInfo, err := client.RunPromQLQuery(promPodRunningInfoInput)
+			promPodRunningInfo, err := client.RunPromQLQuery(promPodRunningInfoInput, t)
 			if err != nil {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}
@@ -76,7 +76,7 @@ func TestPodLabels(t *testing.T) {
 			promLabelInfoInput.QueryWindow = tc.window
 			promLabelInfoInput.Time = &endTime
 
-			promlabelInfo, err := client.RunPromQLQuery(promLabelInfoInput)
+			promlabelInfo, err := client.RunPromQLQuery(promLabelInfoInput, t)
 			if err != nil {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}
