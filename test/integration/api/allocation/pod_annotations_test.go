@@ -11,6 +11,8 @@ import (
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 )
 
+const podStatusResolution = "1m"
+
 func TestPodAnnotations(t *testing.T) {
 	apiObj := api.NewAPI()
 
@@ -61,9 +63,25 @@ func TestPodAnnotations(t *testing.T) {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}
 
+			// Pod Info
+			promPodInfoInput := prometheus.PrometheusInput{}
+			promPodInfoInput.Metric = "kube_pod_container_status_running"
+			promPodInfoInput.MetricNotEqualTo = "0"
+			promPodInfoInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
+			promPodInfoInput.Function = []string{"avg"}
+			promPodInfoInput.AggregateWindow = tc.window
+			promPodInfoInput.AggregateResolution = podStatusResolution
+			promPodInfoInput.Time = &endTime
+
+			podInfo, err := client.RunPromQLQuery(promPodInfoInput)
+			if err != nil {
+				t.Fatalf("Error while calling Prometheus API %v", err)
+			}
+
 			// Store Results in a Pod Map
 			type PodData struct {
 				Pod              string
+				Alive            bool
 				promAnnotations  map[string]string
 				AllocAnnotations map[string]string
 			}
@@ -78,6 +96,13 @@ func TestPodAnnotations(t *testing.T) {
 				podMap[pod] = &PodData{
 					Pod:             pod,
 					promAnnotations: Annotations,
+				}
+			}
+
+			for _, podInfoResponseItem := range podInfo.Data.Result {
+				podMapItem, ok := podMap[podInfoResponseItem.Metric.Pod]
+				if ok {
+					podMapItem.Alive = true
 				}
 			}
 
@@ -113,6 +138,10 @@ func TestPodAnnotations(t *testing.T) {
 			// Compare Results
 			for pod, podAnnotations := range podMap {
 				t.Logf("Pod: %s", pod)
+				if podAnnotations.Alive == false {
+					t.Logf("Skipping %s. Pod Dead", pod)
+					continue
+				}
 				// Prometheus Result will have fewer Annotations.
 				// Allocation has oracle and feature related Annotations
 				for promAnnotation, promAnnotationValue := range podAnnotations.promAnnotations {
