@@ -73,7 +73,7 @@ func TestPodAnnotations(t *testing.T) {
 			promPodInfoInput.AggregateResolution = podStatusResolution
 			promPodInfoInput.Time = &endTime
 
-			podInfo, err := client.RunPromQLQuery(promPodInfoInput)
+			podInfo, err := client.RunPromQLQuery(promPodInfoInput, t)
 			if err != nil {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}
