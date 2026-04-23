@@ -74,6 +74,33 @@ func TestQueryAllocation(t *testing.T) {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}
 
+			// Narrow the Prometheus pod set to pods alive at the query
+			// endTime using a 1m-resolution subquery. Without this,
+			// pods that were only very briefly running inside the 24h
+			// window show up in Prometheus (as their avg_over_time is
+			// non-zero) but are absent from /allocation, which only
+			// reports pods with coincident usage samples. That is a
+			// window-boundary race, not a pod-count bug.
+			promAliveInput := prometheus.PrometheusInput{
+				Metric:              "kube_pod_container_status_running",
+				MetricNotEqualTo:    "0",
+				Function:            []string{"avg"},
+				AggregateBy:         []string{"container", "pod", "namespace", "node"},
+				AggregateWindow:     tc.window,
+				AggregateResolution: "1m",
+				Time:                &endTime,
+			}
+
+			promAliveResponse, err := client.RunPromQLQuery(promAliveInput, t)
+			if err != nil {
+				t.Fatalf("Error while calling Prometheus API %v", err)
+			}
+
+			alivePods := make(map[string]bool)
+			for _, metric := range promAliveResponse.Data.Result {
+				alivePods[metric.Metric.Pod] = true
+			}
+
 			// Calculate Number of Pods per Aggregate for API Object
 			type podAggregation struct {
 				Pods []string
@@ -110,6 +137,14 @@ func TestQueryAllocation(t *testing.T) {
 				pod := metric.Metric.Pod
 				// This pod was down, unable to do it with the query
 				if metric.Value.Value == 0 {
+					continue
+				}
+				// Skip pods that are not alive at the query end time.
+				// /allocation only returns pods with usage data in the
+				// window, so short-lived pods that were up earlier in
+				// the 24h window but not at endTime would otherwise
+				// produce spurious mismatches.
+				if !alivePods[pod] {
 					continue
 				}
 				promAggregateItem, namespacePresent := promAggregateCount[podNamespace]

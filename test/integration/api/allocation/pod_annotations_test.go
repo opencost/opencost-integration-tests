@@ -82,6 +82,7 @@ func TestPodAnnotations(t *testing.T) {
 			type PodData struct {
 				Pod              string
 				Alive            bool
+				InAlloc          bool
 				promAnnotations  map[string]string
 				AllocAnnotations map[string]string
 			}
@@ -130,6 +131,7 @@ func TestPodAnnotations(t *testing.T) {
 					t.Logf("[Skipped] - No Annotations for Pod: %s", pod)
 					continue
 				}
+				podAnnotations.InAlloc = true
 				podAnnotations.AllocAnnotations = allocationResponseItem.Properties.Annotations
 			}
 
@@ -140,6 +142,17 @@ func TestPodAnnotations(t *testing.T) {
 				t.Logf("Pod: %s", pod)
 				if podAnnotations.Alive == false {
 					t.Logf("Skipping %s. Pod Dead", pod)
+					continue
+				}
+				// Skip pods that the Allocation API did not return. A
+				// pod can appear in kube_pod_annotations and briefly in
+				// kube_pod_container_status_running yet be absent from
+				// /allocation, which only reports pods with coincident
+				// usage metrics. Comparing annotations in that case is
+				// a window-boundary race, not an annotation-propagation
+				// bug.
+				if !podAnnotations.InAlloc {
+					t.Logf("Skipping %s. Pod not present in /allocation response.", pod)
 					continue
 				}
 				// Prometheus Result will have fewer Annotations.

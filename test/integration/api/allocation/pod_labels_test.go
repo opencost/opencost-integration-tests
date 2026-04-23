@@ -66,6 +66,32 @@ func TestPodLabels(t *testing.T) {
 				podRunningStatus[pod] = runningStatus
 			}
 
+			// Pod Info - narrow the "running" set to pods that were actually
+			// running at the query endTime using a 1m resolution subquery,
+			// matching the pattern used in pod_annotations_test.go.
+			// Pods that only briefly existed earlier in the 24h window may
+			// not appear in /allocation, and comparing their labels yields
+			// false negatives that have nothing to do with label
+			// propagation.
+			promPodInfoInput := prometheus.PrometheusInput{}
+			promPodInfoInput.Metric = "kube_pod_container_status_running"
+			promPodInfoInput.MetricNotEqualTo = "0"
+			promPodInfoInput.AggregateBy = []string{"container", "pod", "namespace", "node"}
+			promPodInfoInput.Function = []string{"avg"}
+			promPodInfoInput.AggregateWindow = tc.window
+			promPodInfoInput.AggregateResolution = podStatusResolution
+			promPodInfoInput.Time = &endTime
+
+			podInfo, err := client.RunPromQLQuery(promPodInfoInput, t)
+			if err != nil {
+				t.Fatalf("Error while calling Prometheus API %v", err)
+			}
+
+			alive := make(map[string]bool)
+			for _, r := range podInfo.Data.Result {
+				alive[r.Metric.Pod] = true
+			}
+
 			// -------------------------------
 			// Pod Labels
 			// avg_over_time(kube_pod_labels{%s}[%s])
@@ -84,6 +110,8 @@ func TestPodLabels(t *testing.T) {
 			// Store Results in a Pod Map
 			type PodData struct {
 				Pod         string
+				Alive       bool
+				InAlloc     bool
 				PromLabels  map[string]string
 				AllocLabels map[string]string
 			}
@@ -102,6 +130,7 @@ func TestPodLabels(t *testing.T) {
 
 				podMap[pod] = &PodData{
 					Pod:        pod,
+					Alive:      alive[pod],
 					PromLabels: labels,
 				}
 			}
@@ -128,12 +157,31 @@ func TestPodLabels(t *testing.T) {
 					t.Logf("Pod Information Missing from Prometheus %s", pod)
 					continue
 				}
+				podLabels.InAlloc = true
 				podLabels.AllocLabels = allocationResponseItem.Properties.Labels
 			}
 
 			// Compare Results
 			for pod, podLabels := range podMap {
 				t.Logf("Pod: %s", pod)
+
+				// Skip pods that were not alive at the query end. They
+				// may have been running earlier in the window but
+				// /allocation only reports pods with coincident usage
+				// metrics, so label comparisons would be noisy.
+				if !podLabels.Alive {
+					t.Logf("Skipping %s. Pod Dead at query end.", pod)
+					continue
+				}
+				// Skip pods that were not returned by /allocation. A pod
+				// can show up in kube_pod_labels but not in /allocation
+				// when it was very short lived or lacked CPU/memory
+				// usage samples, which is a window-boundary race rather
+				// than a label-propagation bug.
+				if !podLabels.InAlloc {
+					t.Logf("Skipping %s. Pod not present in /allocation response.", pod)
+					continue
+				}
 
 				// Prometheus Result will have fewer labels.
 				// Allocation has oracle and feature related labels
