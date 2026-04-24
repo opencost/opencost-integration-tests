@@ -96,9 +96,11 @@ func TestQueryAllocation(t *testing.T) {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}
 
+			// Key by namespace/pod so that identically-named pods
+			// living in different namespaces are not conflated.
 			alivePods := make(map[string]bool)
 			for _, metric := range promAliveResponse.Data.Result {
-				alivePods[metric.Metric.Pod] = true
+				alivePods[metric.Metric.Namespace+"/"+metric.Metric.Pod] = true
 			}
 
 			// Calculate Number of Pods per Aggregate for API Object
@@ -144,7 +146,7 @@ func TestQueryAllocation(t *testing.T) {
 				// window, so short-lived pods that were up earlier in
 				// the 24h window but not at endTime would otherwise
 				// produce spurious mismatches.
-				if !alivePods[pod] {
+				if !alivePods[podNamespace+"/"+pod] {
 					continue
 				}
 				promAggregateItem, namespacePresent := promAggregateCount[podNamespace]
