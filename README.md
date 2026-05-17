@@ -110,4 +110,4 @@ WIP TESTS
 | [ ]        | Ensure no pod restarts on OpenCost | kube_pod_container_status_running | N/A | use a kubernetes client to ensure the OpenCost pod has 0 restarts and no errors in the logs. also, query prometheus to ensure the opencost pod never left the running state after its initial boot | Low |
 | [ ]        | Implement Dev Stack for OpenCost | N/A | N/A | Deploy a dev stack for opencost. the integration tests should be run on a loop on that. Images that pass testing should get promoted to the dev env. | Medium |
 | [ ]        | Implement Chaos testing on OpenCost Dev Stack | N/A| N/A | Deploy a chaos monkey to the opencost dev stack. Integration tests should be updated to allow for temporary outages when monkey killed a pod, but should expect both prom backed and promless data to be intact.| Medium |
-| [ ]        | Log Inspector Test | N/A| N/A | Implement a test that scans opencost logs inside k8s. If there is a panic or an ERROR log, fail the test | Medium |
+| [ ]        | Log Inspector Test | N/A| N/A | Implement a test that scans opencost logs inside k8s. If there is a panic or an ERROR log, fail the test | Medium |a
