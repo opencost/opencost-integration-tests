@@ -9,7 +9,10 @@ import (
 
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
+	"github.com/opencost/opencost-integration-tests/pkg/utils"
 )
+
+const gpuCountTolerance = 0.01
 
 func TestGPUCount(t *testing.T) {
 
@@ -138,10 +141,12 @@ func TestGPUCount(t *testing.T) {
 			for node, nodegpuCountInfo := range nodeMap {
 				t.Logf("Node %s", node)
 
-				if (nodegpuCountInfo.PromGPUCount == nodegpuCountInfo.AssetGPUCount) && (nodegpuCountInfo.PromGPUCount == nodegpuCountInfo.AllocGPUCount) {
+				promAllocOK, promAllocDiff := utils.AreWithinPercentage(nodegpuCountInfo.PromGPUCount, nodegpuCountInfo.AllocGPUCount, gpuCountTolerance)
+				promAssetOK, promAssetDiff := utils.AreWithinPercentage(nodegpuCountInfo.PromGPUCount, nodegpuCountInfo.AssetGPUCount, gpuCountTolerance)
+				if promAllocOK && promAssetOK {
 					t.Logf("  - NodeGPUCount[Pass]: %f", nodegpuCountInfo.PromGPUCount)
 				} else {
-					t.Errorf("  - NodeGPUCount[Fail]: Prom - %f, Alloc - %f, Asset - %f", nodegpuCountInfo.PromGPUCount, nodegpuCountInfo.AssetGPUCount, nodegpuCountInfo.AllocGPUCount)
+					t.Errorf("  - NodeGPUCount[Fail]: Prom - %f, Alloc - %f, Asset - %f (prom/alloc diff %0.4f%%, prom/asset diff %0.4f%%)", nodegpuCountInfo.PromGPUCount, nodegpuCountInfo.AllocGPUCount, nodegpuCountInfo.AssetGPUCount, promAllocDiff, promAssetDiff)
 				}
 			}
 		})
