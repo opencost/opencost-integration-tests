@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -20,24 +21,25 @@ type AutocompleteRequest struct {
 
 func (r AutocompleteRequest) QueryString() string {
 	params := []string{}
+	esc := url.QueryEscape
 
 	if r.Window != "" {
-		params = append(params, fmt.Sprintf("window=%s", r.Window))
+		params = append(params, fmt.Sprintf("window=%s", esc(r.Window)))
 	}
 	if r.Field != "" {
-		params = append(params, fmt.Sprintf("field=%s", r.Field))
+		params = append(params, fmt.Sprintf("field=%s", esc(r.Field)))
 	}
 	if r.Search != "" {
-		params = append(params, fmt.Sprintf("search=%s", r.Search))
+		params = append(params, fmt.Sprintf("search=%s", esc(r.Search)))
 	}
 	if r.Limit > 0 {
 		params = append(params, fmt.Sprintf("limit=%d", r.Limit))
 	}
 	if r.Filter != "" {
-		params = append(params, fmt.Sprintf("filter=%s", r.Filter))
+		params = append(params, fmt.Sprintf("filter=%s", esc(r.Filter)))
 	}
 	if r.TenantID != "" {
-		params = append(params, fmt.Sprintf("tenantId=%s", r.TenantID))
+		params = append(params, fmt.Sprintf("tenantId=%s", esc(r.TenantID)))
 	}
 
 	if len(params) == 0 {
