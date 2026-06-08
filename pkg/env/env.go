@@ -12,6 +12,7 @@ const defaultURL = "http://localhost:9003"
 const defaultMCPURL = "http://localhost:8081"
 const defaultApproxThreshold = 0.0001 // 0.01%
 const defaultOracleBillingURL = "https://apexapps.oracle.com/"
+const defaultDataResolutionMinutes = 1 // demo.infra.opencost.io sets queryResolutionSeconds: 60
 
 func GetDefaultURL() string {
 	url := defaultURL
@@ -66,6 +67,21 @@ func GetMCPURL() string {
 	}
 
 	return strings.TrimRight(url, "/")
+}
+
+func GetDataResolutionMinutes() int {
+	minutes := defaultDataResolutionMinutes
+
+	if os.Getenv("OPENCOST_DATA_RESOLUTION_MINUTES") != "" {
+		m, err := strconv.Atoi(os.Getenv("OPENCOST_DATA_RESOLUTION_MINUTES"))
+		if err == nil && m > 0 {
+			minutes = m
+		} else {
+			log.Errorf("invalid OPENCOST_DATA_RESOLUTION_MINUTES: %s", os.Getenv("OPENCOST_DATA_RESOLUTION_MINUTES"))
+		}
+	}
+
+	return minutes
 }
 
 func GetShowDiff() bool {

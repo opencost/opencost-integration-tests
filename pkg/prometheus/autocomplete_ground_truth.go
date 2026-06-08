@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/opencost/opencost-integration-tests/pkg/env"
 )
 
 const (
@@ -383,30 +385,21 @@ func (c *Client) nodeInfoField(window string, endTime int64, field string) (map[
 	return values, nil
 }
 
-const runningPodAliveResolution = "1m"
-
-// RunningPodKeysAliveAtTime returns namespace/pod keys running at endTime within window.
-// Uses a 1m-resolution subquery, matching the allocation pod annotation tests.
-func (c *Client) RunningPodKeysAliveAtTime(window string, endTime int64) (map[string]struct{}, error) {
-	input := PrometheusInput{
+// RunningPodsInWindowInput builds the pod-running PromQL OpenCost uses in QueryPods:
+// avg(kube_pod_container_status_running != 0) by (...) [window:resolution]
+// A pod is included if it was running during any resolution bucket in the window.
+// Resolution defaults to 1m for demo.infra.opencost.io (queryResolutionSeconds: 60).
+func RunningPodsInWindowInput(window string, endTime int64) PrometheusInput {
+	resolutionMinutes := env.GetDataResolutionMinutes()
+	return PrometheusInput{
 		Metric:              runningPodMetric,
 		MetricNotEqualTo:    "0",
 		Function:            []string{"avg"},
-		AggregateBy:         []string{"container", "pod", "namespace", "node"},
+		AggregateBy:         []string{"container", "pod", "namespace"},
 		AggregateWindow:     window,
-		AggregateResolution: runningPodAliveResolution,
+		AggregateResolution: fmt.Sprintf("%dm", resolutionMinutes),
 		Time:                &endTime,
 	}
-	resp, err := c.runPromQLQuery(input)
-	if err != nil {
-		return nil, err
-	}
-
-	keys := make(map[string]struct{}, len(resp.Data.Result))
-	for _, result := range resp.Data.Result {
-		keys[podKey(result.Metric.Namespace, result.Metric.Pod)] = struct{}{}
-	}
-	return keys, nil
 }
 
 func (c *Client) runningPodSet(window string, endTime int64, filterRunning bool) (map[string]struct{}, error) {

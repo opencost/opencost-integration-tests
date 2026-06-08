@@ -5,16 +5,19 @@ import (
 	"time"
 )
 
-func TestRunningPodKeysAliveAtTime(t *testing.T) {
+func TestRunningPodsInWindowQuery(t *testing.T) {
 	client := NewClient()
 	endTime := time.Now().UTC().Truncate(time.Hour).Add(time.Hour).Unix()
 
-	keys, err := client.RunningPodKeysAliveAtTime("24h", endTime)
+	resp, err := client.runPromQLQuery(RunningPodsInWindowInput("24h", endTime))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(keys) == 0 {
-		t.Fatal("expected running pods at endTime")
+	if len(resp.Data.Result) == 0 {
+		t.Fatal("expected pods running during window")
+	}
+	if resp.Data.Result[0].Value.Value <= 0 {
+		t.Logf("sample value at endTime: %v (series still indicates window presence)", resp.Data.Result[0].Value.Value)
 	}
 }
 
