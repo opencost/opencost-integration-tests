@@ -5,6 +5,19 @@ import (
 	"time"
 )
 
+func TestRunningPodKeysAliveAtTime(t *testing.T) {
+	client := NewClient()
+	endTime := time.Now().UTC().Truncate(time.Hour).Add(time.Hour).Unix()
+
+	keys, err := client.RunningPodKeysAliveAtTime("24h", endTime)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(keys) == 0 {
+		t.Fatal("expected running pods at endTime")
+	}
+}
+
 func TestAllocationFieldValuesNamespace(t *testing.T) {
 	client := NewClient()
 	endTime := time.Now().UTC().Truncate(time.Hour).Add(time.Hour).Unix()

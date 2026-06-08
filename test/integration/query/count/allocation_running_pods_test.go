@@ -74,6 +74,11 @@ func TestQueryAllocation(t *testing.T) {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}
 
+			alivePods, err := client.RunningPodKeysAliveAtTime(tc.window, endTime)
+			if err != nil {
+				t.Fatalf("Error while querying running pods at endTime: %v", err)
+			}
+
 			// Calculate Number of Pods per Aggregate for API Object
 			type podAggregation struct {
 				Pods []string
@@ -110,6 +115,9 @@ func TestQueryAllocation(t *testing.T) {
 				pod := metric.Metric.Pod
 				// This pod was down, unable to do it with the query
 				if metric.Value.Value == 0 {
+					continue
+				}
+				if _, alive := alivePods[podNamespace+"/"+pod]; !alive {
 					continue
 				}
 				promAggregateItem, namespacePresent := promAggregateCount[podNamespace]

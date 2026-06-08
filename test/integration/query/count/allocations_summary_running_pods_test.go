@@ -74,6 +74,11 @@ func TestQueryAllocationSummary(t *testing.T) {
 				t.Fatalf("Error while calling Prometheus API %v", err)
 			}
 
+			alivePods, err := client.RunningPodKeysAliveAtTime(tc.window, endTime)
+			if err != nil {
+				t.Fatalf("Error while querying running pods at endTime: %v", err)
+			}
+
 			var apiAllocationPodNames []string
 			for podName, _ := range apiResponse.Data.Sets[0].Allocations {
 				// Synthetic value generated and returned by /allocation and not /prometheus
@@ -90,6 +95,9 @@ func TestQueryAllocationSummary(t *testing.T) {
 			for _, promItem := range promResponse.Data.Result {
 				// This pod was down, unable to do it with the query
 				if promItem.Value.Value == 0 {
+					continue
+				}
+				if _, alive := alivePods[promItem.Metric.Namespace+"/"+promItem.Metric.Pod]; !alive {
 					continue
 				}
 				if !slices.Contains(promPodNames, promItem.Metric.Pod) {

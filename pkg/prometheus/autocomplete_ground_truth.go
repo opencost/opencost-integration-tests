@@ -382,6 +382,32 @@ func (c *Client) nodeInfoField(window string, endTime int64, field string) (map[
 	return values, nil
 }
 
+const runningPodAliveResolution = "1m"
+
+// RunningPodKeysAliveAtTime returns namespace/pod keys running at endTime within window.
+// Uses a 1m-resolution subquery, matching the allocation pod annotation tests.
+func (c *Client) RunningPodKeysAliveAtTime(window string, endTime int64) (map[string]struct{}, error) {
+	input := PrometheusInput{
+		Metric:              runningPodMetric,
+		MetricNotEqualTo:    "0",
+		Function:            []string{"avg"},
+		AggregateBy:         []string{"container", "pod", "namespace", "node"},
+		AggregateWindow:     window,
+		AggregateResolution: runningPodAliveResolution,
+		Time:                &endTime,
+	}
+	resp, err := c.runPromQLQuery(input)
+	if err != nil {
+		return nil, err
+	}
+
+	keys := make(map[string]struct{}, len(resp.Data.Result))
+	for _, result := range resp.Data.Result {
+		keys[podKey(result.Metric.Namespace, result.Metric.Pod)] = struct{}{}
+	}
+	return keys, nil
+}
+
 func (c *Client) runningPodSet(window string, endTime int64, filterRunning bool) (map[string]struct{}, error) {
 	if !filterRunning {
 		return map[string]struct{}{}, nil
