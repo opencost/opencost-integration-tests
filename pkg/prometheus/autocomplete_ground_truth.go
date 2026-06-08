@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 )
 
 const (
@@ -112,8 +113,8 @@ func (c *Client) AssetFieldValues(field, window string, endTime int64) (map[stri
 	case "providerid":
 		return c.nodeInfoField(window, endTime, "provider_id")
 	case "type":
-		// OpenCost node assets report type "Node".
-		return map[string]struct{}{"Node": {}}, nil
+		// OpenCost autocomplete returns canonical asset types in lowercase.
+		return map[string]struct{}{"node": {}}, nil
 	case "category":
 		return map[string]struct{}{"Compute": {}}, nil
 	default:
@@ -180,7 +181,7 @@ func (c *Client) allocationNodes(window string, endTime int64) (map[string]struc
 func (c *Client) allocationClusters(endTime int64) (map[string]struct{}, error) {
 	// kubecost_cluster_info is an instant gauge; query at "now" because future-aligned
 	// integration test timestamps may not have samples.
-	now := endTime
+	now := time.Now().UTC().Unix()
 	input := PrometheusInput{
 		Metric: clusterInfoMetric,
 		Time:   &now,
