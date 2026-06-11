@@ -8,9 +8,9 @@ import (
 )
 
 func TestAllocationSmoke(t *testing.T) {
-	apiObj := api.NewAPI()
+	apiClient := api.NewAPI()
 
-	// logging incase we can trace potential env issues with go test -v
+	// logging in case we can trace potential env issues with go test -v
 	t.Logf("Smoke target (OPENCOST_URL or default): %s", env.GetDefaultURL())
 
 	testCases := []struct {
@@ -26,7 +26,7 @@ func TestAllocationSmoke(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 
-			response, err := apiObj.GetAllocation(api.AllocationRequest{
+			response, err := apiClient.GetAllocation(api.AllocationRequest{
 				Window: tc.window,
 			})
 
