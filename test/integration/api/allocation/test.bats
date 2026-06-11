@@ -1,11 +1,21 @@
 setup() {
     DIR="$( cd "$( dirname "$BATS_TEST_FILENAME" )" >/dev/null 2>&1 && pwd )"
-    cd $DIR
+    cd "$DIR"
 }
 
 teardown() {
     : # nothing to tear down
 }
+
+@test "allocation: smoke test allocation" {
+    #60sec cap bc SDK http.Get has no timeout, avoids go test's default 10 min 
+    go test -timeout 60s allocation_smoke_test.go
+}
+
+@test "allocation: smoke test allocation summary" {
+    go test -timeout 60s allocation_summary_smoke_test.go
+}
+
 @test "allocation: controller kind consistency" {
     go test allocation_controller_consistency_test.go
 }
