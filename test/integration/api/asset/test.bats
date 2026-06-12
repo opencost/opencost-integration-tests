@@ -8,7 +8,7 @@ teardown() {
 }
 
 @test "asset: Smoke Test" {
-    #60sec cap bc SDK http.Get has no timeout, avoids go test's default 10 min
+    #60sec cap bc SDK http.Get has no timeout, avoids go test's default 10 min 
     go test -timeout 60s assets_smoke_test.go 
 }
 

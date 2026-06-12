@@ -8,9 +8,10 @@ import (
 )
 
 func TestAllocationSmoke(t *testing.T) {
+
 	apiClient := api.NewAPI()
 
-	// logging in case we can trace potential env issues with go test -v
+	// logging incase we can trace potential env issues with go test -v
 	t.Logf("Smoke target (OPENCOST_URL or default): %s", env.GetDefaultURL())
 
 	testCases := []struct {
