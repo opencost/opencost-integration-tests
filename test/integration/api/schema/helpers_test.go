@@ -14,8 +14,9 @@ var windowRequiredFields = []string{
 	"end",
 }
 
-// fetchRawEndpoint fetches and decodes a raw API response. Raw JSON is used
-// so removed or renamed fields are not hidden by typed Go struct defaults.
+// fetchRawEndpoint fetches and decodes a raw API response. GetAutocompleteStatus
+// is currently the only API helper that exposes both the HTTP status and raw
+// response body. AutocompleteRequest supplies the shared window query parameter.
 func fetchRawEndpoint(t *testing.T, apiClient *api.API, path string, req api.AutocompleteRequest) map[string]any {
 	t.Helper()
 

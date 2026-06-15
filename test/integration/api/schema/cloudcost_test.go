@@ -22,16 +22,6 @@ import (
 // - Each supported nested cost object contains numeric cost and
 //   kubernetesPercent fields.
 
-var cloudCostItemRequiredFields = []string{
-	"properties",
-	"window",
-	"netCost",
-	"amortizedCost",
-	"amortizedNetCost",
-	"invoicedCost",
-	"listCost",
-}
-
 var cloudCostPropertiesRequiredFields = []string{
 	"provider",
 	"accountID",
@@ -54,6 +44,14 @@ var cloudCostFields = []string{
 	"invoicedCost",
 	"listCost",
 }
+
+var cloudCostItemRequiredFields = append(
+	[]string{
+		"properties",
+		"window",
+	},
+	cloudCostFields...,
+)
 
 func TestCloudCostResponseSchemaStability(t *testing.T) {
 	apiClient := api.NewAPI()
