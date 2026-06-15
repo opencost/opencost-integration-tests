@@ -45,3 +45,7 @@ teardown() {
 @test "validate_api: validate if all of idle costs are spread" {
     go test share_idle_shares_test.go
 }
+
+@test "validate_api: validate if api handles empty windows correctly" {
+    go test empty_window_test.go
+}

@@ -14,3 +14,7 @@ teardown() {
 @test "asset: Spot Node" {
     go test spot_nodes_test.go
 }
+
+@test "asset: Empty Window" {
+    go test empty_window_test.go
+}
