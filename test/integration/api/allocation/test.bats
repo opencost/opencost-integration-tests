@@ -26,6 +26,10 @@ teardown() {
     go test namespace_annotations_test.go
 }
 
+@test "validate_api: validate cost across aggregations" {
+    go test aggregation_cost_conservation_test.go
+}
+
 @test "validate_api: negative idle cost values" {
     go test idle_cost_negative_test.go
 }
