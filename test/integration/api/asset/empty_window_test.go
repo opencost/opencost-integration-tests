@@ -20,37 +20,32 @@ func TestAssetsEmptyWindow(t *testing.T) {
 		name      string
 		window    string
 		assetType string
-		describe  string
 	}{
 		{
 			name:      "FarPastWindow",
 			window:    "1970-01-01T00:00:00Z,1970-01-02T00:00:00Z",
 			assetType: "node",
-			describe:  "Window from 1970, before any cluster existed",
 		},
 		{
 			name:      "FutureWindow",
 			window:    "2099-01-01T00:00:00Z,2099-01-02T00:00:00Z",
 			assetType: "node",
-			describe:  "Window from 2099, in the future",
 		},
 		{
 			name:      "BeyondRetentionWindow",
 			window:    "2000-01-01T00:00:00Z,2000-01-02T00:00:00Z",
 			assetType: "disk",
-			describe:  "Window from 2000, beyond Prometheus retention",
 		},
 		{
 			name:      "EmptyWindowPVC",
 			window:    "1970-01-01T00:00:00Z,1970-01-02T00:00:00Z",
 			assetType: "pvc",
-			describe:  "PVC assets in empty window",
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Logf("Testing: %s - %s", tc.describe, tc.window)
+			t.Logf("Testing: %s - %s", tc.name, tc.window)
 
 			response, err := apiObj.GetAssets(api.AssetsRequest{
 				Window: tc.window,

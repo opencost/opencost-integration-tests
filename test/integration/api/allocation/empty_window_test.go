@@ -20,7 +20,6 @@ func TestAllocationEmptyWindow(t *testing.T) {
         name      string
         window    string
         aggregate string
-        describe  string
     }{
         {
             name:      "FarPastWindow",
