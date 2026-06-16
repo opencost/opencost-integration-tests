@@ -100,9 +100,9 @@ func formatContext(lines []string, index int) string { //takes in a list of log 
 		if i == index {
 			prefix = ">>" //if the line is the suspicious line then add ">>" to the prefix
 		}
-		b.WriteString(prefix)              //add the prefix to the string builder
-		b.WriteString(stripAnsi(lines[i])) //add the line to the string builder
-		b.WriteString("\n")                //add a new line to the string builder
+		b.WriteString(prefix)
+		b.WriteString(stripAnsi(lines[i]))
+		b.WriteString("\n")
 	}
 	return b.String() //return the string builder as a string
 }
