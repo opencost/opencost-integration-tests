@@ -121,11 +121,12 @@ func TestAllocationCostConservedAcrossAggregations(t *testing.T) {
 		t.Fatal("cluster aggregation total not found")
 	}
 
-	for aggregation, total := range aggregationTotals {
+	for _, aggregation := range aggregationLevels {
 		if aggregation == "cluster" {
 			continue
 		}
 
+		total := aggregationTotals[aggregation]
 		if !withinAggregationTolerance(clusterTotal, total) {
 			t.Errorf(
 				"aggregation=%s diverged from cluster: cluster=%.6f %s=%.6f diff=%.6f relativeDiff=%.4f%%",
