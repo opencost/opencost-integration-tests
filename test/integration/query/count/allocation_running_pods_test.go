@@ -6,7 +6,6 @@ package count
 // fail, filters synthetic "<ns>-unmounted-pvcs" pods, and re-anchors the window on
 // transient divergence; on exhaustion, replays failures prefixed with the last window.
 
-
 import (
 	"fmt"
 	"slices"
@@ -17,6 +16,7 @@ import (
 	"github.com/opencost/opencost-integration-tests/pkg/api"
 	"github.com/opencost/opencost-integration-tests/pkg/prometheus"
 )
+
 const (
 	// overlapThreshold is the minimum Jaccard overlap (intersection/union) of the
 	// per-namespace pod sets required to pass, for namespaces large enough for the
@@ -63,6 +63,13 @@ func TestQueryAllocation(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			// Single duration source so the API and Prometheus windows can't
+			// silently desync if tc.window changes.
+			windowDur, err := time.ParseDuration(tc.window)
+			if err != nil {
+				t.Fatalf("invalid window %q: %v", tc.window, err)
+			}
+
 			var failures []string
 			var startTime, endTime int64
 
@@ -73,7 +80,7 @@ func TestQueryAllocation(t *testing.T) {
 
 				// Fresh anchor every attempt so both sources sample one clock.
 				endTime = time.Now().UTC().Truncate(time.Hour).Unix()
-				startTime = endTime - 86400
+				startTime = endTime - int64(windowDur.Seconds())
 
 				t.Logf("attempt %d/%d API window=%s",
 					attempt, maxResampleAttempts, fmt.Sprintf("%d,%d", startTime, endTime))
@@ -179,9 +186,20 @@ func TestQueryAllocation(t *testing.T) {
 							namespace, apiPresent, promPresent))
 						continue
 					}
-					intersection := 0
+					// Set-probe instead of slices.Contains so intersection + diff
+					// are O(n+m) rather than O(n*m) per namespace.
+					promSet := make(map[string]struct{}, len(promAgg.Pods))
+					for _, p := range promAgg.Pods {
+						promSet[p] = struct{}{}
+					}
+					apiSet := make(map[string]struct{}, len(apiAgg.Pods))
 					for _, p := range apiAgg.Pods {
-						if slices.Contains(promAgg.Pods, p) {
+						apiSet[p] = struct{}{}
+					}
+
+					intersection := 0
+					for p := range apiSet {
+						if _, ok := promSet[p]; ok {
 							intersection++
 						}
 					}
@@ -210,12 +228,12 @@ func TestQueryAllocation(t *testing.T) {
 					if ratio < overlapThreshold {
 						var apiOnly, promOnly []string
 						for _, p := range apiAgg.Pods {
-							if !slices.Contains(promAgg.Pods, p) {
+							if _, ok := promSet[p]; !ok {
 								apiOnly = append(apiOnly, p)
 							}
 						}
 						for _, p := range promAgg.Pods {
-							if !slices.Contains(apiAgg.Pods, p) {
+							if _, ok := apiSet[p]; !ok {
 								promOnly = append(promOnly, p)
 							}
 						}
