@@ -36,6 +36,13 @@ func connReset() error {
 	return &net.OpError{Op: "read", Net: "tcp", Err: syscall.ECONNRESET}
 }
 
+// timeoutError satisfies net.Error and reports itself as a timeout.
+type timeoutError struct{}
+
+func (timeoutError) Error() string   { return "i/o timeout" }
+func (timeoutError) Timeout() bool   { return true }
+func (timeoutError) Temporary() bool { return false }
+
 func TestIsRetryableError(t *testing.T) {
 	cases := []struct {
 		name string
@@ -46,6 +53,8 @@ func TestIsRetryableError(t *testing.T) {
 		{"conn reset", connReset(), true},
 		{"broken pipe", &net.OpError{Op: "write", Err: syscall.EPIPE}, true},
 		{"eof", io.EOF, true},
+		{"unexpected eof", io.ErrUnexpectedEOF, true},
+		{"timeout", timeoutError{}, true},
 		{"wrapped conn reset", &url.Error{Op: "Get", URL: "x", Err: connReset()}, true},
 		{"plain error", errors.New("some other failure"), false},
 	}

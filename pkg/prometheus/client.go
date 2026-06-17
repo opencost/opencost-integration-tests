@@ -435,18 +435,21 @@ func (c *Client) get(promURL string) (*http.Response, error) {
 }
 
 // isRetryableError reports whether err is a transient network error worth
-// retrying (connection reset, broken pipe, timeout, or unexpected EOF).
+// retrying: connection reset, broken pipe, timeout, or a connection dropped
+// mid-response (io.EOF or io.ErrUnexpectedEOF on a truncated read).
 func isRetryableError(err error) bool {
 	if err == nil {
 		return false
 	}
-	if errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.EPIPE) || errors.Is(err, io.EOF) {
+	if errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.EPIPE) ||
+		errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
 		return true
 	}
 	var netErr net.Error
 	if errors.As(err, &netErr) && netErr.Timeout() {
 		return true
 	}
+	// Fallback for resets surfaced by wrappers that don't unwrap to ECONNRESET.
 	return strings.Contains(err.Error(), "connection reset by peer")
 }
 
