@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/opencost/opencost-integration-tests/pkg/log"
 	"github.com/opencost/opencost-integration-tests/pkg/utils"
 )
 
@@ -428,6 +429,7 @@ func (c *Client) get(promURL string) (*http.Response, error) {
 			break
 		}
 		if attempt < promQueryMaxAttempts {
+			log.Warnf("prometheus query failed (attempt %d/%d), retrying: %v", attempt, promQueryMaxAttempts, err)
 			time.Sleep(promQueryRetryBackoff * time.Duration(attempt))
 		}
 	}
