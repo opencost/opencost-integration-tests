@@ -14,6 +14,15 @@ git submodule update --init --recursive
 go mod download
 ```
 
+## Local Dev Stack
+
+For a reproducible k3d-based environment (Prometheus + OpenCost + seed workloads), see [dev/README.md](dev/README.md).
+
+```sh
+./dev/up.sh
+./dev/scripts/port-forward.sh   # separate terminal
+```
+
 ## Running Tests Locally
 
 First, you'll need to configure access to a running instance of OpenCost.

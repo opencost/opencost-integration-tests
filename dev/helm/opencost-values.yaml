@@ -1,0 +1,17 @@
+opencost:
+  prometheus:
+    internal: #where the Prometheus server is deployed
+      enabled: true
+      namespaceName: prometheus-system
+      serviceName: prometheus-server
+  prometheusDataSource:
+    queryResolutionSeconds: 60 #how often to query the Prometheus server
+  exporter:
+    defaultClusterId: default-cluster #the default cluster ID
+  mcp:
+    enabled: true #enables the MCP server
+  ui:
+    enabled: true #enables the UI
+  customPricing:
+    enabled: true #enables the custom pricing
+    createConfigmap: true #creates a configmap for the custom pricing

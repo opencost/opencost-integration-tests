@@ -1,0 +1,10 @@
+server:
+  fullnameOverride: prometheus-server #overrides the default fullname of the Prometheus server
+#kube-state-metrics is a Prometheus exporter for Kubernetes state metrics
+kube-state-metrics:
+  enabled: true #enables the kube-state-metrics
+  metricAnnotationsAllowList: #allows all annotations to be collected
+    - "pods=[*]" #allows all pods to be collected
+    - "namespaces=[*]" #allows all namespaces to be collected
+  extraArgs:
+    - --metric-annotations-allowlist=pods=[*],namespaces=[*] #allows all annotations to be collected
