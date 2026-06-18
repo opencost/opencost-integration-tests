@@ -7,6 +7,10 @@ teardown() {
     : # nothing to tear down
 }
 
+@test "asset: Invalid Parameters" {
+    go test invalid_query_parameter_test.go
+}
+
 @test "asset: Node Labels" {
     go test node_labels_test.go
 }

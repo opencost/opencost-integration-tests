@@ -6,6 +6,7 @@ setup() {
 teardown() {
     : # nothing to tear down
 }
+
 @test "allocation: controller kind consistency" {
     go test allocation_controller_consistency_test.go
 }
@@ -44,4 +45,8 @@ teardown() {
 
 @test "validate_api: validate if all of idle costs are spread" {
     go test share_idle_shares_test.go
+}
+
+@test "validate_api: validate api can handle invalid parameters" {
+    go test invalid_query_parameter_test.go
 }

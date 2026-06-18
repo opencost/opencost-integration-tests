@@ -52,6 +52,7 @@ func decodeJSONResponse(url string, httpResp *http.Response, response interface{
 	}
 
 	bodyStr := strings.TrimSpace(string(body))
+
 	if err := json.Unmarshal(body, response); err != nil {
 		retryable = isRetryableHTTPResponse(httpResp.StatusCode, bodyStr)
 		log.Errorf(
