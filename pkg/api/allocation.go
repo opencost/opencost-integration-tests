@@ -21,6 +21,7 @@ func (api *API) GetAllocation(req AllocationRequest) (*AllocationResponse, error
 
 type AllocationRequest struct {
 	Accumulate                 string
+	AccumulateBy               string
 	Aggregate                  string
 	CostUnit                   string
 	Filter                     string
@@ -34,6 +35,7 @@ type AllocationRequest struct {
 	ShareLabels                string
 	ShareNamespaces            string
 	ShareSplit                 string
+	Step                       string
 	ShareTenancyCosts          string
 	Window                     string
 }
@@ -43,6 +45,9 @@ func (ar AllocationRequest) QueryString() string {
 
 	if ar.Accumulate != "" {
 		params = append(params, fmt.Sprintf("accumulate=%s", ar.Accumulate))
+	}
+	if ar.AccumulateBy != "" {
+		params = append(params, fmt.Sprintf("accumulateBy=%s", ar.AccumulateBy))
 	}
 	if ar.Aggregate != "" {
 		params = append(params, fmt.Sprintf("aggregate=%s", ar.Aggregate))
@@ -82,6 +87,9 @@ func (ar AllocationRequest) QueryString() string {
 	}
 	if ar.ShareSplit != "" {
 		params = append(params, fmt.Sprintf("shareSplit=%s", ar.ShareSplit))
+	}
+	if ar.Step != "" {
+		params = append(params, fmt.Sprintf("step=%s", ar.Step))
 	}
 	if ar.ShareTenancyCosts != "" {
 		params = append(params, fmt.Sprintf("shareTenancyCosts=%s", ar.ShareTenancyCosts))
