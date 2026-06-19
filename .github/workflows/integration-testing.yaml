@@ -19,6 +19,12 @@ concurrency:
 jobs:
   run-tests:
     runs-on: ubuntu-latest
+    # Shared by the preflight guard and the test run so both validate/exercise
+    # the same targets — keep them here, not duplicated per step, so they can't
+    # drift apart and defeat the guard. Step-only vars stay step-level.
+    env:
+      PROMETHEUS_URL: "https://demo-prometheus.infra.opencost.io"
+      OPENCOST_URL: "https://demo.infra.opencost.io/model"
     outputs:
       passed: ${{ steps.check-results.outputs.passed }}
     steps:
@@ -38,9 +44,6 @@ jobs:
         run: go vet ./...
 
       - name: Preflight cluster-coherence guard
-        env:
-          PROMETHEUS_URL: "https://demo-prometheus.infra.opencost.io"
-          OPENCOST_URL: "https://demo.infra.opencost.io/model"
         run: |
           # Runs first: if OpenCost and Prometheus observe different clusters, the
           # guard fails here and the job aborts before downstream ground-truth
@@ -50,8 +53,6 @@ jobs:
       - name: Run integration tests
         id: run-tests
         env:
-          PROMETHEUS_URL: "https://demo-prometheus.infra.opencost.io"
-          OPENCOST_URL: "https://demo.infra.opencost.io/model"
           OPENCOST_MCP_URL: "https://mcp-demo.infra.opencost.io/"
         run: |
           # Recurse all of test/integration; exclude the preflight guard (it runs
