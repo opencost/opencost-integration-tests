@@ -19,6 +19,12 @@ concurrency:
 jobs:
   run-tests:
     runs-on: ubuntu-latest
+    # Shared by the preflight guard and the test run so both validate/exercise
+    # the same targets — keep them here, not duplicated per step, so they can't
+    # drift apart and defeat the guard. Step-only vars stay step-level.
+    env:
+      PROMETHEUS_URL: "https://demo-prometheus.infra.opencost.io"
+      OPENCOST_URL: "https://demo.infra.opencost.io/model"
     outputs:
       passed: ${{ steps.check-results.outputs.passed }}
     steps:
@@ -37,17 +43,25 @@ jobs:
       - name: go vet
         run: go vet ./...
 
+      - name: Preflight cluster-coherence guard
+        run: |
+          # Runs first: if OpenCost and Prometheus observe different clusters, the
+          # guard fails here and the job aborts before downstream ground-truth
+          # tests produce meaningless results.
+          ./test/bats/bin/bats -T test/integration/preflight
+
       - name: Run integration tests
         id: run-tests
         env:
-          PROMETHEUS_URL: "https://demo-prometheus.infra.opencost.io"
-          OPENCOST_URL: "https://demo.infra.opencost.io/model"
           OPENCOST_MCP_URL: "https://mcp-demo.infra.opencost.io/"
         run: |
-          # Run bats and capture its exit code
-          ./test/bats/bin/bats -T --no-parallelize-within-files --jobs 4 -r test/integration | tee results.txt
+          # Recurse all of test/integration; exclude the preflight guard (it runs
+          # as its own step above). Tag-based exclusion keeps this recursive, so
+          # new top-level test dirs are picked up automatically.
+          ./test/bats/bin/bats -T --no-parallelize-within-files --jobs 4 \
+            --filter-tags '!preflight' -r test/integration | tee results.txt
           exit_code=${PIPESTATUS[0]}
-          
+
           # Exit with the bats exit code
           exit $exit_code
 
