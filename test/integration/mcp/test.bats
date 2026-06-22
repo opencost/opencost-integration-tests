@@ -15,3 +15,7 @@ teardown() {
     go test asset_mcp_vs_http_test.go helpers.go
 }
 
+@test "mcp: efficiency step" {
+    go test efficiency_step_test.go helpers.go
+}
+
