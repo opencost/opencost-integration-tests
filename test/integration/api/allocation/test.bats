@@ -26,6 +26,10 @@ teardown() {
     go test namespace_annotations_test.go
 }
 
+@test "allocation: Keyword and Explicit Windows Are Equivalent" {
+    go test allocation_window_equivalence_test.go
+}
+
 @test "validate_api: negative idle cost values" {
     go test idle_cost_negative_test.go
 }
