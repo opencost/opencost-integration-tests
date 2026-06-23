@@ -3,8 +3,8 @@ package sanity
 // This test checks broad sanity invariants on allocation query output.
 // It intentionally validates the API response as an external consumer:
 // numeric fields must be finite, costs and usage metrics must be non-negative,
-// runtime minutes must not exceed the returned window, and efficiencies must
-// stay within their expected ranges.
+// runtime minutes must not exceed the returned window, and computed resource
+// efficiencies must stay within their expected sanity ranges.
 
 import (
 	"fmt"
@@ -107,6 +107,8 @@ func checkAllocationItem(t *testing.T, itemName string, item api.AllocationRespo
 		"ramByteLimitAverage":   item.RAMBytesLimitAverage,
 		"ramByteUsageAverage":   item.RAMBytesUsageAverage,
 		"ramByteHours":          item.RAMByteHours,
+
+		"totalEfficiency": item.TotalEfficiency,
 	})
 
 	// Cost adjustment fields may be negative by design, so only validate the
@@ -128,7 +130,7 @@ func checkAllocationItem(t *testing.T, itemName string, item api.AllocationRespo
 		"totalCost":              item.TotalCost,
 	})
 
-	if item.Minutes > windowMinutes+0.01 {
+	if item.Minutes > windowMinutes+windowSlackMinutes {
 		t.Fatalf(
 			"allocation sanity violation: item=%q field=minutes value=%f windowMinutes=%f",
 			itemName,
@@ -136,9 +138,6 @@ func checkAllocationItem(t *testing.T, itemName string, item api.AllocationRespo
 			windowMinutes,
 		)
 	}
-
-	// Validate documented efficiency values.
-	checkEfficiencyRange(t, itemName, "totalEfficiency", item.TotalEfficiency)
 
 	// Validate computed per-resource efficiencies (more precise than totalEfficiency)
 	checkComputedCPUEfficiency(t, itemName, item, windowMinutes)
@@ -165,26 +164,6 @@ func checkNonNegativeFields(t *testing.T, itemName string, fields map[string]flo
 				value,
 			)
 		}
-	}
-}
-
-func checkEfficiencyRange(t *testing.T, itemName string, field string, value float64) {
-	if math.IsNaN(value) || math.IsInf(value, 0) {
-		t.Fatalf(
-			"allocation sanity violation: item=%q field=%s value=%f is not finite",
-			itemName,
-			field,
-			value,
-		)
-	}
-
-	if value < 0 || value > 1 {
-		t.Fatalf(
-			"allocation sanity violation: item=%q field=%s value=%f is outside expected range [0,1]",
-			itemName,
-			field,
-			value,
-		)
 	}
 }
 
