@@ -2,16 +2,21 @@ package prometheus
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
+	"github.com/opencost/opencost-integration-tests/pkg/log"
 	"github.com/opencost/opencost-integration-tests/pkg/utils"
 )
 
@@ -402,6 +407,54 @@ func (dp *DataPoint) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+const promQueryMaxAttempts = 4
+
+// promQueryRetryBackoff is the base delay between query retries; it scales with
+// the attempt number. It is a var so tests can shorten it.
+var promQueryRetryBackoff = 500 * time.Millisecond
+
+// get performs an HTTP GET against Prometheus, retrying transient network errors
+// such as "connection reset by peer" that the shared demo Prometheus
+// occasionally returns and that otherwise fail integration runs spuriously.
+// Prometheus queries are idempotent, so retrying a failed GET is safe.
+func (c *Client) get(promURL string) (*http.Response, error) {
+	var lastErr error
+	for attempt := 1; attempt <= promQueryMaxAttempts; attempt++ {
+		resp, err := c.httpClient.Get(promURL)
+		if err == nil {
+			return resp, nil
+		}
+		lastErr = err
+		if !isRetryableError(err) {
+			break
+		}
+		if attempt < promQueryMaxAttempts {
+			log.Warnf("prometheus query failed (attempt %d/%d), retrying: %v", attempt, promQueryMaxAttempts, err)
+			time.Sleep(promQueryRetryBackoff * time.Duration(attempt))
+		}
+	}
+	return nil, lastErr
+}
+
+// isRetryableError reports whether err is a transient network error worth
+// retrying: connection reset, broken pipe, timeout, or a connection dropped
+// mid-response (io.EOF or io.ErrUnexpectedEOF on a truncated read).
+func isRetryableError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.EPIPE) ||
+		errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+		return true
+	}
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		return true
+	}
+	// Fallback for resets surfaced by wrappers that don't unwrap to ECONNRESET.
+	return strings.Contains(err.Error(), "connection reset by peer")
+}
+
 // GetPodsByController queries Prometheus for pods of a specific controller type
 func (c *Client) GetPodsByController(controllerKind string, window string) (map[string]string, error) {
 	// For ReplicaSets, we need to query for Deployment-owned pods
@@ -411,7 +464,7 @@ func (c *Client) GetPodsByController(controllerKind string, window string) (map[
 	promQuery := fmt.Sprintf("max_over_time(kube_pod_owner{owner_kind=\"%s\"}[%s])", promQueryKind, window)
 	promURL := fmt.Sprintf("%s/api/v1/query?query=%s", c.baseURL, url.QueryEscape(promQuery))
 
-	promResp, err := c.httpClient.Get(promURL)
+	promResp, err := c.get(promURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query Prometheus for %s with window %s: %v", controllerKind, window, err)
 	}
@@ -523,7 +576,7 @@ func (c *Client) RunPromQLQuery(promQLArgs PrometheusInput, t *testing.T) (Prome
 
 	promURL := c.ConstructPromQLQueryURL(promQLArgs)
 	t.Logf("Running PromQL Query: %s", promURL)
-	promResp, err := c.httpClient.Get(promURL)
+	promResp, err := c.get(promURL)
 
 	var promData PrometheusResponse
 

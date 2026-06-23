@@ -419,7 +419,7 @@ func (c *Client) runningPodSet(window string, endTime int64, filterRunning bool)
 
 func (c *Client) runPromQLQuery(input PrometheusInput) (PrometheusResponse, error) {
 	promURL := c.ConstructPromQLQueryURL(input)
-	promResp, err := c.httpClient.Get(promURL)
+	promResp, err := c.get(promURL)
 	if err != nil {
 		return PrometheusResponse{}, fmt.Errorf("failed to query Prometheus: %w", err)
 	}
