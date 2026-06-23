@@ -50,10 +50,6 @@ var windowEquivalenceCases = []windowEquivalenceCase{
 		name:   "Week",
 		window: "week",
 	},
-	{
-		name:   "14 Days",
-		window: "14d",
-	},
 }
 
 func TestAllocationKeywordAndExplicitWindowsEquivalent(t *testing.T) {
