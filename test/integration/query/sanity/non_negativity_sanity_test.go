@@ -16,8 +16,6 @@ import (
 )
 
 const (
-	minEfficiency      = 0.0
-	maxEfficiency      = 1.0
 	windowSlackMinutes = 0.1
 	// Efficiency tolerance allows for differences in time units and averaging methods.
 	// Request-average fields may use different bases (per-minute, per-second, etc.),
