@@ -137,6 +137,10 @@ const (
 	scenarioKillPrometheus      = "kill-prometheus"
 	scenarioPartitionPrometheus = "partition-prometheus"
 	scenarioLatencyPrometheus   = "latency-prometheus"
+
+	// chaosCleanupPollInterval is how often CleanupChaos re-checks whether the
+	// deleted chaos CR has fully disappeared (finalizer done == netem reverted).
+	chaosCleanupPollInterval = 500 * time.Millisecond
 )
 
 var (
@@ -199,20 +203,47 @@ func (c *K8sClient) InjectChaos(ctx context.Context, scenario string) error {
 	return nil
 }
 
+// CleanupChaos deletes a chaos scenario and blocks until the resource is fully
+// gone. Chaos Mesh reverts the injected tc/netem rules asynchronously via a
+// finalizer, so a bare Delete returns while the rules are still live on the
+// target pods. We delete with foreground propagation and poll until the object
+// is NotFound, so cleanup only returns once the rules have actually drained.
+// The caller's ctx bounds the wait.
 func (c *K8sClient) CleanupChaos(ctx context.Context, scenario string) error {
 	resource, err := chaosResourceForScenario(scenario)
 	if err != nil {
 		return err
 	}
 
-	err = c.dynamic.Resource(resource).Namespace(c.chaosNamespace).Delete(ctx, chaosResourceName(scenario), metav1.DeleteOptions{})
+	name := chaosResourceName(scenario)
+	ri := c.dynamic.Resource(resource).Namespace(c.chaosNamespace)
+
+	foreground := metav1.DeletePropagationForeground
+	err = ri.Delete(ctx, name, metav1.DeleteOptions{PropagationPolicy: &foreground})
 	if apierrors.IsNotFound(err) || meta.IsNoMatchError(err) {
 		return nil
 	}
 	if err != nil {
 		return fmt.Errorf("deleting chaos scenario %q: %w", scenario, err)
 	}
-	return nil
+
+	ticker := time.NewTicker(chaosCleanupPollInterval)
+	defer ticker.Stop()
+	for {
+		_, err := ri.Get(ctx, name, metav1.GetOptions{})
+		if apierrors.IsNotFound(err) || meta.IsNoMatchError(err) {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("waiting for chaos scenario %q to clear: %w", scenario, err)
+		}
+
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("timed out waiting for chaos scenario %q to clear: %w", scenario, ctx.Err())
+		case <-ticker.C:
+		}
+	}
 }
 
 func (c *K8sClient) chaosObject(scenario string) (*unstructured.Unstructured, schema.GroupVersionResource, error) {

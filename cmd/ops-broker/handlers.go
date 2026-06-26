@@ -1,9 +1,16 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
+	"time"
 )
+
+// chaosCleanupTimeout caps how long the DELETE handler waits for netem rules to
+// drain. Kept under the broker client's 30s HTTP timeout so the broker returns a
+// structured error instead of the caller's connection timing out.
+const chaosCleanupTimeout = 25 * time.Second
 
 // newMux wires the frozen HTTP contract. Each authed route is a named button;
 // none accept a target from the caller — targets are fixed by broker config.
@@ -62,7 +69,9 @@ func newMux(cfg Config, k8s *K8sClient) *http.ServeMux {
 	mux.HandleFunc("DELETE /v1/chaos/{scenario}", requireToken(cfg.AuthToken,
 		func(w http.ResponseWriter, r *http.Request) {
 			scenario := r.PathValue("scenario")
-			if err := k8s.CleanupChaos(r.Context(), scenario); err != nil {
+			ctx, cancel := context.WithTimeout(r.Context(), chaosCleanupTimeout)
+			defer cancel()
+			if err := k8s.CleanupChaos(ctx, scenario); err != nil {
 				writeChaosError(w, err)
 				return
 			}
