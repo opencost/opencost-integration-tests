@@ -37,6 +37,8 @@ spec:
               value: app.kubernetes.io/name=prometheus,app.kubernetes.io/component=server
             - name: BROKER_CHAOS_NAMESPACE
               value: opencost
+            - name: BROKER_LOG_NAMESPACES
+              value: opencost,prometheus-system
           livenessProbe:
             httpGet:
               path: /healthz

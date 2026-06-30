@@ -1,0 +1,38 @@
+# Fixed pricing fixture for asset ground-truth tests (fixtureId: pricing-fixed-v1).
+#
+# Wiring (verified against the opencost-helm-chart):
+#   * OpenCost reads custom pricing from the ConfigMap named by the deployment env
+#     PRICING_CONFIGMAP_NAME, default "custom-pricing-model", in OpenCost's own
+#     namespace — by NAME via the k8s API (the CONFIG_PATH mount is scratch).
+#   * The ConfigMap `data` keys are the FLAT CustomPricing field names (CPU, RAM,
+#     storage, provider, ...). There is NO "default.json" wrapper key — using one
+#     triggers OpenCost's "no such field default.json" error (helm issue #315).
+#   * Units are per HOUR: CPU $/core-hour, RAM $/GiB-hour (1024^3), storage
+#     $/GiB-hour. (The GCP sample storage 0.00005479452 == 0.04 / 730h, i.e. an
+#     hourly rate, confirms storage is hourly, not monthly.)
+#
+# PREREQUISITE: the target OpenCost must be deployed with custom pricing ENABLED
+# (opencost.customPricing.enabled=true, provider=custom). If it is disabled,
+# OpenCost ignores this ConfigMap entirely and the fixture has no effect.
+#
+# Values below are deliberately round so reported costs invert cleanly; they are
+# test values, not realistic prices. The broker forces metadata.namespace to its
+# configured OpenCost namespace at apply time, so it is omitted here.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: custom-pricing-model
+  labels:
+    opencost.io/fixture: pricing-fixed-v1
+data:
+  provider: "custom"
+  description: "Fixed pricing fixture for deterministic asset ground-truth tests"
+  CPU: "1.0"
+  spotCPU: "1.0"
+  RAM: "0.5"
+  spotRAM: "0.5"
+  GPU: "0.0"
+  storage: "0.04"
+  zoneNetworkEgress: "0.0"
+  regionNetworkEgress: "0.0"
+  internetNetworkEgress: "0.0"

@@ -24,4 +24,40 @@ curl -fsS \
   "${broker_url}/v1/chaos"
 echo
 
+echo "Checking broker node facts..."
+curl -fsS \
+  -H "Authorization: Bearer ${OPENCOST_BROKER_TOKEN}" \
+  -H "Accept: application/json" \
+  "${broker_url}/v1/nodes"
+echo
+
+echo "Checking broker disk facts..."
+curl -fsS \
+  -H "Authorization: Bearer ${OPENCOST_BROKER_TOKEN}" \
+  -H "Accept: application/json" \
+  "${broker_url}/v1/disks"
+echo
+
+opencost_namespace="${OPENCOST_NAMESPACE:-opencost}"
+opencost_deployment="${OPENCOST_DEPLOYMENT:-opencost}"
+opencost_selector="${OPENCOST_SELECTOR:-app.kubernetes.io/name=opencost}"
+
+echo "Checking broker deployment readiness..."
+curl -fsS \
+  -H "Authorization: Bearer ${OPENCOST_BROKER_TOKEN}" \
+  -H "Accept: application/json" \
+  "${broker_url}/v1/deployments/${opencost_deployment}?namespace=${opencost_namespace}"
+echo
+
+echo "Checking broker log read..."
+curl -fsS \
+  -H "Authorization: Bearer ${OPENCOST_BROKER_TOKEN}" \
+  -H "Accept: application/json" \
+  --get \
+  --data-urlencode "namespace=${opencost_namespace}" \
+  --data-urlencode "selector=${opencost_selector}" \
+  --data-urlencode "tailLines=20" \
+  "${broker_url}/v1/logs"
+echo
+
 echo "ops-broker smoke checks passed"

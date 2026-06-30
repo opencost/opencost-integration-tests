@@ -65,13 +65,12 @@ Status codes:
 | `GET` | `/v1/pods` | Live | Read trimmed OpenCost pod state |
 | `POST` | `/v1/restart` | Live | Restart pinned OpenCost deployment |
 | `GET` | `/v1/chaos` | Live | List allowlisted chaos scenarios |
-| `GET` | `/v1/nodes` | Future | Read trimmed node facts |
-| `GET` | `/v1/deployments/{name}` | Future | Read pinned deployment readiness |
-| `GET` | `/v1/logs` | Future | Read trimmed logs |
-| `GET` | `/v1/fixtures/cloud-cost/{fixtureId}/raw` | Future | Read raw cloud-cost fixture |
-| `GET` | `/v1/fixtures/cloud-cost/{fixtureId}/metadata` | Future | Read fixture metadata |
-| `POST` | `/v1/config` | Future | Apply allowlisted fixture config |
-| `DELETE` | `/v1/config` | Future | Remove allowlisted fixture config |
+| `GET` | `/v1/nodes` | Live | Read trimmed node facts |
+| `GET` | `/v1/disks` | Live | Read trimmed PV facts |
+| `GET` | `/v1/deployments/{name}` | Live | Read pinned deployment readiness |
+| `GET` | `/v1/logs` | Live | Read trimmed logs |
+| `POST` | `/v1/config` | Live | Apply allowlisted fixture config (assets) |
+| `DELETE` | `/v1/config` | Live | Remove allowlisted fixture config (assets) |
 | `POST` | `/v1/chaos/{scenario}` | Live | Inject allowlisted chaos scenario |
 | `DELETE` | `/v1/chaos/{scenario}` | Live | Cleanup allowlisted chaos scenario |
 
@@ -81,8 +80,11 @@ Fixture IDs:
 
 | ID | Purpose |
 | --- | --- |
-| `billing-mock-v1` | Cloud cost fixture for `/cloudCost` ground-truth tests |
 | `pricing-fixed-v1` | Asset pricing fixture for asset ground-truth tests |
+
+> Cloud-cost ground truth (the `billing-mock-v1` fixture and the
+> `/v1/fixtures/cloud-cost/...` endpoints) is out of scope and intentionally
+> dropped. Only the assets, restart, and chaos verticals are supported.
 
 Chaos scenarios:
 
@@ -97,8 +99,8 @@ Pinned deployment:
 
 | Field | Value |
 | --- | --- |
-| Namespace | `TODO` |
-| Deployment | `TODO` |
+| Namespace | `opencost` |
+| Deployment | `opencost` |
 
 Adding a fixture ID, scenario, endpoint, request field, or response field is a
 contract change and must be coordinated across broker, `pkg/cluster`, and tests.
@@ -109,14 +111,13 @@ Integration tests should not build broker URLs themselves. They should call
 `pkg/cluster`, and `pkg/cluster` should be the only test-side package that knows
 these paths and JSON shapes.
 
-Current planned consumers:
+Consumers:
 
 | Test area | Contract operations used |
 | --- | --- |
-| Chaos testing | Live: `GET /v1/chaos`, `POST /v1/chaos/{scenario}`, `DELETE /v1/chaos/{scenario}`; optionally `GET /v1/pods` for recovery checks |
-| Restart recovery | Live: `POST /v1/restart`, `GET /v1/pods`; future: `GET /v1/deployments/{name}` |
-| Cloud-cost ground truth | `GET /v1/fixtures/cloud-cost/{fixtureId}/raw`, `GET /v1/fixtures/cloud-cost/{fixtureId}/metadata`, `POST /v1/config`, `DELETE /v1/config` |
-| Asset ground truth | `GET /v1/nodes`, `POST /v1/config`, `DELETE /v1/config` |
+| Chaos testing | Live: `GET /v1/chaos`, `POST /v1/chaos/{scenario}`, `DELETE /v1/chaos/{scenario}`; optionally `GET /v1/pods`, `GET /v1/logs` for recovery checks |
+| Restart recovery | Live: `POST /v1/restart`, `GET /v1/pods`, `GET /v1/deployments/{name}`, `GET /v1/logs` |
+| Asset ground truth | Live: `GET /v1/nodes`, `GET /v1/disks`, `POST /v1/config`, `DELETE /v1/config` |
 
 ## Broker Metadata Endpoints
 
@@ -224,6 +225,40 @@ RBAC:
 
 - `get`, `list` on `nodes`
 
+### `GET /v1/disks`
+
+Purpose: return trimmed persistent-volume facts for asset ground-truth tests.
+
+Request: no body.
+
+Response:
+
+```json
+{
+  "disks": [
+    {
+      "name": "pv-1",
+      "capacity": "10Gi",
+      "storageClass": "standard",
+      "phase": "Bound",
+      "claimNamespace": "opencost",
+      "claimName": "data-claim"
+    }
+  ]
+}
+```
+
+Validation:
+
+- No query parameters are accepted.
+- The broker must return only the documented fields.
+- The endpoint is PV-centric: the bound claim is read from the PV's `ClaimRef`,
+  so the broker does not list namespaced PVCs.
+
+RBAC:
+
+- `get`, `list` on `persistentvolumes`
+
 ### `GET /v1/pods`
 
 Purpose: list trimmed OpenCost pod state for wait-for-ready checks after a
@@ -289,6 +324,7 @@ Response:
   "name": "opencost",
   "ready": true,
   "readyReplicas": 1,
+  "updatedReplicas": 1,
   "desiredReplicas": 1
 }
 ```
@@ -297,6 +333,9 @@ Validation:
 
 - Deployment name must match the pinned allowlisted deployment.
 - Namespace must match the pinned allowlisted namespace.
+- `ready` follows `kubectl rollout status` semantics: the controller has observed
+  the latest spec and `updatedReplicas == readyReplicas == desiredReplicas` (so it
+  is not reported ready mid-rollout while an old replica still serves).
 
 RBAC:
 
@@ -341,62 +380,11 @@ RBAC:
 
 ## Fixture Endpoints
 
-### `GET /v1/fixtures/cloud-cost/{fixtureId}/raw`
-
-Purpose: return the raw cloud billing fixture that OpenCost is configured to
-ingest.
-
-Request: no body.
-
-Path parameters:
-
-| Name | Required | Notes |
-| --- | --- | --- |
-| `fixtureId` | Yes | Must be `billing-mock-v1` |
-
-Response:
-
-```text
-Content-Type: text/csv
-```
-
-The body is the raw billing export fixture.
-
-Validation:
-
-- Fixture ID must be allowlisted.
-- The broker must not accept file paths, URLs, bucket names, or arbitrary
-  fixture locations from the caller.
-
-Credentials:
-
-- No credentials are returned to the caller.
-- The broker may read the fixture from its image, a mounted ConfigMap, or trusted
-  storage.
-
-### `GET /v1/fixtures/cloud-cost/{fixtureId}/metadata`
-
-Purpose: return metadata describing the raw billing fixture.
-
-Request: no body.
-
-Response:
-
-```json
-{
-  "fixtureId": "billing-mock-v1",
-  "provider": "azure",
-  "format": "azure-csv",
-  "windowStart": "2024-10-15T00:00:00Z",
-  "windowEnd": "2024-10-17T00:00:00Z",
-  "checksum": "sha256:TODO"
-}
-```
-
-Validation:
-
-- Fixture ID must be allowlisted.
-- Metadata must describe the same fixture returned by the raw endpoint.
+Application method: the broker applies fixtures by **embedded ConfigMap +
+restart**. Each fixture is a ConfigMap baked into the broker image; applying it
+creates/updates that ConfigMap (labeled `opencost.io/fixture=<id>`) in the pinned
+OpenCost namespace and then rollout-restarts OpenCost so it reloads. The caller
+supplies only the allowlisted `fixtureId` — never a manifest, name, or namespace.
 
 ### `POST /v1/config`
 
@@ -406,7 +394,7 @@ Request:
 
 ```json
 {
-  "fixtureId": "billing-mock-v1"
+  "fixtureId": "pricing-fixed-v1"
 }
 ```
 
@@ -415,20 +403,20 @@ Response:
 ```json
 {
   "applied": true,
-  "fixtureId": "billing-mock-v1"
+  "fixtureId": "pricing-fixed-v1"
 }
 ```
 
 Validation:
 
-- Fixture ID must be allowlisted.
+- Fixture ID must be allowlisted (missing/unknown → `400`/`404`).
 - The caller must never provide raw Kubernetes manifests, cloud credentials, or
   arbitrary file paths.
 
 RBAC:
 
-- `create`, `update`, `patch`, `delete` permissions are `TODO` pending the
-  chosen fixture application method.
+- `get`, `create`, `update`, `patch`, `delete` on `configmaps`
+- `get`, `patch` on the pinned `deployment` (for the reload restart)
 
 ### `DELETE /v1/config`
 
@@ -438,7 +426,7 @@ Request:
 
 ```json
 {
-  "fixtureId": "billing-mock-v1"
+  "fixtureId": "pricing-fixed-v1"
 }
 ```
 
@@ -447,18 +435,23 @@ Response:
 ```json
 {
   "deleted": true,
-  "fixtureId": "billing-mock-v1"
+  "fixtureId": "pricing-fixed-v1"
 }
 ```
 
 Validation:
 
 - Fixture ID must be allowlisted.
-- Cleanup must affect only resources owned by the named fixture.
+- Cleanup acts only on the ConfigMap carrying this fixture's
+  `opencost.io/fixture` label; an already-absent fixture is a no-op.
+- If the fixture overwrote a pre-existing ConfigMap, its original contents
+  (captured in the `opencost.io/fixture-snapshot` annotation at apply time) are
+  restored; if the fixture created the ConfigMap, it is deleted.
 
 RBAC:
 
-- `delete` permissions are `TODO` pending the chosen fixture application method.
+- `get`, `update`, `delete` on `configmaps`
+- `get`, `patch` on the pinned `deployment` (for the restore restart)
 
 ## Mutation Endpoints
 
@@ -568,11 +561,9 @@ RBAC:
 - Broker logs should audit mutating operations: caller identity, operation,
   target, result, and timestamp.
 
-## Development Order
+## Status
 
-1. Freeze this contract.
-2. Build a stub broker that returns these shapes.
-3. Build `pkg/cluster` against the contract.
-4. Build RBAC and ServiceAccount for the real broker.
-5. Replace stub broker handlers with real Kubernetes/cloud fixture logic.
-6. Wire integration tests through `pkg/cluster`.
+Implemented. The broker (`cmd/ops-broker`), the `pkg/cluster` SDK, RBAC
+(`deploy/ops-broker`), and the consuming suites (`test/{assets,restart,chaos}`)
+are all built against this contract. Adding or changing an endpoint, identifier,
+or field is a contract change and must be coordinated across all four.

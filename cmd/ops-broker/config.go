@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 )
 
 // Config is the broker's runtime configuration, all from the environment.
@@ -24,6 +25,9 @@ type Config struct {
 	PrometheusSelector string
 	// ChaosNamespace is where broker-owned Chaos Mesh resources are created.
 	ChaosNamespace string
+	// LogNamespaces is the allowlist of namespaces the /v1/logs endpoint may
+	// read from. Any namespace not in this set is rejected.
+	LogNamespaces []string
 	// Kubeconfig, if set, runs the broker out-of-cluster (local dev). Empty
 	// means in-cluster (rest.InClusterConfig).
 	Kubeconfig string
@@ -41,6 +45,10 @@ func LoadConfig() (Config, error) {
 		ChaosNamespace:      getEnv("BROKER_CHAOS_NAMESPACE", "opencost"),
 		Kubeconfig:          os.Getenv("KUBECONFIG"),
 	}
+	// Default the log allowlist to the OpenCost and Prometheus namespaces the
+	// broker already targets, so restart/chaos panic checks work out of the box.
+	c.LogNamespaces = splitList(getEnv("BROKER_LOG_NAMESPACES",
+		strings.Join([]string{c.Namespace, c.PrometheusNamespace}, ",")))
 	if c.AuthToken == "" {
 		return Config{}, fmt.Errorf("BROKER_AUTH_TOKEN is required")
 	}
@@ -52,4 +60,15 @@ func getEnv(key, def string) string {
 		return v
 	}
 	return def
+}
+
+// splitList parses a comma-separated env value into a trimmed, non-empty slice.
+func splitList(v string) []string {
+	out := []string{}
+	for _, part := range strings.Split(v, ",") {
+		if p := strings.TrimSpace(part); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }

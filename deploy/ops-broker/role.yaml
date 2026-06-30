@@ -15,6 +15,15 @@ rules:
   - apiGroups: [""]
     resources: ["pods"]
     verbs: ["get", "list"]   # left namespace-wide (list can't be name-scoped)
+  - apiGroups: [""]
+    resources: ["pods/log"]  # /v1/logs panic/error checks (restart, chaos)
+    verbs: ["get"]
+  - apiGroups: [""]
+    # /v1/config applies/deletes the embedded asset pricing fixture ConfigMap.
+    # create cannot be combined with resourceNames, so the broker guards by the
+    # fixed fixture name + opencost.io/fixture label in code instead.
+    resources: ["configmaps"]
+    verbs: ["get", "create", "update", "patch", "delete"]
   - apiGroups: ["chaos-mesh.org"]
     resources: ["podchaos", "networkchaos"]
     verbs: ["get", "list", "watch", "create", "delete"]

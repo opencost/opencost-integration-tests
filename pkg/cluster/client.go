@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -16,10 +18,15 @@ const (
 	EnvBrokerURL   = "OPENCOST_BROKER_URL"
 	EnvBrokerToken = "OPENCOST_BROKER_TOKEN"
 
-	pathHealthz = "/healthz"
-	pathChaos   = "/v1/chaos"
-	pathPods    = "/v1/pods"
-	pathRestart = "/v1/restart"
+	pathHealthz     = "/healthz"
+	pathChaos       = "/v1/chaos"
+	pathPods        = "/v1/pods"
+	pathRestart     = "/v1/restart"
+	pathLogs        = "/v1/logs"
+	pathDeployments = "/v1/deployments"
+	pathNodes       = "/v1/nodes"
+	pathDisks       = "/v1/disks"
+	pathConfig      = "/v1/config"
 )
 
 type Client struct {
@@ -39,6 +46,41 @@ type ChaosScenario struct {
 	ID          string `json:"id"`
 	Description string `json:"description"`
 	Engine      string `json:"engine"`
+}
+
+// DeploymentReadiness is the trimmed deployment readiness view (rollout status)
+// for the pinned OpenCost deployment.
+type DeploymentReadiness struct {
+	Name            string `json:"name"`
+	Ready           bool   `json:"ready"`
+	ReadyReplicas   int    `json:"readyReplicas"`
+	UpdatedReplicas int    `json:"updatedReplicas"`
+	DesiredReplicas int    `json:"desiredReplicas"`
+}
+
+// LogsRequest is the typed input for reading trimmed pod logs.
+type LogsRequest struct {
+	Namespace string
+	Selector  string
+	Container string
+	TailLines int
+}
+
+// NodeInfo is the trimmed node view for asset ground-truth tests.
+type NodeInfo struct {
+	Name string `json:"name"`
+	CPU  string `json:"cpu"`
+	RAM  string `json:"ram"`
+}
+
+// DiskInfo is the trimmed persistent-volume view for asset ground-truth tests.
+type DiskInfo struct {
+	Name           string `json:"name"`
+	Capacity       string `json:"capacity"`
+	StorageClass   string `json:"storageClass"`
+	Phase          string `json:"phase"`
+	ClaimNamespace string `json:"claimNamespace,omitempty"`
+	ClaimName      string `json:"claimName,omitempty"`
 }
 
 type brokerError struct {
@@ -70,6 +112,33 @@ type chaosInjectResponse struct {
 type chaosCleanupResponse struct {
 	Deleted  bool   `json:"deleted"`
 	Scenario string `json:"scenario"`
+}
+
+type logsResponse struct {
+	Lines []string `json:"lines"`
+}
+
+// ConfigRequest is the typed input for applying/deleting a fixture config.
+type ConfigRequest struct {
+	FixtureID string `json:"fixtureId"`
+}
+
+type configApplyResponse struct {
+	Applied   bool   `json:"applied"`
+	FixtureID string `json:"fixtureId"`
+}
+
+type configDeleteResponse struct {
+	Deleted   bool   `json:"deleted"`
+	FixtureID string `json:"fixtureId"`
+}
+
+type nodesResponse struct {
+	Nodes []NodeInfo `json:"nodes"`
+}
+
+type disksResponse struct {
+	Disks []DiskInfo `json:"disks"`
 }
 
 func NewClientFromEnv() (*Client, error) {
@@ -133,6 +202,65 @@ func (c *Client) Pods(ctx context.Context) ([]Pod, error) {
 	return response.Pods, nil
 }
 
+func (c *Client) Deployment(ctx context.Context, name, namespace string) (DeploymentReadiness, error) {
+	var response DeploymentReadiness
+	path := deploymentPath(name) + "?namespace=" + url.QueryEscape(namespace)
+	if err := c.do(ctx, http.MethodGet, path, true, nil, &response); err != nil {
+		return DeploymentReadiness{}, err
+	}
+	return response, nil
+}
+
+func (c *Client) Logs(ctx context.Context, req LogsRequest) ([]string, error) {
+	var response logsResponse
+	if err := c.do(ctx, http.MethodGet, logsPath(req), true, nil, &response); err != nil {
+		return nil, err
+	}
+	return response.Lines, nil
+}
+
+// ApplyConfig applies the named allowlisted fixture config (assets ground truth)
+// and triggers an OpenCost restart broker-side so it reloads.
+func (c *Client) ApplyConfig(ctx context.Context, fixtureID string) error {
+	var response configApplyResponse
+	if err := c.do(ctx, http.MethodPost, pathConfig, true, ConfigRequest{FixtureID: fixtureID}, &response); err != nil {
+		return err
+	}
+	if !response.Applied || response.FixtureID != fixtureID {
+		return fmt.Errorf("unexpected config apply response: applied=%t fixtureId=%q", response.Applied, response.FixtureID)
+	}
+	return nil
+}
+
+// DeleteConfig removes a previously applied fixture config and restarts OpenCost
+// back to its default configuration.
+func (c *Client) DeleteConfig(ctx context.Context, fixtureID string) error {
+	var response configDeleteResponse
+	if err := c.do(ctx, http.MethodDelete, pathConfig, true, ConfigRequest{FixtureID: fixtureID}, &response); err != nil {
+		return err
+	}
+	if !response.Deleted || response.FixtureID != fixtureID {
+		return fmt.Errorf("unexpected config delete response: deleted=%t fixtureId=%q", response.Deleted, response.FixtureID)
+	}
+	return nil
+}
+
+func (c *Client) Nodes(ctx context.Context) ([]NodeInfo, error) {
+	var response nodesResponse
+	if err := c.do(ctx, http.MethodGet, pathNodes, true, nil, &response); err != nil {
+		return nil, err
+	}
+	return response.Nodes, nil
+}
+
+func (c *Client) Disks(ctx context.Context) ([]DiskInfo, error) {
+	var response disksResponse
+	if err := c.do(ctx, http.MethodGet, pathDisks, true, nil, &response); err != nil {
+		return nil, err
+	}
+	return response.Disks, nil
+}
+
 func (c *Client) ChaosScenarios(ctx context.Context) ([]ChaosScenario, error) {
 	var response chaosScenariosResponse
 	if err := c.do(ctx, http.MethodGet, pathChaos, true, nil, &response); err != nil {
@@ -183,6 +311,33 @@ func (c *Client) WaitForOpenCostReady(ctx context.Context, interval time.Duratio
 		select {
 		case <-ctx.Done():
 			return nil, fmt.Errorf("waiting for OpenCost pods ready: %w", ctx.Err())
+		case <-ticker.C:
+		}
+	}
+}
+
+// WaitForDeploymentReady polls the pinned deployment's readiness (rollout
+// status) until ReadyReplicas == DesiredReplicas or ctx expires.
+func (c *Client) WaitForDeploymentReady(ctx context.Context, name, namespace string, interval time.Duration) (DeploymentReadiness, error) {
+	if interval <= 0 {
+		interval = time.Second
+	}
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		info, err := c.Deployment(ctx, name, namespace)
+		if err != nil {
+			return DeploymentReadiness{}, err
+		}
+		if info.Ready {
+			return info, nil
+		}
+
+		select {
+		case <-ctx.Done():
+			return DeploymentReadiness{}, fmt.Errorf("waiting for deployment %s/%s ready: %w", namespace, name, ctx.Err())
 		case <-ticker.C:
 		}
 	}
@@ -240,6 +395,23 @@ func (c *Client) url(path string) string {
 
 func chaosScenarioPath(scenario string) string {
 	return pathChaos + "/" + strings.TrimLeft(scenario, "/")
+}
+
+func deploymentPath(name string) string {
+	return pathDeployments + "/" + url.PathEscape(strings.TrimLeft(name, "/"))
+}
+
+func logsPath(req LogsRequest) string {
+	params := url.Values{}
+	params.Set("namespace", req.Namespace)
+	params.Set("selector", req.Selector)
+	if req.Container != "" {
+		params.Set("container", req.Container)
+	}
+	if req.TailLines > 0 {
+		params.Set("tailLines", strconv.Itoa(req.TailLines))
+	}
+	return pathLogs + "?" + params.Encode()
 }
 
 func brokerRequestError(method string, path string, statusCode int, raw []byte) error {
