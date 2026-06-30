@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: opencost
+
+resources:
+  - serviceaccount.yaml
+  - role.yaml
+  - rolebinding.yaml
+  - clusterrole.yaml
+  - clusterrolebinding.yaml
+  - service.yaml
+  - deployment.yaml
+  - networkpolicy.yaml
+
+images:
+  - name: REPLACE_ME/ops-broker
+    newName: REPLACE_ME/ops-broker
+    newTag: latest

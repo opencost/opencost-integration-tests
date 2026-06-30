@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ops-broker
+  namespace: opencost
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ops-broker
+  template:
+    metadata:
+      labels:
+        app: ops-broker
+    spec:
+      serviceAccountName: ops-broker          # ← binds the Pod to the SA so its token auto-mounts
+      containers:
+        - name: ops-broker
+          image: REPLACE_ME/ops-broker:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: BROKER_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: ops-broker-auth
+                  key: token
+            - name: BROKER_NAMESPACE
+              value: opencost
+            - name: BROKER_OPENCOST_DEPLOYMENT
+              value: opencost
+            - name: BROKER_OPENCOST_SELECTOR
+              value: app.kubernetes.io/name=opencost
+            - name: BROKER_PROMETHEUS_NAMESPACE
+              value: prometheus-system
+            - name: BROKER_PROMETHEUS_SELECTOR
+              value: app.kubernetes.io/name=prometheus,app.kubernetes.io/component=server
+            - name: BROKER_CHAOS_NAMESPACE
+              value: opencost
+            - name: BROKER_LOG_NAMESPACES
+              value: opencost,prometheus-system
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080

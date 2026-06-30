@@ -1,0 +1,49 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ops-broker
+  namespace: opencost
+spec:
+  # Selecting the broker pod + declaring an Ingress policy = default-deny all
+  # inbound; only the rules below are permitted.
+  podSelector:
+    matchLabels:
+      app: ops-broker
+  policyTypes:
+    - Ingress
+  ingress:
+    # ---- Allow: test runner -> broker API ----
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              # >>> PLACEHOLDER — CONFIRM BEFORE APPLYING <<<
+              # CI cluster topology is NOT settled yet. "test-runner" is a stand-in,
+              # NOT a real namespace. Replace with the actual test-runner namespace
+              # (built-in immutable label kubernetes.io/metadata.name) once decided.
+              kubernetes.io/metadata.name: test-runner
+      ports:
+        - protocol: TCP
+          port: 8080
+    #
+    # ---- KNOWN RISK: kubelet liveness probe to /healthz ----
+    # The kubelet's liveness probe originates from the NODE IP, not from a pod or
+    # namespace, so it cannot be matched by pod/namespaceSelector. Under strict
+    # NetworkPolicy enforcement this default-deny can block the /healthz probe and
+    # crash-loop the broker.
+    #
+    # There is no clean, portable policy-level allow:
+    #   - The only way to admit node-sourced traffic is an `ipBlock` for the node
+    #     CIDR, which is cluster-specific and churns as nodes scale — so it is
+    #     intentionally NOT baked in here.
+    #   - Behavior is CNI-dependent: some CNIs (e.g. Cilium with host-firewall off)
+    #     allow host/kubelet traffic implicitly; others (strict Calico) do not.
+    #
+    # ACTION: verify on the real CI cluster that the liveness probe still succeeds
+    # with this policy applied. If it is blocked, add a namespace-local ipBlock
+    # ingress rule for the node CIDR, e.g.:
+    #     - from:
+    #         - ipBlock:
+    #             cidr: <NODE_CIDR>/<mask>   # CONFIRM per-cluster
+    #       ports:
+    #         - protocol: TCP
+    #           port: 8080

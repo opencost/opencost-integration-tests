@@ -1,0 +1,13 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ops-broker
+rules:
+  # Cluster-scoped reads for asset ground-truth tests (/v1/nodes, /v1/disks).
+  # Read-only: the broker never mutates nodes or PVs.
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list"]

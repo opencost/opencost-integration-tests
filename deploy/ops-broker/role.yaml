@@ -1,0 +1,29 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ops-broker
+  namespace: opencost
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    # Restrict get/patch to ONLY the OpenCost deployment (BROKER_OPENCOST_DEPLOYMENT,
+    # default "opencost"). If you override that env, update this to match.
+    # NOTE: resourceNames cannot be combined with list/watch — keep this rule to
+    # get/patch only. Add a separate, name-free rule if you ever need to list.
+    resourceNames: ["opencost"]
+    verbs: ["get", "patch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]   # left namespace-wide (list can't be name-scoped)
+  - apiGroups: [""]
+    resources: ["pods/log"]  # /v1/logs panic/error checks (restart, chaos)
+    verbs: ["get"]
+  - apiGroups: [""]
+    # /v1/config applies/deletes the embedded asset pricing fixture ConfigMap.
+    # create cannot be combined with resourceNames, so the broker guards by the
+    # fixed fixture name + opencost.io/fixture label in code instead.
+    resources: ["configmaps"]
+    verbs: ["get", "create", "update", "patch", "delete"]
+  - apiGroups: ["chaos-mesh.org"]
+    resources: ["podchaos", "networkchaos"]
+    verbs: ["get", "list", "watch", "create", "delete"]

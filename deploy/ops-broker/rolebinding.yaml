@@ -1,0 +1,13 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ops-broker
+  namespace: opencost
+subjects:
+  - kind: ServiceAccount
+    name: ops-broker
+    namespace: opencost
+roleRef:
+  kind: Role
+  name: ops-broker
+  apiGroup: rbac.authorization.k8s.io
