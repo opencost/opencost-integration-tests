@@ -120,6 +120,30 @@ func (api *API) GET(relativeURL string, queryStringer QueryStringer, response in
 	return nil
 }
 
+// httpGetRetryBackoff is the delay between transport-error retries. It is a var
+// so tests can shorten it.
+var httpGetRetryBackoff = 5 * time.Second
+
+// httpGetWithRetry performs an HTTP GET, retrying transient transport errors
+// (such as "connection reset by peer" from the shared demo backend) that
+// otherwise fail integration runs spuriously. Each retry is logged so it is
+// visible in the run output. These GETs are idempotent, so retrying is safe.
+func httpGetWithRetry(client *http.Client, url string) (*http.Response, error) {
+	var lastErr error
+	for try := 0; try < MAX_RETRIES; try++ {
+		resp, err := client.Get(url)
+		if err == nil {
+			return resp, nil
+		}
+		lastErr = err
+		if try < MAX_RETRIES-1 {
+			log.Warnf("error getting %s: %v, retrying... (%d/%d)", url, err, try+1, MAX_RETRIES)
+			time.Sleep(httpGetRetryBackoff)
+		}
+	}
+	return nil, lastErr
+}
+
 // POST submits a POST request to the given URL, with the query string from the
 // given QueryStringer, as well as a body, and unmarshals response data into
 // the given response struct.
