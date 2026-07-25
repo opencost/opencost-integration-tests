@@ -79,7 +79,7 @@ func (api *API) GetAutocompleteStatus(path string, req AutocompleteRequest) (int
 	qs := req.QueryString()
 	url := api.URL(path, qs)
 
-	httpResp, err := http.Get(url)
+	httpResp, err := httpGetWithRetry(sharedHTTPClient, url)
 	if err != nil {
 		return 0, nil, fmt.Errorf("error getting %s: %w", url, err)
 	}
