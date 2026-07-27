@@ -22,9 +22,12 @@ First, you'll need to configure access to a running instance of OpenCost.
 # Example 1: Local run
 export OPENCOST_URL='http://localhost:9003'
 
-# Example 2: Remote run
+# Example 2: Remote run (demo environment)
 export OPENCOST_URL='https://demo.infra.opencost.io/model'
+export PROMETHEUS_URL='https://demo-prometheus.infra.opencost.io'
 ```
+
+Autocomplete integration tests live under `test/integration/api/autocomplete/` and compare OpenCost autocomplete responses to Prometheus ground truth (allocations/assets) or `/cloudCost` ground truth. They skip automatically when autocomplete endpoints are not yet deployed on the target OpenCost instance.
 
 Running tests with [bats](https://bats-core.readthedocs.io/en/stable/index.html) is simple. The bats binary is already included in a git submodule within the test suite. Invoke that binary from the command line, giving as an argument a file or directory containing tests.
 
