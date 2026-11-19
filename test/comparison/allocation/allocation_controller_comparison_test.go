@@ -26,7 +26,7 @@ func TestAllocationControllerComparison(t *testing.T) {
 	for pod, promAlloc := range promResp.Data[0] {
 		collectorAlloc, ok := collectorResp.Data[0][pod]
 		// Skip pods that only one source has seen so far
-		if !ok || promAlloc.Properties == nil || collectorAlloc.Properties == nil {
+		if !ok {
 			continue
 		}
 
